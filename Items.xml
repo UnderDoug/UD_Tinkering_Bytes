@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <objects>
   <object Name="BaseByte" Inherits="Scrap">
-    <part Name="Render" DisplayName="[{{y|byte}}]" DetailColor="y" />
+    <part Name="Render" DisplayName="[{{y|byte}}]" 
+          DetailColor="y" Tile="0_byte.png" />
     <part Name="Physics" Weight="1" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly 8 bits." />
     <part Name="TinkerItem" CanBuild="true" />
@@ -18,82 +19,173 @@
   <object Name="A Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{R|A}}-{{y|byte}}"
           TileColor="&amp;R" ColorString="&amp;R"
-          Tile="items/bit11.bmp" />
-    <part Name="TinkerItem" Bits="RRRRRRRRR" />
+          Tile="0_byte.png" />
+    <part Name="TinkerItem" Bits="RRRRRRRR" />
   </object>
   <object Name="B Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{G|B}}-{{y|byte}}"
           TileColor="&amp;G" ColorString="&amp;G"
-          Tile="items/bit11.bmp" />
+          Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="GGGGGGGG" />
   </object>
   <object Name="C Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{B|C}}-{{y|byte}}"
           TileColor="&amp;B" ColorString="&amp;B"
-          Tile="items/bit11.bmp" />
+          Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="BBBBBBBB" />
   </object>
   <object Name="D Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{C|D}}-{{y|byte}}"
           TileColor="&amp;C" ColorString="&amp;C"
-          Tile="items/bit11.bmp" />
+          Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="CCCCCCCC" />
   </object>
   <object Name="1 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{r|1}}-{{y|byte}}"
           TileColor="&amp;r" ColorString="&amp;r"
-          Tile="items/bit1.bmp" />
+          Tile="1_byte.png" />
     <part Name="TinkerItem" Bits="11111111" />
-    <part Name="Commerce" Value="80" />
+    <part Name="Commerce" Value="120" />
   </object>
   <object Name="2 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{g|2}}-{{y|byte}}"
           TileColor="&amp;g" ColorString="&amp;g"
-          Tile="items/bit2.bmp" />
+          Tile="2_byte.png" />
     <part Name="TinkerItem" Bits="22222222" />
-    <part Name="Commerce" Value="120" />
+    <part Name="Commerce" Value="200" />
   </object>
   <object Name="3 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{b|3}}-{{y|byte}}"
           TileColor="&amp;b" ColorString="&amp;b"
-          Tile="items/bit3.bmp" />
+          Tile="3_byte.png" />
     <part Name="TinkerItem" Bits="33333333" />
-    <part Name="Commerce" Value="200" />
+    <part Name="Commerce" Value="280" />
   </object>
   <object Name="4 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{v|4}}-{{y|byte}}"
           TileColor="&amp;c" ColorString="&amp;c"
-          Tile="items/bit4.bmp" />
+          Tile="4_byte.png" />
     <part Name="TinkerItem" Bits="44444444" />
-    <part Name="Commerce" Value="280" />
+    <part Name="Commerce" Value="360" />
   </object>
   <object Name="5 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{K|5}}-{{y|byte}}"
           TileColor="&amp;K" ColorString="&amp;K"
-          Tile="items/bit5.bmp" />
+          Tile="5_byte.png" />
     <part Name="TinkerItem" Bits="55555555" />
-    <part Name="Commerce" Value="360" />
     <part Name="Commerce" Value="440" />
   </object>
   <object Name="6 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{W|6}}-{{y|byte}}"
           TileColor="&amp;W" ColorString="&amp;W"
-          Tile="items/bit6.bmp" />
+          Tile="6_byte.png" />
     <part Name="TinkerItem" Bits="66666666" />
     <part Name="Commerce" Value="520" />
   </object>
   <object Name="7 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{Y|7}}-{{y|byte}}"
           TileColor="&amp;Y" ColorString="&amp;Y"
-          Tile="items/bit7.bmp" />
+          Tile="7_byte.png" />
     <part Name="TinkerItem" Bits="77777777" />
     <part Name="Commerce" Value="600" />
   </object>
   <object Name="8 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{M|8}}-{{y|byte}}"
           TileColor="&amp;M" ColorString="&amp;M"
-          Tile="items/bit8.bmp" />
+          Tile="8_byte.png" />
     <part Name="TinkerItem" Bits="88888888" />
     <part Name="Commerce" Value="680" />
+  </object>
+
+  <object Name="BaseBytePunnet" Inherits="Scrap">
+    <part Name="Render" DisplayName="[{{y|punnet of bytes}}]" 
+          DetailColor="y" Tile="byte_punnet.png" />
+    <part Name="Physics" Weight="16" />
+    <part Name="Description" Short="A tidily packed punnet of exactly 32 bytes, equal to 256 bits." />
+    <removepart Name="TinkerItem" CanBuild="true" />
+    <part Name="Commerce" Value="400" />
+    <removetag Name="Scrap" />
+    <removetag Name="DefaultDisassemble" />
+    <tag Name="BaseObject" Value="*noinherit" />
+    <intproperty Name="NeverStack" Value="1" />
+    <removestag Name="Scrap" />
+    <removetag Name="Breakable" />
+    <part Name="ItemElements" Elements="circuitry::8" />
+    <part Name="UD_BytePunnet" Bytes="0" />
+  </object>
+
+  <object Name="0 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{R-G-B-C sequence|assorted}} {{y|punnet of bytes}}"
+          TileColor="&amp;w" ColorString="&amp;w" />
+    <part Name="Commerce" Value="300" />
+    <part Name="UD_BytePunnet" Bytes="0" />
+  </object>
+  <object Name="A Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{R|A}}-{{y|bytes}}"
+          TileColor="&amp;R" ColorString="&amp;R" />
+    <part Name="UD_BytePunnet" Bytes="R" />
+  </object>
+  <object Name="B Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{G|B}}-{{y|bytes}} "
+          TileColor="&amp;G" ColorString="&amp;G" />
+    <part Name="UD_BytePunnet" Bytes="G" />
+  </object>
+  <object Name="C Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{B|C}}-{{y|bytes}}"
+          TileColor="&amp;B" ColorString="&amp;B" />
+    <part Name="UD_BytePunnet" Bytes="B" />
+  </object>
+  <object Name="D Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{C|D}}-{{y|bytes}}"
+          TileColor="&amp;C" ColorString="&amp;C" />
+    <part Name="UD_BytePunnet" Bytes="C" />
+  </object>
+  <object Name="1 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{r|1}}-{{y|bytes}}"
+          TileColor="&amp;r" ColorString="&amp;r" />
+    <part Name="Commerce" Value="1200" />
+    <part Name="UD_BytePunnet" Bytes="1" />
+  </object>
+  <object Name="2 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{g|2}}-{{y|bytes}}"
+          TileColor="&amp;g" ColorString="&amp;g" />
+    <part Name="Commerce" Value="2000" />
+    <part Name="UD_BytePunnet" Bytes="2" />
+  </object>
+  <object Name="3 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{b|3}}-{{y|bytes}}"
+          TileColor="&amp;b" ColorString="&amp;b" />
+    <part Name="Commerce" Value="2800" />
+    <part Name="UD_BytePunnet" Bytes="3" />
+  </object>
+  <object Name="4 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{c|4}}-{{y|bytes}}"
+          TileColor="&amp;c" ColorString="&amp;c" />
+    <part Name="Commerce" Value="3600" />
+    <part Name="UD_BytePunnet" Bytes="4" />
+  </object>
+  <object Name="5 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{K|5}}-{{y|bytes}}"
+          TileColor="&amp;K" ColorString="&amp;K" />
+    <part Name="Commerce" Value="4400" />
+    <part Name="UD_BytePunnet" Bytes="5" />
+  </object>
+  <object Name="6 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{W|6}}-{{y|bytes}}"
+          TileColor="&amp;W" ColorString="&amp;W" />
+    <part Name="Commerce" Value="5200" />
+    <part Name="UD_BytePunnet" Bytes="6" />
+  </object>
+  <object Name="7 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{Y|7}}-{{y|bytes}}"
+          TileColor="&amp;Y" ColorString="&amp;Y" />
+    <part Name="Commerce" Value="6000" />
+    <part Name="UD_BytePunnet" Bytes="7" />
+  </object>
+  <object Name="8 Byte Punnet" Inherits="BaseBytePunnet">
+    <part Name="Render" DisplayName="{{y|punnet of}} {{M|8}}-{{y|bytes}}"
+          TileColor="&amp;M" ColorString="&amp;M" />
+    <part Name="Commerce" Value="6800" />
+    <part Name="UD_BytePunnet" Bytes="8" />
   </object>
 </objects>
