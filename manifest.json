@@ -1,0 +1,9 @@
+{
+    "id": "UD_Tinkering_Bytes",
+    "title": "{{C|Tinkering}} {{c-K-W-Y-M sequence|Bytes}}",
+    "description": "Adds a craftable item for each of the tinkering bits that represent 8 of that bit (a byte).\n\nAlso gives creatures with the tinker skills the ability to mod items for a fee.",
+    "version": "0.0.1",
+    "author": "{{K-g-G-Y-G-g-K alternation|UnderDoug}}",
+    "tags": "Tinkering,Extension,Quality of life",
+    "PreviewImage": "preview.png"
+}

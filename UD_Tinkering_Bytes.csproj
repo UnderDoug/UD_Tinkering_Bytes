@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<AssemblyName>UD_Tinkering_Bytes</AssemblyName>
+		<PackageId>UD_Tinkering_Bytes</PackageId>
+		<Authors>UnderDoug</Authors>
+		<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+		<Company />
+	</PropertyGroup>
+	<ItemGroup>
+	  <Folder Include="Textures\" />
+	</ItemGroup>
+  <Import Project="../Mods.csproj" />
+</Project>
