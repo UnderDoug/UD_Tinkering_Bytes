@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects>
+  
+  <!-- Adds a handler for the VenderActionEvents added by this mod -->
+  <object Name="Creature" Load="Merge">
+    <part Name="UD_VendorActionHandler" />
+  </object>
+  
+</objects>

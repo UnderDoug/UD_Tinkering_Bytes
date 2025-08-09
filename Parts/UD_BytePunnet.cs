@@ -6,6 +6,7 @@ using System.Text;
 using UD_Tinkering_Bytes;
 using XRL.Language;
 using XRL.Rules;
+using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Tinkering;
 
@@ -15,9 +16,10 @@ namespace XRL.World.Parts
     public class UD_BytePunnet : IScribedPart
     {
         public const string COMMAND_UNPACK = "UnpackBytePunnet";
+        public const string COMMAND_UNPACK_ALL = "UnpackAllBytePunnets";
         public const string BYTE_BLUEPRINT_END = " Byte";
 
-        private static int BytesPerPunnet => 32;
+        public static int BytesPerPunnet => 32;
 
         private static int MaxByte => BytesOrder.Count - 1;
 
@@ -147,6 +149,40 @@ namespace XRL.World.Parts
             return bytesBlueprintList;
         }
 
+        public static bool UnpackPunnet(UD_BytePunnet BytePunnet, Dictionary<string, GameObject> BytesBucket)
+        {
+            BytePunnet.BytesBlueprintList = GetByteBlueprints(BytePunnet.Bytes);
+            BytesBucket ??= new();
+            if (!BytePunnet.BytesBlueprintList.IsNullOrEmpty())
+            {
+                for (int i = 0; i < BytesPerPunnet; i++)
+                {
+                    int seededIndex = Stat.SeededRandom($"{BytePunnet.ParentObject.ID}:{i}", 0, BytePunnet.BytesBlueprintList.Count - 1);
+                    string blueprint = BytePunnet.BytesBlueprintList[seededIndex];
+                    if (!blueprint.IsNullOrEmpty())
+                    {
+                        if (!BytesBucket.ContainsKey(blueprint))
+                        {
+                            BytesBucket.Add(blueprint, GameObjectFactory.Factory.CreateObject(blueprint));
+                        }
+                        else
+                        {
+                            BytesBucket[blueprint].Count++;
+                        }
+                    }
+                }
+                if (BytePunnet.ParentObject.Count > 0)
+                {
+                    BytePunnet.ParentObject.Count--;
+                }
+                else
+                {
+                    BytePunnet.ParentObject.Destroy();
+                }
+            }
+            return false;
+        }
+
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
@@ -155,12 +191,16 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(GetInventoryActionsEvent E)
         {
-            E.AddAction("Unpack", "unpack", COMMAND_UNPACK, Key: 'u');
+            E.AddAction("Unpack", "unpack", COMMAND_UNPACK, Key: 'u', Default: 5, WorksTelekinetically: true);
+            if (E.Object.Count > 1)
+            {
+                E.AddAction("Unpack All", "unpack all", COMMAND_UNPACK_ALL, Key: 'U', Default: 4, WorksTelekinetically: true);
+            }
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(InventoryActionEvent E)
         {
-            if (E.Command == COMMAND_UNPACK)
+            if (E.Command == COMMAND_UNPACK || E.Command == COMMAND_UNPACK_ALL)
             {
                 if (!E.Actor.CheckFrozen(Telepathic: false, Telekinetic: true))
                 {
@@ -171,45 +211,85 @@ namespace XRL.World.Parts
                     E.Actor.Fail(ParentObject.Does("do") + " nothing.");
                     return false;
                 }
-
-                BytesBlueprintList = GetByteBlueprints(Bytes);
-                Dictionary<string, int> receivedBytes = new();
-                if (!BytesBlueprintList.IsNullOrEmpty())
+                if (AutoAct.ShouldHostilesInterrupt("o") || E.Actor.FireEvent("CombatPreventsTinkering"))
                 {
-                    string backUpByte = null;
-                    for (int i = 0; i < BytesPerPunnet; i++)
+                    Popup.ShowFail("You can't unpack with hostiles nearby.");
+                    return false;
+                }
+                Dictionary<string, GameObject> bytesBucket = new();
+                int amountToUnpack = ParentObject.Count;
+                if (E.Command == COMMAND_UNPACK)
+                {
+                    UnpackPunnet(this, bytesBucket);
+                }
+                else
+                {
+                    int attempts = 0;
+                    while (ParentObject.Count > 0 && attempts < 25)
                     {
-                        int seededIndex = Stat.SeededRandom($"{ParentObject.ID}:{i}", 0, BytesBlueprintList.Count - 1);
-                        string blueprint = BytesBlueprintList[seededIndex];
-                        GameObject byteObject = GameObjectFactory.Factory.CreateObject(blueprint);
-                        string byteName = byteObject.Render.DisplayName;
-                        backUpByte = byteName;
-                        if (E.Actor.ReceiveObject(byteObject))
+                        if (!UnpackPunnet(this, bytesBucket))
                         {
-                            if (receivedBytes.Keys.Contains(byteName))
-                            {
-                                receivedBytes[byteName]++;
-                            }
-                            else
-                            {
-                                receivedBytes.Add(byteName, 1);
-                            }
+                            attempts++;
                         }
-                    }
-                    if (!receivedBytes.IsNullOrEmpty())
-                    {
-                        List<string> receivedBytesList = new();
-                        foreach ((string byteName, int count) in receivedBytes)
-                        {
-                            receivedBytesList.Add(count.Things(byteName));
-                        }
-                        receivedBytesList.Sort((s,o) => GetByteIndex(s.Strip()).CompareTo(GetByteIndex(o.Strip())));
-                        string receivedString = Grammar.MakeAndList(receivedBytesList) ?? BytesPerPunnet.Things(backUpByte);
-                        E.Actor.ShowSuccess($"{ParentObject.Does("unpack")} into {receivedString}");
-                        ParentObject.Destroy();
-                        E.RequestInterfaceExit();
                     }
                 }
+
+                if (!bytesBucket.IsNullOrEmpty())
+                {
+                    if (!bytesBucket.IsNullOrEmpty())
+                    {
+                        Dictionary<string, string> receivedBytesSortable = new();
+                        List<string> byteBlueprints = new();
+                        List<string> receivedBytesList = new();
+                        foreach ((string _, GameObject byteStack) in bytesBucket)
+                        {
+                            byteBlueprints.Add(byteStack.Blueprint);
+                            receivedBytesSortable.Add(byteStack.Blueprint, byteStack.Count.Things(byteStack.Render.DisplayName));
+                        }
+                        byteBlueprints.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
+                        foreach (string byteBlueprint in byteBlueprints)
+                        {
+                            receivedBytesList.Add(receivedBytesSortable[byteBlueprint]);
+                        }
+                        string thisPunnet = E.Command == COMMAND_UNPACK ? ParentObject.DisplayName : amountToUnpack.Things(ParentObject.DisplayName);
+                        string receivedString = Grammar.MakeAndList(receivedBytesList);
+                        E.Actor.ShowSuccess($"{E.Actor.GetVerb("unpack")} {E.Actor.Poss(thisPunnet)} into {receivedString}");
+                        return true;
+                    }
+                    E.RequestInterfaceExit();
+                }
+                    /*
+                    string byteName = byteObject.Render.DisplayName;
+                    backUpByte = byteName;
+                    if (Actor.ReceiveObject(byteObject))
+                    {
+                        if (ReceivedBytes.Contains(byteName))
+                        {
+                            ReceivedBytes[byteName]++;
+                        }
+                        else
+                        {
+                            ReceivedBytes.Add(byteName, 1);
+                        }
+                    }
+
+
+                    if (!BytesBucket.IsNullOrEmpty())
+                    {
+                        List<string> receivedBytesList = new();
+                        foreach ((string _, GameObject byteStack) in BytesPucket)
+                        {
+                            receivedBytesList.Add(byteStack.Count.Things(byteStack.Render.DisplayName));
+                        }
+                        receivedBytesList.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
+                        string receivedString = Grammar.MakeAndList(receivedBytesList) ?? BytesPerPunnet.Things(backUpByte);
+                        Actor.ShowSuccess($"{BytePunnet.ParentObject.Does("unpack")} into {receivedString}");
+                        BytePunnet.ParentObject.Destroy();
+                        return true;
+                    }
+
+                    */
+
             }
             return base.HandleEvent(E);
         }
