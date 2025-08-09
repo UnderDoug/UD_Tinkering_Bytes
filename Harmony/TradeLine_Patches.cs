@@ -75,7 +75,7 @@ namespace UD_Tinkering_Bytes.Harmony
                         Success = action.Process(TradeLine, Vendor, item, TradeLine.context.data.traderInventory ? Vendor : The.Player);
                     }
                 });
-                if (action.ClearAndSetUpTradeUI)
+                if (action != null && action.ClearAndSetUpTradeUI)
                 {
                     TradeLine.screen.ClearAndSetupTradeUI();
                 }

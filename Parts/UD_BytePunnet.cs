@@ -211,7 +211,7 @@ namespace XRL.World.Parts
                     E.Actor.Fail(ParentObject.Does("do") + " nothing.");
                     return false;
                 }
-                if (AutoAct.ShouldHostilesInterrupt("o") || E.Actor.FireEvent("CombatPreventsTinkering"))
+                if (E.Actor.FireEvent("CombatPreventsTinkering"))
                 {
                     Popup.ShowFail("You can't unpack with hostiles nearby.");
                     return false;
@@ -258,38 +258,6 @@ namespace XRL.World.Parts
                     }
                     E.RequestInterfaceExit();
                 }
-                    /*
-                    string byteName = byteObject.Render.DisplayName;
-                    backUpByte = byteName;
-                    if (Actor.ReceiveObject(byteObject))
-                    {
-                        if (ReceivedBytes.Contains(byteName))
-                        {
-                            ReceivedBytes[byteName]++;
-                        }
-                        else
-                        {
-                            ReceivedBytes.Add(byteName, 1);
-                        }
-                    }
-
-
-                    if (!BytesBucket.IsNullOrEmpty())
-                    {
-                        List<string> receivedBytesList = new();
-                        foreach ((string _, GameObject byteStack) in BytesPucket)
-                        {
-                            receivedBytesList.Add(byteStack.Count.Things(byteStack.Render.DisplayName));
-                        }
-                        receivedBytesList.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
-                        string receivedString = Grammar.MakeAndList(receivedBytesList) ?? BytesPerPunnet.Things(backUpByte);
-                        Actor.ShowSuccess($"{BytePunnet.ParentObject.Does("unpack")} into {receivedString}");
-                        BytePunnet.ParentObject.Destroy();
-                        return true;
-                    }
-
-                    */
-
             }
             return base.HandleEvent(E);
         }

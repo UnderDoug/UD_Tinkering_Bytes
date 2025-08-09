@@ -4,6 +4,69 @@
   <!-- Adds a handler for the VenderActionEvents added by this mod -->
   <object Name="Creature" Load="Merge">
     <part Name="UD_VendorActionHandler" />
+    <part Name="UD_TinkeringBytes" />
+  </object>
+  
+  <!-- Adding Disassemble to a few more NPCs-->
+  <object Name="Barathrumite Tinker" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="HumanTinker_Village0" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="Grenadier" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="DiskMerchant" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="Shem -1" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="Neek" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="Mechnamist rummager" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="Naphtaali Tinker" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="BaseArconaut" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="MopangoCharioteer" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="MopangoPilgrim" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="MopangoWatcher" Load="Merge">
+    <skill Name="Tinkering_Disassemble" />
+  </object>
+  
+  <object Name="Nacham" Load="Merge">
+    <skill Name="Tinkering" />
+    <skill Name="Tinkering_Repair" />
+    <skill Name="Tinkering_Tinker1" />
+    <skill Name="Tinkering_Disassemble" />
+    <skill Name="Tinkering_DeployTurret" />
+    <skill Name="Tinkering_LayMine" />
+    <skill Name="Tinkering_Tinker2" />
+    <skill Name="Tinkering_Scavenger" />
+    <skill Name="Tinkering_ReverseEngineer" />
+    <skill Name="Tinkering_Tinker3" />
   </object>
   
 </objects>

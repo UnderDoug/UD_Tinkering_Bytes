@@ -167,7 +167,8 @@ namespace UD_Tinkering_Bytes
             Location2D popupLocation = null;
             if (MouseClick)
             {
-                popupLocation = PopupMessage.LOCATION_AT_MOUSE_CURSOR;
+                // Would love to figure this out.
+                // popupLocation = PopupMessage.LOCATION_AT_MOUSE_CURSOR;
             }
             int pickedEntry = Popup.PickOption(
                 Intro: Intro ?? (isConfused ? Item.DisplayName : null),

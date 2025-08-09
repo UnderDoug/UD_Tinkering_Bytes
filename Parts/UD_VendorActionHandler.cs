@@ -60,7 +60,7 @@ namespace XRL.World.Parts
                 }
                 if (E.Vendor.GetIntProperty("Librarian") != 0 
                     && E.Item.HasInventoryActionWithCommand("Read") 
-                    && E.TradeLine.context.data.traderInventory)
+                    && E.Item.InInventory == ParentObject)
                 {
                     E.AddAction("Read", "read", COMMAND_RECHARGE, Key: 'b');
                 }
