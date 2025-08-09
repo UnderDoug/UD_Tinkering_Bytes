@@ -123,22 +123,22 @@
   <object Name="A Byte Punnet" Inherits="BaseBytePunnet">
     <part Name="Render" DisplayName="{{y|punnet of}} {{R|A}}-{{y|bytes}}"
           TileColor="&amp;R" ColorString="&amp;R" />
-    <part Name="UD_BytePunnet" Bytes="R" />
+    <part Name="UD_BytePunnet" Bytes="A" />
   </object>
   <object Name="B Byte Punnet" Inherits="BaseBytePunnet">
     <part Name="Render" DisplayName="{{y|punnet of}} {{G|B}}-{{y|bytes}} "
           TileColor="&amp;G" ColorString="&amp;G" />
-    <part Name="UD_BytePunnet" Bytes="G" />
+    <part Name="UD_BytePunnet" Bytes="B" />
   </object>
   <object Name="C Byte Punnet" Inherits="BaseBytePunnet">
     <part Name="Render" DisplayName="{{y|punnet of}} {{B|C}}-{{y|bytes}}"
           TileColor="&amp;B" ColorString="&amp;B" />
-    <part Name="UD_BytePunnet" Bytes="B" />
+    <part Name="UD_BytePunnet" Bytes="C" />
   </object>
   <object Name="D Byte Punnet" Inherits="BaseBytePunnet">
     <part Name="Render" DisplayName="{{y|punnet of}} {{C|D}}-{{y|bytes}}"
           TileColor="&amp;C" ColorString="&amp;C" />
-    <part Name="UD_BytePunnet" Bytes="C" />
+    <part Name="UD_BytePunnet" Bytes="D" />
   </object>
   <object Name="1 Byte Punnet" Inherits="BaseBytePunnet">
     <part Name="Render" DisplayName="{{y|punnet of}} {{r|1}}-{{y|bytes}}"
