@@ -35,6 +35,8 @@ namespace UD_Tinkering_Bytes
 
         public string Command;
 
+        public int Default;
+
         public int Priority;
 
         public int? DramsCost;
@@ -86,7 +88,7 @@ namespace UD_Tinkering_Bytes
             {
                 actionsList.Add(action);
             }
-            actionsList.Sort(Comparer ??= new Comparer());
+            actionsList.Sort(Comparer ??= new VendorAction.Comparer(){ priorityFirst = true });
 
             Dictionary<char, VendorAction> actionsByHotkey = new(16);
 
@@ -157,12 +159,22 @@ namespace UD_Tinkering_Bytes
             }
             List<string> options = new();
             List<char> hotkeys = new();
-            foreach (VendorAction item4 in actionsList)
+            foreach (VendorAction action in actionsList)
             {
-                options.Add(item4.Display);
-                hotkeys.Add(item4.Key);
+                options.Add(action.Display);
+                hotkeys.Add(action.Key);
             }
 
+            int defaultSelected = 0;
+            int currentDefault = int.MinValue;
+            for (int i = 0; i < actionsList.Count; i++)
+            {
+                if (actionsList[i].Default > currentDefault)
+                {
+                    defaultSelected = i;
+                    currentDefault = actionsList[i].Default;
+                }
+            }
             bool isConfused = The.Player.IsConfused;
             Location2D popupLocation = null;
             if (MouseClick)
@@ -175,7 +187,8 @@ namespace UD_Tinkering_Bytes
                 Options: options.ToArray(),
                 Hotkeys: hotkeys.ToArray(),
                 Context: isConfused ? null : Item,
-                IntroIcon: isConfused ? null : Item.RenderForUI(), 
+                IntroIcon: isConfused ? null : Item.RenderForUI(),
+                DefaultSelected: defaultSelected,
                 AllowEscape: true,
                 RespectOptionNewlines: true,
                 CenterIntro: true,
@@ -239,6 +252,11 @@ namespace UD_Tinkering_Bytes
                 if (a.Key != b.Key)
                 {
                     return -a.Key.CompareTo(b.Key);
+                }
+                int defaultComparison = a.Default.CompareTo(b.Default);
+                if (defaultComparison != 0)
+                {
+                    return -defaultComparison;
                 }
             }
             else if (aKeyIsBlank || bKeyIsBlank)

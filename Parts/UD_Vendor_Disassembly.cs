@@ -2,8 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
-
+using UD_Tinkering_Bytes;
 using XRL.Language;
 using XRL.Messages;
 using XRL.Rules;
@@ -11,8 +12,6 @@ using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
-
-using UD_Tinkering_Bytes;
 
 namespace XRL.World.Parts
 {
@@ -37,7 +36,7 @@ namespace XRL.World.Parts
             Disassembly = null;
         }
 
-        public static void ProcessVendorDisassemblyWhat(Disassembly Disassembly)
+        public static void VendorDisassemblyProcessDisassemblingWhat(Disassembly Disassembly)
         {
             if (!Disassembly.DisassemblingWhat.IsNullOrEmpty())
             {
@@ -55,14 +54,9 @@ namespace XRL.World.Parts
                 {
                     if (Disassembly.DisassembledWhats.IsNullOrEmpty())
                     {
-                        if (Disassembly.DisassembledWhats == null)
-                        {
-                            Disassembly.DisassembledWhats = new List<string>();
-                        }
-                        if (Disassembly.DisassembledWhatsWhere == null)
-                        {
-                            Disassembly.DisassembledWhatsWhere = new Dictionary<string, string>();
-                        }
+                        Disassembly.DisassembledWhats ??= new();
+                        Disassembly.DisassembledWhatsWhere ??= new();
+
                         Disassembly.DisassembledWhats.Add(Disassembly.DisassembledWhat);
                         Disassembly.DisassembledWhatsWhere[Disassembly.DisassembledWhat] = Disassembly.DisassembledWhere;
                     }
@@ -74,53 +68,54 @@ namespace XRL.World.Parts
             }
         }
 
-        public static bool ContinueVendor(GameObject Vendor, Disassembly Disassembly)
+        public static bool VendorDisassemblyContinue(GameObject Vendor, Disassembly Disassembly)
         {
             GameObject Object = Disassembly.Object;
+
             if (!GameObject.Validate(ref Disassembly.Object))
             {
-                Disassembly.InterruptBecause = "the item you were working on disappeared";
+                Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on disappeared";
                 return false;
             }
             if (Object.IsInGraveyard())
             {
-                Disassembly.InterruptBecause = "the item you were working on was destroyed";
+                Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on was destroyed";
                 return false;
             }
             if (Object.IsNowhere())
             {
-                Disassembly.InterruptBecause = "the item you were working on disappeared";
+                Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on disappeared";
                 return false;
             }
             if (Object.IsInStasis())
             {
-                Disassembly.InterruptBecause = "you can no longer interact with " + Object.t();
+                Disassembly.InterruptBecause = $"{Vendor.t()} can no longer interact with {Object.t()}";
                 return false;
             }
             if (!Object.TryGetPart<TinkerItem>(out var tinkerItem))
             {
-                Disassembly.InterruptBecause = Object.t() + " can no longer be disassembled";
+                Disassembly.InterruptBecause = $"{Object.t()} can no longer be disassembled";
                 return false;
             }
             if (!Vendor.HasSkill(nameof(Tinkering_Disassemble)))
             {
-                Disassembly.InterruptBecause = "you no longer know how to disassemble things";
+                Disassembly.InterruptBecause = $"{Vendor.t()} no longer know how to disassemble things";
                 return false;
             }
             if (!tinkerItem.CanBeDisassembled(Vendor))
             {
-                Disassembly.InterruptBecause = Object.t() + " can no longer be disassembled";
+                Disassembly.InterruptBecause =  $"{Object.t()} can no longer be disassembled";
                 return false;
             }
             if (!Vendor.CanMoveExtremities("Disassemble", ShowMessage: false, Involuntary: false, AllowTelekinetic: true))
             {
-                Disassembly.InterruptBecause = "you can no longer move your extremities";
+                Disassembly.InterruptBecause = $"{Vendor.t()} can no longer move {Vendor.its} extremities";
                 return false;
             }
             int totalEnergyCost = 0;
             try
             {
-                bool Interrupt = false;
+                bool interrupt = false;
                 if (Disassembly.BitChance == int.MinValue)
                 {
                     if (tinkerItem.Bits.Length == 1)
@@ -131,8 +126,12 @@ namespace XRL.World.Parts
                     {
                         int disassembleBonus = Vendor.GetIntProperty("DisassembleBonus");
                         Disassembly.BitChance = 50;
-                        disassembleBonus = GetTinkeringBonusEvent.GetFor(Vendor, Object, "Disassemble", Disassembly.BitChance, disassembleBonus, ref Interrupt);
-                        if (Interrupt)
+                        disassembleBonus = GetTinkeringBonusEvent.GetFor(Vendor, Object, "Disassemble", Disassembly.BitChance, disassembleBonus, ref interrupt);
+                        if (!interrupt)
+                        {
+                            disassembleBonus = GetVendorTinkeringBonusEvent.GetFor(Vendor, Object, "Disassemble", disassembleBonus, disassembleBonus, ref interrupt);
+                        }
+                        if (interrupt)
                         {
                             return false;
                         }
@@ -145,47 +144,67 @@ namespace XRL.World.Parts
                 List<GameObject> dataDiskObjects = Vendor.Inventory.GetObjectsViaEventList(GO => GO.HasPart<DataDisk>());
                 if (Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)))
                 {
+                    UnityEngine.Debug.LogError($"{nameof(Tinkering_ReverseEngineer)}");
                     foreach (TinkerData tinkerRecipe in TinkerData.TinkerRecipes)
                     {
+                        UnityEngine.Debug.LogError($"    [{tinkerRecipe.Blueprint}");
                         bool recipeTypeIsBuild = tinkerRecipe.Type == "Build";
-                        bool recipeBlueprintIsItem = recipeTypeIsBuild && tinkerRecipe.Blueprint == activeBlueprint;
-                        bool recipeIsBuildForThisItem = recipeTypeIsBuild && recipeBlueprintIsItem;
+                        bool recipeBlueprintIsThisItem = recipeTypeIsBuild && tinkerRecipe.Blueprint == activeBlueprint;
+                        UnityEngine.Debug.LogError($"        {nameof(recipeBlueprintIsThisItem)}: {recipeBlueprintIsThisItem}");
 
                         bool recipeTypeIsMod = tinkerRecipe.Type == "Mod";
-                        bool recipePartNameIsModItemHas = recipeTypeIsMod && tinkerRecipe.Blueprint == activeBlueprint;
-                        bool recipeIsModThisItemHas = recipeTypeIsBuild && Object.HasPart(tinkerRecipe.PartName);
+                        bool recipeIsModThisItemHas = recipeTypeIsMod && Object.HasPart(tinkerRecipe.PartName);
+                        UnityEngine.Debug.LogError($"        {nameof(recipeIsModThisItemHas)}: {recipeIsModThisItemHas}");
 
-                        if (!recipeIsBuildForThisItem || !recipeIsModThisItemHas)
+                        if (!recipeBlueprintIsThisItem && !recipeIsModThisItemHas)
                         {
                             continue;
                         }
-                        bool alreadyKnowMod = false;
-                        foreach (GameObject dataDiskObject in dataDiskObjects)
+                        if (recipeBlueprintIsThisItem)
                         {
-                            if (dataDiskObject.TryGetPart(out DataDisk dataDisk))
+                            tinkerData = tinkerRecipe;
+                        }
+                        bool alreadyKnowMod = false;
+                        if (dataDiskObjects.IsNullOrEmpty())
+                        {
+                            UnityEngine.Debug.LogError($"            Have DataDisk Objects");
+                            foreach (GameObject dataDiskObject in dataDiskObjects)
                             {
-                                if (recipeIsBuildForThisItem)
+                                UnityEngine.Debug.LogError($"                [{dataDiskObject.DebugName}");
+                                if (dataDiskObject.TryGetPart(out DataDisk dataDisk))
                                 {
-                                    if (dataDisk.Data.Blueprint != activeBlueprint)
+                                    if (recipeBlueprintIsThisItem)
                                     {
-                                        tinkerData = tinkerRecipe;
-                                    }
-                                    break;
-                                }
-                                if (recipeIsModThisItemHas)
-                                {
-                                    if (dataDisk.Data.Blueprint == tinkerRecipe.Blueprint)
-                                    {
-                                        alreadyKnowMod = true;
+                                        UnityEngine.Debug.LogError($"                    {nameof(recipeBlueprintIsThisItem)}: {recipeBlueprintIsThisItem}");
+                                        if (dataDisk.Data.Blueprint == tinkerRecipe.Blueprint)
+                                        {
+                                            UnityEngine.Debug.LogError($"                        \"Already Know\" build recipe");
+                                            tinkerData = null;
+                                        }
                                         break;
+                                    }
+                                    if (recipeIsModThisItemHas)
+                                    {
+                                        UnityEngine.Debug.LogError($"                    {nameof(recipeIsModThisItemHas)}: {recipeIsModThisItemHas}");
+                                        if (dataDisk.Data.PartName == tinkerRecipe.PartName)
+                                        {
+                                            UnityEngine.Debug.LogError($"                        \"Already Know\" mod recipe");
+                                            alreadyKnowMod = true;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
-                        if (!alreadyKnowMod)
+                        if (!alreadyKnowMod && recipeIsModThisItemHas)
                         {
-                            learnableMods ??= new List<TinkerData>();
+                            UnityEngine.Debug.LogError($"            mod recipe loaded up");
+                            learnableMods ??= new();
                             learnableMods.Add(tinkerRecipe);
+                        }
+                        if (tinkerData != null)
+                        {
+                            UnityEngine.Debug.LogError($"            build recipe loaded up");
                         }
                     }
                 }
@@ -194,29 +213,16 @@ namespace XRL.World.Parts
                 if (tinkerData != null || (learnableMods != null && learnableMods.Count > 0))
                 {
                     chance = 15;
-                    reverseEngineerBonus = GetTinkeringBonusEvent.GetFor(Vendor, Object, "ReverseEngineer", chance, reverseEngineerBonus, ref Interrupt);
-                    if (Interrupt)
+                    reverseEngineerBonus = GetTinkeringBonusEvent.GetFor(Vendor, Object, "ReverseEngineer", chance, reverseEngineerBonus, ref interrupt);
+                    if (!interrupt)
+                    {
+                        reverseEngineerBonus = GetVendorTinkeringBonusEvent.GetFor(Vendor, Object, "ReverseEngineer", reverseEngineerBonus, reverseEngineerBonus, ref interrupt);
+                    }
+                    if (interrupt)
                     {
                         return false;
                     }
                     chance += reverseEngineerBonus;
-                }
-                bool doSifrah = Options.SifrahReverseEngineer && (tinkerData != null || (learnableMods != null && learnableMods.Count > 0));
-                bool flag3 = false;
-                if (doSifrah)
-                {
-                    flag3 = Popup.ShowYesNo("Do you want to try to reverse engineer " + Object.t() + "?", "Sounds/UI/ui_notification", AllowEscape: false) == DialogResult.Yes;
-                }
-                ReverseEngineeringSifrah reverseEngineeringSifrah = null;
-                int reverseEngineerRating = 0;
-                int complexity = 0;
-                int difficulty = 0;
-                if (flag3)
-                {
-                    reverseEngineerRating = Vendor.Stat("Intelligence") + reverseEngineerBonus;
-                    Examiner part = Object.GetPart<Examiner>();
-                    complexity = part?.Complexity ?? Object.GetTier();
-                    difficulty = part?.Difficulty ?? 0;
                 }
                 try
                 {
@@ -226,231 +232,158 @@ namespace XRL.World.Parts
                 {
                     MetricsManager.LogError("EmptyForDisassemble", x);
                 }
-                bool flag4 = NumberWanted > 1 && OriginalCount > 1;
+                bool multipleObjects = Disassembly.NumberWanted > 1 && Disassembly.OriginalCount > 1;
                 if (!Object.IsTemporary)
                 {
-                    WasTemporary = false;
+                    Disassembly.WasTemporary = false;
                 }
-                if (DisassemblingWhat == null)
+                if (Disassembly.DisassemblingWhat == null)
                 {
-                    DisassemblingWhat = Object.t(int.MaxValue, null, null, AsIfKnown: false, Single: true, NoConfusion: false, NoColor: false, Stripped: false, WithoutTitles: true, Short: true, BaseOnly: false, null, IndicateHidden: false, SecondPerson: true, Reflexive: false, null);
-                    if (flag4 || TotalNumberWanted > 1)
+                    Disassembly.DisassemblingWhat = Object.t(Single: true);
+                    if (multipleObjects || Disassembly.TotalNumberWanted > 1)
                     {
-                        MessageQueue.AddPlayerMessage("You start disassembling " + Object.t(int.MaxValue, null, null, AsIfKnown: false, Single: false, NoConfusion: false, NoColor: false, Stripped: false, WithoutTitles: true, Short: true, BaseOnly: false, null, IndicateHidden: false, SecondPerson: true, Reflexive: false, null) + ".");
+                        MessageQueue.AddPlayerMessage($"{Vendor.T()}{Vendor.GetVerb("start")} disassembling {Object.t()}.");
                     }
                 }
-                if (DisassemblingWhere == null && Object.CurrentCell != null)
+                if (Disassembly.DisassemblingWhere == null && Object.CurrentCell != null)
                 {
-                    DisassemblingWhere = Vendor.DescribeDirectionToward(Object);
+                    Disassembly.DisassemblingWhere = Vendor.DescribeDirectionToward(Object);
                 }
-                bool flag5 = false;
-                if (NumberDone < NumberWanted)
+                if (Disassembly.NumberDone < Disassembly.NumberWanted)
                 {
-                    string text = "";
-                    bool flag6 = true;
-                    bool flag7 = false;
-                    bool flag8 = false;
-                    int num3 = 0;
+                    string bitsToAward = "";
                     GameObject gameObject = null;
-                    if (!WasTemporary)
+                    if (!Disassembly.WasTemporary)
                     {
+                        bool itemsPerBuildBitChance = tinkerItem.NumberMade <= 1 || Stat.Random(1, tinkerItem.NumberMade + 1) == 1;
+
                         if (tinkerItem.Bits.Length == 1)
                         {
-                            if (tinkerItem.NumberMade <= 1 || Stat.Random(1, tinkerItem.NumberMade + 1) == 1)
+                            if (itemsPerBuildBitChance)
                             {
-                                text += tinkerItem.Bits;
+                                bitsToAward += tinkerItem.Bits;
                             }
                         }
                         else
                         {
-                            int num4 = tinkerItem.Bits.Length - 1;
+                            int bestBitIndex = tinkerItem.Bits.Length - 1;
                             for (int i = 0; i < tinkerItem.Bits.Length; i++)
                             {
-                                if ((num4 == i || BitChance.in100()) && (tinkerItem.NumberMade <= 1 || Stat.Random(1, tinkerItem.NumberMade + 1) == 1))
+                                bool firstBitOrChance = bestBitIndex == i || Disassembly.BitChance.in100();
+                                if (firstBitOrChance && itemsPerBuildBitChance)
                                 {
-                                    text += tinkerItem.Bits[i];
+                                    bitsToAward += tinkerItem.Bits[i];
                                 }
                             }
                         }
-                        if (doSifrah)
-                        {
-                            if (flag3)
-                            {
-                                reverseEngineeringSifrah = new ReverseEngineeringSifrah(Object, complexity, difficulty, reverseEngineerRating, tinkerData);
-                                reverseEngineeringSifrah.Play(Object);
-                                if (reverseEngineeringSifrah.Succeeded)
-                                {
-                                    flag7 = true;
-                                    if (learnableMods != null)
-                                    {
-                                        if (reverseEngineeringSifrah.Mods > 0)
-                                        {
-                                            if (learnableMods.Count > reverseEngineeringSifrah.Mods)
-                                            {
-                                                List<TinkerData> list2 = new List<TinkerData>();
-                                                for (int j = 0; j < reverseEngineeringSifrah.Mods; j++)
-                                                {
-                                                    list2.Add(learnableMods[j]);
-                                                }
-                                                learnableMods = list2;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            learnableMods = null;
-                                        }
-                                    }
-                                    if (reverseEngineeringSifrah.Critical)
-                                    {
-                                        flag6 = false;
-                                        flag8 = true;
-                                    }
-                                    num3 = reverseEngineeringSifrah.XP;
-                                }
-                                else
-                                {
-                                    tinkerData = null;
-                                    learnableMods = null;
-                                    if (reverseEngineeringSifrah.Critical)
-                                    {
-                                        Abort = true;
-                                        BitsDone = "";
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                tinkerData = null;
-                                learnableMods = null;
-                            }
-                        }
-                        else if (!chance.in100())
+                        if (!chance.in100())
                         {
                             tinkerData = null;
                             learnableMods = null;
                         }
                         if (tinkerData != null || (learnableMods != null && learnableMods.Count > 0))
                         {
-                            bool flag9 = false;
-                            string text2 = null;
+                            string reverseEngineerMessage = "";
                             if (tinkerData != null)
                             {
                                 gameObject = GameObject.CreateSample(tinkerData.Blueprint);
                                 tinkerData.DisplayName = gameObject.DisplayNameOnlyDirect;
-                                text2 = "build " + (gameObject.IsPlural ? gameObject.DisplayNameOnlyDirect : gameObject.GetPluralName(AsIfKnown: true, NoConfusion: true, Stripped: false, BaseOnly: true));
-                                flag9 = true;
+
+                                string objectDisplayName = gameObject.IsPlural 
+                                    ? gameObject.DisplayNameOnlyDirect 
+                                    : gameObject.GetPluralName(AsIfKnown: true, NoConfusion: true, Stripped: false, BaseOnly: true);
+
+                                reverseEngineerMessage = "build " + objectDisplayName;
                             }
                             if (learnableMods != null)
                             {
-                                List<string> list3 = new List<string>();
-                                foreach (TinkerData item in learnableMods)
+                                List<string> learnedModsDisplayNames = new();
+                                foreach (TinkerData learnableMod in learnableMods)
                                 {
-                                    list3.Add(item.DisplayName);
+                                    learnedModsDisplayNames.Add(learnableMod.DisplayName);
                                 }
-                                string text3 = "mod items with the " + Grammar.MakeAndList(list3) + " " + ((list3.Count == 1) ? "mod" : "mods");
-                                text2 = ((text2 != null) ? (text2 + " and " + text3) : text3);
-                            }
-                            if (text2 != null)
-                            {
-                                string text4 = "{{G|Eureka! You may now " + text2;
-                                text4 = ((!flag6) ? (text4 + "... and were able to work out how without needing to destroy " + ((!flag9) ? Object.t(int.MaxValue, null, null, AsIfKnown: false, Single: false, NoConfusion: false, NoColor: false, Stripped: false, WithoutTitles: true, Short: true, BaseOnly: false, null, IndicateHidden: false, SecondPerson: true, Reflexive: false, null) : (Object.IsPlural ? "these" : "this one")) + "!") : (text4 + "."));
-                                text4 += "}}";
-                                if (ReverseEngineeringMessage.IsNullOrEmpty())
+                                string learnedModsMessage = $"mod items with the {Grammar.MakeAndList(learnedModsDisplayNames)} {learnedModsDisplayNames.Count.Things("mod")}";
+                                
+                                if (!reverseEngineerMessage.IsNullOrEmpty())
                                 {
-                                    ReverseEngineeringMessage = text4;
+                                    reverseEngineerMessage += " and ";
+                                }
+                                reverseEngineerMessage += learnedModsMessage;
+                            }
+                            if (!reverseEngineerMessage.IsNullOrEmpty())
+                            {
+                                string eurikaMessage = $"Eureka! {Vendor.T()} may now {reverseEngineerMessage}.".Color("G");
+
+                                if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
+                                {
+                                    Disassembly.ReverseEngineeringMessage = eurikaMessage;
                                 }
                                 else
                                 {
-                                    ReverseEngineeringMessage = ReverseEngineeringMessage + "\n\n" + text4;
+                                    Disassembly.ReverseEngineeringMessage = $"{Disassembly.ReverseEngineeringMessage}\n\n{eurikaMessage}";
                                 }
                             }
                             if (tinkerData != null)
                             {
-                                TinkerData.KnownRecipes.Add(tinkerData);
+                                GameObject dataDisk = TinkerData.createDataDisk(tinkerData);
+                                dataDisk.SetStringProperty("WontSell", "Don't do it. PLEASE!");
+                                Vendor.ReceiveObject(dataDisk);
                             }
                             if (learnableMods != null)
                             {
-                                TinkerData.KnownRecipes.AddRange(learnableMods);
+                                GameObject dataDisk = null;
+                                foreach (TinkerData learnableMod in learnableMods)
+                                {
+                                    dataDisk = TinkerData.createDataDisk(learnableMod);
+                                    dataDisk.SetStringProperty("WontSell", "Don't do it. PLEASE!");
+                                    Vendor.ReceiveObject(dataDisk);
+                                }
                             }
-                        }
-                        else if (flag7)
-                        {
-                            string text5 = "You are unable to make further progress reverse engineering " + Object.poss("modding") + ".";
-                            if (ReverseEngineeringMessage.IsNullOrEmpty())
-                            {
-                                ReverseEngineeringMessage = text5;
-                            }
-                            else
-                            {
-                                ReverseEngineeringMessage = ReverseEngineeringMessage + "\n\n" + text5;
-                            }
-                        }
-                        if (num3 > 0)
-                        {
-                            Vendor.AwardXP(num3, -1, 0, int.MaxValue, null, Object);
-                        }
-                        if (flag8)
-                        {
-                            TinkeringSifrah.AwardInsight();
                         }
                     }
-                    NumberDone++;
-                    TotalNumberDone++;
-                    if (TotalNumberWanted > 1)
+                    Disassembly.NumberDone++;
+                    Disassembly.TotalNumberDone++;
+                    if (Disassembly.TotalNumberWanted > 1)
                     {
-                        Loading.SetLoadingStatus("Disassembled " + TotalNumberDone.Things("item") + " of " + TotalNumberWanted + "...");
+                        Loading.SetLoadingStatus($"Disassembled {Disassembly.TotalNumberDone.Things("item")} of {Disassembly.TotalNumberWanted}...");
                     }
-                    if (!Abort)
+                    if (!Disassembly.Abort)
                     {
                         if (Vendor.HasRegisteredEvent("ModifyBitsReceived"))
                         {
-                            Event @event = Event.New("ModifyBitsReceived", "Item", Object, "Bits", text);
+                            Event @event = Event.New("ModifyBitsReceived", "Item", Object, "Bits", bitsToAward);
                             Vendor.FireEvent(@event);
-                            text = @event.GetStringParameter("Bits", "");
+                            bitsToAward = @event.GetStringParameter("Bits", "");
                         }
-                        BitsDone += text;
+                        Disassembly.BitsDone += bitsToAward;
                     }
                     totalEnergyCost += Disassembly.EnergyCostPer;
                     Disassembly.DoBitMessage = true;
                     Object.PlayWorldOrUISound("Sounds/Misc/sfx_interact_artifact_disassemble", null);
-                    if (flag6)
-                    {
-                        if (Alarms != null)
-                        {
-                            foreach (Action<GameObject> alarm in Alarms)
-                            {
-                                alarm(Vendor);
-                            }
-                            Alarms = null;
-                        }
-                        Object.Destroy();
-                        if (!GameObject.Validate(Object) || Object.IsNowhere())
-                        {
-                            flag5 = false;
-                        }
-                    }
+
+                    Object.Destroy();
                 }
-                if (NumberDone >= NumberWanted || flag5)
+                if (Disassembly.NumberDone >= Disassembly.NumberWanted)
                 {
-                    ProcessDisassemblingWhat();
-                    if (!Abort)
+                    VendorDisassemblyProcessDisassemblingWhat(Disassembly);
+                    if (!Disassembly.Abort)
                     {
-                        if (!Queue.IsNullOrEmpty())
+                        if (!Disassembly.Queue.IsNullOrEmpty())
                         {
-                            Object = Queue[0];
-                            Queue.RemoveAt(0);
-                            NumberDone = 0;
-                            OriginalCount = Object.Count;
-                            if (QueueNumberWanted == null || !QueueNumberWanted.TryGetValue(Object, out NumberWanted))
+                            Object = Disassembly.Queue[0];
+                            Disassembly.Queue.RemoveAt(0);
+                            Disassembly.NumberDone = 0;
+                            Disassembly.OriginalCount = Object.Count;
+                            if (Disassembly.QueueNumberWanted == null || !Disassembly.QueueNumberWanted.TryGetValue(Object, out Disassembly.NumberWanted))
                             {
-                                NumberWanted = OriginalCount;
+                                Disassembly.NumberWanted = Disassembly.OriginalCount;
                             }
-                            Alarms = null;
-                            QueueAlarms?.TryGetValue(Object, out Alarms);
+                            Disassembly.Alarms = null;
+                            Disassembly.QueueAlarms?.TryGetValue(Object, out Disassembly.Alarms);
                         }
                         else
                         {
-                            Abort = true;
+                            Disassembly.Abort = true;
                         }
                     }
                 }
@@ -459,10 +392,150 @@ namespace XRL.World.Parts
             {
                 if (totalEnergyCost > 0)
                 {
-                    Vendor.UseEnergy(totalEnergyCost, "Skill Tinkering Disassemble", null, null);
+                    Vendor.UseEnergy(totalEnergyCost, "Skill Tinkering Disassemble");
+                    The.Player.UseEnergy(totalEnergyCost, "Vendor Tinkering Disassemble");
                 }
             }
             return true;
+        }
+
+        public static void VendorDisassemblyEnd(GameObject Vendor, Disassembly Disassembly)
+        {
+            if (Disassembly.TotalNumberDone > 0)
+            {
+                VendorDisassemblyProcessDisassemblingWhat(Disassembly);
+                StringBuilder SB = Event.NewStringBuilder();
+                SB.Append(Vendor.T()).Append(Vendor.GetVerb("disassemble")).Append(" ");
+                if (Disassembly.DisassembledWhats.IsNullOrEmpty())
+                {
+                    SB.Append(Disassembly.DisassembledWhat ?? "something");
+                    if (!Disassembly.DisassembledWhere.IsNullOrEmpty())
+                    {
+                        SB.Append(' ').Append(Disassembly.DisassembledWhere);
+                    }
+                }
+                else
+                {
+                    List<string> disassembledWhatAndWhereLines = new();
+                    List<string> disassembledWhatLines = new();
+                    string lastWhatAndWhere = null;
+                    foreach (string disassembledWhat in Disassembly.DisassembledWhats)
+                    {
+                        Disassembly.DisassembledWhatsWhere.TryGetValue(disassembledWhat, out var whatAndWhereEntry);
+                        if (whatAndWhereEntry != lastWhatAndWhere && disassembledWhatLines.Count > 0)
+                        {
+                            string whatAndWhere = Grammar.MakeAndList(disassembledWhatLines);
+                            if (!lastWhatAndWhere.IsNullOrEmpty())
+                            {
+                                whatAndWhere = whatAndWhere + " " + lastWhatAndWhere;
+                            }
+                            disassembledWhatAndWhereLines.Add(whatAndWhere);
+                            disassembledWhatLines.Clear();
+                        }
+                        lastWhatAndWhere = whatAndWhereEntry;
+                        disassembledWhatLines.Add(disassembledWhat);
+                    }
+                    string disassembledWhatAndWhere = Grammar.MakeAndList(disassembledWhatLines);
+                    if (!lastWhatAndWhere.IsNullOrEmpty())
+                    {
+                        disassembledWhatAndWhere = disassembledWhatAndWhere + " " + lastWhatAndWhere;
+                    }
+                    disassembledWhatAndWhereLines.Add(disassembledWhatAndWhere);
+                    SB.Append(Grammar.MakeAndList(disassembledWhatAndWhereLines));
+                }
+                SB.Append('.');
+                if (!Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
+                {
+                    if (Disassembly.ReverseEngineeringMessage.Contains('\n'))
+                    {
+                        SB.Append("\n\n").Append(Disassembly.ReverseEngineeringMessage).Append("\n\n");
+                    }
+                    else
+                    {
+                        SB.Compound(Disassembly.ReverseEngineeringMessage, ' ');
+                    }
+                }
+                string finishedMessage = null;
+                if (!Disassembly.BitsDone.IsNullOrEmpty())
+                {
+                    The.Player.RequirePart<BitLocker>().AddBits(Disassembly.BitsDone);
+                    if (Disassembly.DoBitMessage)
+                    {
+                        finishedMessage = "You receive tinkering bits <{{|" + 
+                            BitType.GetDisplayString(Disassembly.BitsDone) + 
+                            "}}> from " + Vendor.t() + ".";
+                    }
+                }
+                else if (Disassembly.WasTemporary)
+                {
+                    finishedMessage = "The parts crumble into dust.";
+                }
+                if (!finishedMessage.IsNullOrEmpty())
+                {
+                    SB.Compound(finishedMessage, ' ');
+                }
+                if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
+                {
+                    MessageQueue.AddPlayerMessage(SB.ToString());
+                }
+                else
+                {
+                    Popup.Show(SB.ToString());
+                }
+            }
+        }
+
+        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostperItem, ref Disassembly Disassembly)
+        {
+            if (Vendor == null || Item == null || TinkerItem == null)
+            {
+                Popup.ShowFail($"That trader or item doesn't exist, or the item can't be disassembled (this is an error).");
+                return false;
+            }
+            int energyCost = Disassembly.EnergyCostPer;
+
+            Disassembly.EnergyCostPer = 0;
+            bool interrupt = false;
+            while (!interrupt
+                && !Disassembly.Abort)
+            {
+                The.Player.UseDrams(CostperItem);
+                Vendor.GiveDrams(CostperItem);
+
+                Vendor.UseEnergy(energyCost, "Skill Tinkering Disassemble");
+                The.Player.UseEnergy(energyCost, "Vendor Tinkering Disassemble");
+
+                if (!VendorDisassemblyContinue(Vendor, Disassembly) && !Disassembly.GetInterruptBecause().IsNullOrEmpty())
+                {
+                    interrupt = true;
+                }
+            }
+            bool completed = true;
+            if (!interrupt && Disassembly.CanComplete())
+            {
+                Disassembly.Complete();
+            }
+            else
+            {
+                Disassembly.Interrupt();
+                MessageQueue.AddPlayerMessage(Event.NewStringBuilder()
+                    .Append(Vendor.T())
+                    .Append(Vendor.GetVerb("stop"))
+                    .Append(" ")
+                    .Append(Disassembly.GetDescription())
+                    .Append(" because ")
+                    .Append(Disassembly.GetInterruptBecause())
+                    .Append(".")
+                    .ToString());
+                completed = false;
+            }
+            VendorDisassemblyEnd(Vendor, Disassembly);
+            Disassembly = null;
+            if (completed)
+            {
+                Loading.SetHideLoadStatus(true);
+            }
+            return completed;
         }
 
         public override bool WantEvent(int ID, int Cascade)
@@ -479,10 +552,10 @@ namespace XRL.World.Parts
                     && E.Item.TryGetPart(out TinkerItem tinkerItem)
                     && tinkerItem.CanBeDisassembled(E.Vendor))
                 {
-                    E.AddAction("Disassemble", "disassemble", COMMAND_DISASSEMBLE, Key: 'd', ClearAndSetUpTradeUI: true);
+                    E.AddAction("Disassemble", "disassemble", COMMAND_DISASSEMBLE, Key: 'd', Priority: -4, ClearAndSetUpTradeUI: true);
                     if (E.Item.Count > 1)
                     {
-                        E.AddAction("Disassemble all", "disassemble all", COMMAND_DISASSEMBLE_ALL, Key: 'D', ClearAndSetUpTradeUI: true);
+                        E.AddAction("Disassemble all", "disassemble all", COMMAND_DISASSEMBLE_ALL, Key: 'D', Priority: -5, ClearAndSetUpTradeUI: true);
                     }
                 }
             }
@@ -490,23 +563,40 @@ namespace XRL.World.Parts
         }
         public virtual bool HandleEvent(VendorActionEvent E)
         {
-            if ((E.Command == COMMAND_DISASSEMBLE || E.Command == COMMAND_DISASSEMBLE_ALL) && E.Item != null && E.Item.TryGetPart(out TinkerItem tinkerItem))
+            if ((E.Command == COMMAND_DISASSEMBLE || E.Command == COMMAND_DISASSEMBLE_ALL) 
+                && E.Item != null 
+                && E.Item.TryGetPart(out TinkerItem tinkerItem))
             {
-                int itemCount = E.Item.Count;
-                bool disassembleAll = E.Command == COMMAND_DISASSEMBLE_ALL;
-                bool multipleItems = disassembleAll && itemCount > 1;
+                GameObject Vendor = E.Vendor;
+                GameObject Item = E.Item;
 
-                int complexity = E.Item.GetComplexity();
-                int examineDifficulty = E.Item.GetExamineDifficulty();
-                float costFactor = complexity + examineDifficulty;
-                int costPerItem = (int)Math.Max(2.0, -0.0667 + 1.24 * (double)costFactor + 0.0967 * Math.Pow(costFactor, 2.0) + 0.0979 * Math.Pow(costFactor, 3.0));
+                int itemCount = Item.Count;
+                bool multipleItems = E.Command == COMMAND_DISASSEMBLE_ALL && itemCount > 1;
 
-                int totalCost = multipleItems ? itemCount * costPerItem : costPerItem;
+                string bits = tinkerItem.Bits;
+                int numberOfBits = bits.Length;
+                int bestBit = UD_BytePunnet.GetByteIndex(bits[^1..]);
+                double minCost = 1.0;
+                double costPerItem;
+                double bestBitCost = bestBit * 0.2;
+                double numberBitCost = numberOfBits * 0.667;
+
+                if (numberOfBits == 1 && UD_BytePunnet.GetByteIndex(bits[0]) < 4)
+                {
+                    costPerItem = 1.0;
+                }
+                else
+                {
+                    costPerItem = Math.Max(1.0, numberBitCost + bestBitCost);
+                }
+                int totalCost = (int)Math.Max(minCost, multipleItems ? itemCount * costPerItem : costPerItem);
+                int realCostPerItem = multipleItems ? totalCost / itemCount : totalCost;
+                totalCost = multipleItems ? itemCount * realCostPerItem : realCostPerItem;
 
                 if (The.Player.GetFreeDrams() < totalCost)
                 {
                     Popup.ShowFail(
-                        "You do not have the required {{C|" + totalCost + "}}" + $" {((totalCost == 1) ? "dram" : "drams")} " +
+                        $"You do not have the required {totalCost.Color("C")} {((totalCost == 1) ? "dram" : "drams")} " +
                         $"to disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")}.");
                 }
                 else if (Popup.ShowYesNo(
@@ -515,195 +605,60 @@ namespace XRL.World.Parts
                 {
                     List<Action<GameObject>> broadcastActions = null;
 
-                    if (disassembleAll && multipleItems && AutoAct.ShouldHostilesInterrupt("o"))
+                    if (multipleItems && AutoAct.ShouldHostilesInterrupt("o"))
                     {
-                        Popup.ShowFail($"{E.Vendor.T()} cannot use disassemble all with hostiles nearby.");
+                        Popup.ShowFail($"{Vendor.T()} cannot disassemble so many items at once with hostiles nearby.");
                         return false;
                     }
-                    if (E.Item.IsInStasis())
+                    if (Item.IsImportant())
                     {
-                        Popup.ShowFail($"{E.Vendor.T()} cannot seem to affect {E.Item.t()} in any way.");
+                        if (Item.ConfirmUseImportant(The.Player, "disassemble", null, (!multipleItems) ? 1 : itemCount))
+                        {
+                            return false;
+                        }
+                    }
+                    else if (TinkerItem.ConfirmBeforeDisassembling(Item)
+                        && Popup.ShowYesNoCancel($"Are you sure you want {Vendor.t()} to disassemble {(multipleItems ? $"all the {(Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName))}" : Item.t())}?") != 0)
+                    {
                         return false;
                     }
-                    if (!E.Item.Owner.IsNullOrEmpty() && !E.Item.HasPropertyOrTag("DontWarnOnDisassemble"))
+                    if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
                     {
                         if (Popup.ShowYesNoCancel(
-                            $"{E.Item.The} {E.Item.DisplayNameOnly} {(multipleItems ? "are" : E.Item.Is)} not owned by you. " +
-                            $"Are you sure you want {E.Vendor.T()} to disassemble {(multipleItems ? "them" : E.Item.them)}?") != 0)
+                            $"{Item.T()} {(multipleItems ? "are" : Item.Is)} not owned by you. " +
+                            $"Are you sure you want {Vendor.t()} to disassemble {(multipleItems ? "them" : Item.them)}?") != 0)
                         {
                             return false;
                         }
                         broadcastActions ??= new();
-                        broadcastActions.Add(E.Item.Physics.BroadcastForHelp);
+                        broadcastActions.Add(Item.Physics.BroadcastForHelp);
                     }
-                    if (E.Item.IsImportant())
-                    {
-                        if (!E.Item.ConfirmUseImportant(null, "disassemble", null, (!multipleItems) ? 1 : itemCount))
-                        {
-                            return false;
-                        }
-                    }
-                    else if (TinkerItem.ConfirmBeforeDisassembling(E.Item)
-                        && Popup.ShowYesNoCancel($"Are you sure you want {E.Vendor.T()} to disassemble {(multipleItems ? $"all the {(E.Item.IsPlural ? E.Item.ShortDisplayName : Grammar.Pluralize(E.Item.ShortDisplayName))}" : E.Item.t())}?") != 0)
-                    {
-                        return false;
-                    }
-                    GameObject container = E.Item.InInventory;
-                    if (container != null && container != The.Player && !container.Owner.IsNullOrEmpty() && container.Owner != E.Item.Owner && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
+                    GameObject container = Item.InInventory;
+                    if (container != null && container != The.Player && !container.Owner.IsNullOrEmpty() && container.Owner != Item.Owner && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
                     {
                         if (Popup.ShowYesNoCancel(
                             $"{container.Does("are")} not owned by you. " +
-                            $"Are you sure you want {E.Vendor.T()} to disassemble {(multipleItems ? "items" : E.Item.an())} inside {container.them}?") != 0)
+                            $"Are you sure you want {Vendor.t()} to disassemble {(multipleItems ? "items" : Item.an())} inside {container.them}?") != 0)
                         {
                             return false;
                         }
                         broadcastActions ??= new();
                         broadcastActions.Add(container.Physics.BroadcastForHelp);
                     }
-
-                    Disassembly = new(E.Item, multipleItems ? itemCount : 1, EnergyCostPer: 0);
-
-                    bool interrupt = false;
-                    while (!interrupt && !Disassembly.Abort)
+                    if (!broadcastActions.IsNullOrEmpty())
                     {
-                        The.Player.UseDrams(costPerItem);
-                        E.Vendor.GiveDrams(costPerItem);
-
-                        if (Disassembly.BitChance == int.MinValue)
+                        foreach (Action<GameObject> broadcastAction in broadcastActions)
                         {
-                            if (tinkerItem.Bits.Length == 1)
-                            {
-                                Disassembly.BitChance = 0;
-                            }
-                            else
-                            {
-                                int disassembleBonus = E.Vendor.GetIntProperty("DisassembleBonus");
-                                Disassembly.BitChance = 50;
-                                disassembleBonus = GetTinkeringBonusEvent.GetFor(E.Vendor, E.Item, "Disassemble", Disassembly.BitChance, disassembleBonus, ref interrupt);
-                                if (interrupt)
-                                {
-                                    continue;
-                                }
-                                Disassembly.BitChance += disassembleBonus;
-                            }
-                        }
-                        string activeBlueprint = tinkerItem.ActiveBlueprint;
-                        int chance = 0;
-                        try
-                        {
-                            InventoryActionEvent.Check(E.Item, E.Vendor, E.Item, "EmptyForDisassemble");
-                        }
-                        catch (Exception x)
-                        {
-                            MetricsManager.LogError("EmptyForDisassemble", x);
-                        }
-                        bool multipleDisassembling = Disassembly.NumberWanted > 1 && Disassembly.OriginalCount > 1;
-                        if (!E.Item.IsTemporary)
-                        {
-                            Disassembly.WasTemporary = false;
-                        }
-                        if (Disassembly.DisassemblingWhat == null)
-                        {
-                            Disassembly.DisassemblingWhat = E.Item.t();
-                            if (multipleDisassembling || Disassembly.TotalNumberWanted > 1)
-                            {
-                                MessageQueue.AddPlayerMessage($"{E.Vendor.T()} {E.Vendor.GetVerb("start")} disassembling {E.Item.t()}.");
-                            }
-                        }
-                        if (Disassembly.DisassemblingWhere == null && E.Item.CurrentCell != null)
-                        {
-                            Disassembly.DisassemblingWhere = E.Vendor.DescribeDirectionToward(E.Item);
-                        }
-                        bool finished = false;
-                        if (Disassembly.NumberDone < Disassembly.NumberWanted)
-                        {
-                            string bitsString = "";
-                            if (!Disassembly.WasTemporary)
-                            {
-                                if (tinkerItem.Bits.Length == 1)
-                                {
-                                    if (tinkerItem.NumberMade <= 1 || Stat.Random(1, tinkerItem.NumberMade + 1) == 1)
-                                    {
-                                        bitsString += tinkerItem.Bits;
-                                    }
-                                }
-                                else
-                                {
-                                    int num4 = tinkerItem.Bits.Length - 1;
-                                    for (int i = 0; i < tinkerItem.Bits.Length; i++)
-                                    {
-                                        if ((num4 == i || Disassembly.BitChance.in100()) && (tinkerItem.NumberMade <= 1 || Stat.Random(1, tinkerItem.NumberMade + 1) == 1))
-                                        {
-                                            bitsString += tinkerItem.Bits[i];
-                                        }
-                                    }
-                                }
-                                if (!chance.in100())
-                                {
-                                    broadcastActions = null;
-                                }
-                            }
-                            Disassembly.NumberDone++;
-                            Disassembly.TotalNumberDone++;
-                            if (Disassembly.TotalNumberWanted > 1)
-                            {
-                                Loading.SetLoadingStatus("Disassembled " + Disassembly.TotalNumberDone.Things("item") + " of " + Disassembly.TotalNumberWanted + "...");
-                            }
-                            if (!Disassembly.Abort)
-                            {
-                                if (E.Vendor.HasRegisteredEvent("ModifyBitsReceived"))
-                                {
-                                    Event @event = Event.New("ModifyBitsReceived", "Item", E.Item, "Bits", bitsString);
-                                    E.Vendor.FireEvent(@event);
-                                    bitsString = @event.GetStringParameter("Bits", "");
-                                }
-                                Disassembly.BitsDone += bitsString;
-                            }
-                            Disassembly.DoBitMessage = true;
-                            E.Item.PlayWorldOrUISound("Sounds/Misc/sfx_interact_artifact_disassemble", null);
-
-                            if (Disassembly.Alarms != null)
-                            {
-                                foreach (Action<GameObject> alarm in Disassembly.Alarms)
-                                {
-                                    alarm(E.Vendor);
-                                }
-                                Disassembly.Alarms = null;
-                            }
-                            E.Item.Destroy();
-                            if (!GameObject.Validate(E.Item) || E.Item.IsNowhere())
-                            {
-                                finished = false;
-                            }
-                        }
-                        if (Disassembly.NumberDone >= Disassembly.NumberWanted || finished)
-                        {
-                            ProcessVendorDisassemblyWhat(Disassembly);
-
-                            if (!Disassembly.Abort)
-                            {
-                                if (!Disassembly.Queue.IsNullOrEmpty())
-                                {
-                                    E.Item = Disassembly.Queue[0];
-                                    Disassembly.Queue.RemoveAt(0);
-                                    Disassembly.NumberDone = 0;
-                                    Disassembly.OriginalCount = E.Item.Count;
-                                    if (Disassembly.QueueNumberWanted == null || !Disassembly.QueueNumberWanted.TryGetValue(E.Item, out Disassembly.NumberWanted))
-                                    {
-                                        Disassembly.NumberWanted = Disassembly.OriginalCount;
-                                    }
-                                    Disassembly.Alarms = null;
-                                    Disassembly.QueueAlarms?.TryGetValue(E.Item, out Disassembly.Alarms);
-                                }
-                                else
-                                {
-                                    Disassembly.Abort = true;
-                                }
-                            }
+                            broadcastAction(The.Player);
                         }
                     }
-                    Disassembly.Complete();
-                    Disassembly.End();
+                }
+
+                Disassembly = new(E.Item, multipleItems ? itemCount : 1);
+
+                if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly))
+                {
+                    return true;
                 }
             }
             return base.HandleEvent(E);

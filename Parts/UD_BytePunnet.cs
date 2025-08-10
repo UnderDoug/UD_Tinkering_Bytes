@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
 using UD_Tinkering_Bytes;
 using XRL.Language;
+using XRL.Messages;
 using XRL.Rules;
 using XRL.UI;
 using XRL.World.Capabilities;
@@ -13,7 +13,7 @@ using XRL.World.Tinkering;
 namespace XRL.World.Parts
 {
     [Serializable]
-    public class UD_BytePunnet : IScribedPart
+    public class UD_BytePunnet : IScribedPart, IModEventHandler<GetVendorTinkeringBonusEvent>
     {
         public const string COMMAND_UNPACK = "UnpackBytePunnet";
         public const string COMMAND_UNPACK_ALL = "UnpackAllBytePunnets";
@@ -183,11 +183,31 @@ namespace XRL.World.Parts
             return false;
         }
 
+        public override bool AllowStaticRegistration()
+        {
+            return true;
+        }
+        public override void Register(GameObject Object, IEventRegistrar Registrar)
+        {
+            Registrar.Register(GetVendorTinkeringBonusEvent.ID, EventOrder.EXTREMELY_EARLY);
+            base.Register(Object, Registrar);
+        }
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
                 || ID == GetInventoryActionsEvent.ID
                 || ID == InventoryActionEvent.ID;
+        }
+        public virtual bool HandleEvent(GetVendorTinkeringBonusEvent E)
+        {
+            if (E.Item != null && E.Item == ParentObject && (E.Type == "Disassemble" || E.Type == "ReverseEngineer"))
+            {
+                E.Bonus = 9999;
+                E.SecondaryBonus = 9999;
+                MessageQueue.AddPlayerMessage($"{E.Item.T()}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!");
+                return true;
+            }
+            return base.HandleEvent(E);
         }
         public override bool HandleEvent(GetInventoryActionsEvent E)
         {

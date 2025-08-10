@@ -38,31 +38,32 @@ namespace XRL.World.Parts
             {
                 int vendorIdentifyLevel = GetIdentifyLevel(E.Vendor);
                 Tinkering_Repair vendorRepairSkill = E.Vendor.GetPart<Tinkering_Repair>();
-                E.AddAction("Look", "look", COMMAND_LOOK, Key: 'l');
+                int priority = 10;
+                E.AddAction("Look", "look", COMMAND_LOOK, Key: 'l', Priority: priority--);
                 if (E.IncludeModernTradeOptions)
                 {
-                    E.AddAction("Add to trade", "add to trade", COMMAND_ADD_TO_TRADE, Key: 't', WantsAsync: true);
+                    E.AddAction("Add to trade", "add to trade", COMMAND_ADD_TO_TRADE, Key: 't', Priority: priority--, WantsAsync: true);
                 }
                 if (vendorIdentifyLevel > 0 
                     && !E.Item.Understood())
                 {
-                    E.AddAction("Identify", "identify", COMMAND_IDENTIFY, Key: 'i', ClearAndSetUpTradeUI: true);
+                    E.AddAction("Identify", "identify", COMMAND_IDENTIFY, Key: 'i', Priority: priority--, ClearAndSetUpTradeUI: true);
                 }
                 if (vendorRepairSkill != null 
                     && IsRepairableEvent.Check(E.Vendor, E.Item, null, vendorRepairSkill))
                 {
-                    E.AddAction("Repair", "repair", COMMAND_REPAIR, Key: 'r');
+                    E.AddAction("Repair", "repair", COMMAND_REPAIR, Key: 'r', Priority: priority--);
                 }
                 if (E.Vendor.HasSkill(nameof(Tinkering_Tinker1)) 
                     && (E.Item.Understood() || vendorIdentifyLevel >= E.Item.GetComplexity()) && E.Item.NeedsRecharge())
                 {
-                    E.AddAction("Recharge", "recharge", COMMAND_RECHARGE, Key: 'c', ClearAndSetUpTradeUI: true);
+                    E.AddAction("Recharge", "recharge", COMMAND_RECHARGE, Key: 'c', Priority: priority--, ClearAndSetUpTradeUI: true);
                 }
                 if (E.Vendor.GetIntProperty("Librarian") != 0 
                     && E.Item.HasInventoryActionWithCommand("Read") 
                     && E.Item.InInventory == ParentObject)
                 {
-                    E.AddAction("Read", "read", COMMAND_RECHARGE, Key: 'b');
+                    E.AddAction("Read", "read", COMMAND_RECHARGE, Key: 'b', Priority: priority--);
                 }
             }
             return base.HandleEvent(E);

@@ -69,7 +69,7 @@ namespace UD_Tinkering_Bytes
                 }
             }
         }
-        public bool AddAction(string Name, string Display = null, string Command = null, char Key = ' ', int Priority = 0, bool FireOnVendor = true, bool FireOnItem = false, bool FireOnPlayer = false, bool Override = false, GameObject FireOn = null, bool WantsAsync = false, bool UpdateViewFromData = false, bool ClearAndSetUpTradeUI = false)
+        public bool AddAction(string Name, string Display = null, string Command = null, char Key = ' ', int Default = 0, int Priority = 0, bool FireOnVendor = true, bool FireOnItem = false, bool FireOnPlayer = false, bool Override = false, GameObject FireOn = null, bool WantsAsync = false, bool ClearAndSetUpTradeUI = false)
         {
             Actions ??= new();
 
@@ -83,6 +83,7 @@ namespace UD_Tinkering_Bytes
                 Key = Key,
                 Display = Display,
                 Command = Command,
+                Default = Default,
                 Priority = Priority,
                 FireOnVendor = FireOnVendor,
                 FireOnItem = FireOnItem,

@@ -14,6 +14,7 @@
   
   <object Name="HumanTinker_Village0" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
+    <skill Name="Tinkering_ReverseEngineer" />
   </object>
   
   <object Name="Grenadier" Load="Merge">
@@ -22,6 +23,7 @@
   
   <object Name="DiskMerchant" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
+    <skill Name="Tinkering_ReverseEngineer" />
   </object>
   
   <object Name="Shem -1" Load="Merge">
@@ -54,6 +56,7 @@
   
   <object Name="MopangoWatcher" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
+    <skill Name="Tinkering_ReverseEngineer" />
   </object>
   
   <object Name="Nacham" Load="Merge">
