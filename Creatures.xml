@@ -4,7 +4,7 @@
   <!-- Adds a handler for the VenderActionEvents added by this mod -->
   <object Name="Creature" Load="Merge">
     <part Name="UD_VendorActionHandler" />
-    <part Name="UD_TinkeringBytes" />
+    <part Name="UD_Vendor_Disassembly" />
   </object>
   
   <!-- Adding Disassemble to a few more NPCs-->
