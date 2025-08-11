@@ -4,12 +4,14 @@ using System.Text;
 using XRL.Messages;
 using XRL.World;
 
+using UD_Blink_Mutation;
+
 namespace UD_Tinkering_Bytes
 {
-    [GameEvent(Cascade = CASCADE_NONE, Cache = Cache.Pool)]
+    [GameEvent(Cascade = CASCADE_ALL, Cache = Cache.Pool)]
     public class GetVendorTinkeringBonusEvent : ModPooledEvent<GetVendorTinkeringBonusEvent>
     {
-        public new static readonly int CascadeLevel = CASCADE_NONE;
+        public new static readonly int CascadeLevel = CASCADE_ALL;
 
         public static string RegisteredEventID => nameof(GetVendorTinkeringBonusEvent);
 
@@ -45,9 +47,10 @@ namespace UD_Tinkering_Bytes
 
         public static int GetFor(GameObject Vendor, GameObject Item, string Type, int BaseRating, int Bonus, ref int SecondaryBonus, ref bool Interrupt, bool Interruptable = true)
         {
+            int indent = Debug.LastIndent;
             if (GameObject.Validate(ref Item) && Item.WantEvent(ID, CascadeLevel))
             {
-                UnityEngine.Debug.LogError($"{Item.T()}{Item.GetVerb("want")} {nameof(GetVendorTinkeringBonusEvent)}!");
+                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("want")} {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent + 1, Toggle: true);
                 GetVendorTinkeringBonusEvent E = FromPool();
                 E.Vendor = Vendor;
                 E.Item = Item;
@@ -63,7 +66,11 @@ namespace UD_Tinkering_Bytes
                 Bonus = E.Bonus;
                 SecondaryBonus = E.SecondaryBonus;
             }
-            UnityEngine.Debug.LogError($"{Item?.T()} doesn't{Item?.GetVerb("want")} {nameof(GetVendorTinkeringBonusEvent)}!");
+            else
+            {
+                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("don't")} want {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent + 1, Toggle: true);
+            }
+            Debug.LastIndent = indent;
             return Bonus;
         }
 

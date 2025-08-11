@@ -1,5 +1,6 @@
 ﻿using ConsoleLib.Console;
 using Genkit;
+using NAudio.SoundFont;
 using Qud.API;
 using Qud.UI;
 using System;
@@ -34,6 +35,8 @@ namespace UD_Tinkering_Bytes
         public string Display;
 
         public string Command;
+
+        public string PreferToHighlight;
 
         public int Default;
 
@@ -106,7 +109,7 @@ namespace UD_Tinkering_Bytes
                     else
                     {
                         actionsByHotkey.Add(vendorAction.Key, vendorAction);
-                        vendorAction.Display = ApplyHotkey(vendorAction.Display, vendorAction.Key, ref SB);
+                        vendorAction.Display = ApplyHotkey(vendorAction.Display, vendorAction.Key, vendorAction.PreferToHighlight, ref SB);
                     }
                 }
                 else
@@ -126,7 +129,7 @@ namespace UD_Tinkering_Bytes
                         {
                             vendorAction.Key = actionHotkey;
                             actionsByHotkey.Add(actionHotkey, vendorAction);
-                            vendorAction.Display = ApplyHotkey(ColorUtility.StripFormatting(vendorAction.Display), actionHotkey, ref SB);
+                            vendorAction.Display = ApplyHotkey(ColorUtility.StripFormatting(vendorAction.Display), actionHotkey, vendorAction.PreferToHighlight, ref SB);
                         }
                         continue;
                     }
@@ -202,7 +205,7 @@ namespace UD_Tinkering_Bytes
             return actionsList[pickedEntry];
         }
 
-        private static string ApplyHotkey(string Display, char Key, ref StringBuilder SB)
+        private static string ApplyHotkey(string Display, char Key, string Prefer, ref StringBuilder SB)
         {
             if (SB == null)
             {
@@ -215,24 +218,31 @@ namespace UD_Tinkering_Bytes
             if (!Display.Contains("{{") && !Display.Contains("&"))
             {
                 char hotkey = char.ToLower(Key);
+                int preferHotkeyIndex = -1;
+                int preferKeyIndex = -1;
+                if (!string.IsNullOrEmpty(Prefer))
+                {
+                    preferKeyIndex = Display.IndexOf(Prefer);
+                    if (preferKeyIndex != -1)
+                    {
+                        preferHotkeyIndex = Prefer.IndexOf(Key);
+                        if (preferHotkeyIndex == -1 && hotkey != Key)
+                        {
+                            preferHotkeyIndex = Prefer.IndexOf(hotkey);
+                        }
+                    }
+                }
                 int hotkeyIndex = Display.IndexOf(Key);
+                if (preferHotkeyIndex != -1)
+                {
+                    hotkeyIndex = preferHotkeyIndex + preferKeyIndex;
+                }
                 if (hotkeyIndex != -1)
                 {
                     Display = SB.Append(Display, 0, hotkeyIndex).Append("{{hotkey|").Append(Key)
                         .Append("}}")
                         .Append(Display, hotkeyIndex + 1, Display.Length - hotkeyIndex - 1)
                         .ToString();
-                }
-                else if (hotkey != Key)
-                {
-                    hotkeyIndex = Display.IndexOf(hotkey);
-                    if (hotkeyIndex != -1)
-                    {
-                        Display = SB.Append(Display, 0, hotkeyIndex).Append("{{hotkey|").Append(Key)
-                            .Append("}}")
-                            .Append(Display, hotkeyIndex + 1, Display.Length - hotkeyIndex - 1)
-                            .ToString();
-                    }
                 }
             }
             return Display;

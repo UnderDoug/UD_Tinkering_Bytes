@@ -9,5 +9,10 @@
 	<ItemGroup>
 	  <Folder Include="Textures\" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Reference Include="UD_Blink_Mutation.dll">
+	    <HintPath>..\..\..\ModAssemblies\UD_Blink_Mutation.dll</HintPath>
+	  </Reference>
+	</ItemGroup>
   <Import Project="../Mods.csproj" />
 </Project>

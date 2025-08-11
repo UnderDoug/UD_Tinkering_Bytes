@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
-using System.Text;
-using UD_Tinkering_Bytes;
+
 using XRL.Language;
 using XRL.Messages;
 using XRL.Rules;
@@ -13,11 +12,17 @@ using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 
+using UD_Blink_Mutation;
+
+using UD_Tinkering_Bytes;
+
 namespace XRL.World.Parts
 {
     [Serializable]
-    public class UD_Vendor_Disassembly : IScribedPart, IVendorActionEventHandler
+    public class UD_VendorDisassembly : IScribedPart, IVendorActionEventHandler
     {
+        private static bool doDebug = true;
+
         public const string COMMAND_DISASSEMBLE = "VendorCommand_Disassemble";
         public const string COMMAND_DISASSEMBLE_ALL = "VendorCommand_DisassembleAll";
 
@@ -26,7 +31,7 @@ namespace XRL.World.Parts
         // Disassembly 
         public Disassembly Disassembly;
 
-        public UD_Vendor_Disassembly()
+        public UD_VendorDisassembly()
         {
             ResetDisassembly();
         }
@@ -68,50 +73,60 @@ namespace XRL.World.Parts
             }
         }
 
-        public static bool VendorDisassemblyContinue(GameObject Vendor, Disassembly Disassembly)
+        public static bool VendorDisassemblyContinue(GameObject Vendor, Disassembly Disassembly, List<TinkerData> KnownRecipes)
         {
+            int indent = Debug.LastIndent;
             GameObject Object = Disassembly.Object;
 
             if (!GameObject.Validate(ref Disassembly.Object))
             {
                 Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on disappeared";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (Object.IsInGraveyard())
             {
                 Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on was destroyed";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (Object.IsNowhere())
             {
                 Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on disappeared";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (Object.IsInStasis())
             {
                 Disassembly.InterruptBecause = $"{Vendor.t()} can no longer interact with {Object.t()}";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (!Object.TryGetPart<TinkerItem>(out var tinkerItem))
             {
                 Disassembly.InterruptBecause = $"{Object.t()} can no longer be disassembled";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (!Vendor.HasSkill(nameof(Tinkering_Disassemble)))
             {
                 Disassembly.InterruptBecause = $"{Vendor.t()} no longer know how to disassemble things";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (!tinkerItem.CanBeDisassembled(Vendor))
             {
                 Disassembly.InterruptBecause =  $"{Object.t()} can no longer be disassembled";
+                Debug.LastIndent = indent;
                 return false;
             }
             if (!Vendor.CanMoveExtremities("Disassemble", ShowMessage: false, Involuntary: false, AllowTelekinetic: true))
             {
                 Disassembly.InterruptBecause = $"{Vendor.t()} can no longer move {Vendor.its} extremities";
+                Debug.LastIndent = indent;
                 return false;
             }
+            UD_VendorTinkering vendorTinkering = null;
             int totalEnergyCost = 0;
             try
             {
@@ -133,6 +148,7 @@ namespace XRL.World.Parts
                         }
                         if (interrupt)
                         {
+                            Debug.LastIndent = indent;
                             return false;
                         }
                         Disassembly.BitChance += disassembleBonus;
@@ -141,73 +157,91 @@ namespace XRL.World.Parts
                 string activeBlueprint = tinkerItem.ActiveBlueprint;
                 TinkerData tinkerData = null;
                 List<TinkerData> learnableMods = null;
-                List<GameObject> dataDiskObjects = Vendor.Inventory.GetObjectsViaEventList(GO => GO.HasPart<DataDisk>());
                 if (Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)))
                 {
-                    UnityEngine.Debug.LogError($"{nameof(Tinkering_ReverseEngineer)}");
+                    Debug.Entry(4, $"{nameof(Tinkering_ReverseEngineer)}", Indent: indent + 1, Toggle: doDebug);
+
+                    vendorTinkering = Vendor.RequirePart<UD_VendorTinkering>();
                     foreach (TinkerData tinkerRecipe in TinkerData.TinkerRecipes)
                     {
-                        UnityEngine.Debug.LogError($"    [{tinkerRecipe.Blueprint}");
                         bool recipeTypeIsBuild = tinkerRecipe.Type == "Build";
                         bool recipeBlueprintIsThisItem = recipeTypeIsBuild && tinkerRecipe.Blueprint == activeBlueprint;
-                        UnityEngine.Debug.LogError($"        {nameof(recipeBlueprintIsThisItem)}: {recipeBlueprintIsThisItem}");
 
                         bool recipeTypeIsMod = tinkerRecipe.Type == "Mod";
                         bool recipeIsModThisItemHas = recipeTypeIsMod && Object.HasPart(tinkerRecipe.PartName);
-                        UnityEngine.Debug.LogError($"        {nameof(recipeIsModThisItemHas)}: {recipeIsModThisItemHas}");
 
                         if (!recipeBlueprintIsThisItem && !recipeIsModThisItemHas)
                         {
                             continue;
                         }
+
+                        Debug.Divider(4, Const.HONLY, Count: 56, Indent: indent + 2, Toggle: doDebug);
+                        Debug.LoopItem(4, $"{tinkerRecipe.DisplayName}", Indent: indent + 2, Toggle: doDebug);
+
+                        Debug.LoopItem(4, $"{nameof(recipeBlueprintIsThisItem)}", $"{recipeBlueprintIsThisItem}",
+                            Good: recipeBlueprintIsThisItem, Indent: indent + 3, Toggle: doDebug);
+                        Debug.LoopItem(4, $"{nameof(recipeIsModThisItemHas)}", $"{recipeIsModThisItemHas}",
+                            Good: recipeIsModThisItemHas, Indent: indent + 3, Toggle: doDebug);
+
                         if (recipeBlueprintIsThisItem)
                         {
                             tinkerData = tinkerRecipe;
                         }
                         bool alreadyKnowMod = false;
-                        if (dataDiskObjects.IsNullOrEmpty())
+                        if (KnownRecipes.IsNullOrEmpty())
                         {
-                            UnityEngine.Debug.LogError($"            Have DataDisk Objects");
-                            foreach (GameObject dataDiskObject in dataDiskObjects)
+                            KnownRecipes ??= vendorTinkering.KnownRecipes;
+                        }
+                        if (!KnownRecipes.IsNullOrEmpty())
+                        {
+                            Debug.CheckYeh(4, $"{nameof(KnownRecipes)} not NullOrEmpty", Indent: indent + 2, Toggle: doDebug);
+                            Debug.Entry(4, $"Looping known recipes", Indent: indent + 2, Toggle: doDebug);
+                            foreach (TinkerData knownRecipe in KnownRecipes)
                             {
-                                UnityEngine.Debug.LogError($"                [{dataDiskObject.DebugName}");
-                                if (dataDiskObject.TryGetPart(out DataDisk dataDisk))
+                                Debug.Divider(4, Const.HONLY, Count: 52, Indent: indent + 3, Toggle: doDebug);
+                                Debug.LoopItem(4, $"{knownRecipe.DisplayName}", Indent: indent + 3, Toggle: doDebug);
+                                if (recipeBlueprintIsThisItem)
                                 {
-                                    if (recipeBlueprintIsThisItem)
+                                    Debug.Entry(4, $"{nameof(recipeBlueprintIsThisItem)}", $"{recipeBlueprintIsThisItem}", Indent: indent + 4, Toggle: doDebug);
+                                    if (knownRecipe.Blueprint == tinkerRecipe.Blueprint)
                                     {
-                                        UnityEngine.Debug.LogError($"                    {nameof(recipeBlueprintIsThisItem)}: {recipeBlueprintIsThisItem}");
-                                        if (dataDisk.Data.Blueprint == tinkerRecipe.Blueprint)
-                                        {
-                                            UnityEngine.Debug.LogError($"                        \"Already Know\" build recipe");
-                                            tinkerData = null;
-                                        }
+                                        Debug.CheckNah(4, $"\"Already Know\" build recipe", Indent: indent + 5, Toggle: doDebug);
+                                        tinkerData = null;
                                         break;
                                     }
-                                    if (recipeIsModThisItemHas)
+                                    Debug.CheckYeh(4, $"Build recipe learnable", Indent: indent + 5, Toggle: doDebug);
+                                }
+                                if (recipeIsModThisItemHas)
+                                {
+                                    Debug.Entry(4, $"{nameof(recipeIsModThisItemHas)}", $"{recipeIsModThisItemHas}", Indent: indent + 4, Toggle: doDebug);
+                                    if (knownRecipe.PartName == tinkerRecipe.PartName)
                                     {
-                                        UnityEngine.Debug.LogError($"                    {nameof(recipeIsModThisItemHas)}: {recipeIsModThisItemHas}");
-                                        if (dataDisk.Data.PartName == tinkerRecipe.PartName)
-                                        {
-                                            UnityEngine.Debug.LogError($"                        \"Already Know\" mod recipe");
-                                            alreadyKnowMod = true;
-                                            break;
-                                        }
+                                        Debug.CheckNah(4, $"\"Already Know\" mod recipe", Indent: indent + 5, Toggle: doDebug);
+                                        alreadyKnowMod = true;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        Debug.CheckYeh(4, $"Mod recipe learnable", Indent: indent + 5, Toggle: doDebug);
                                     }
                                 }
                             }
+                            Debug.Divider(4, Const.HONLY, Count: 52, Indent: indent + 3, Toggle: doDebug);
                         }
                         if (!alreadyKnowMod && recipeIsModThisItemHas)
                         {
-                            UnityEngine.Debug.LogError($"            mod recipe loaded up");
                             learnableMods ??= new();
                             learnableMods.Add(tinkerRecipe);
+                            Debug.CheckYeh(4, $"mod recipe loaded up", Indent: indent + 3, Toggle: doDebug);
                         }
                         if (tinkerData != null)
                         {
-                            UnityEngine.Debug.LogError($"            build recipe loaded up");
+                            Debug.CheckYeh(4, $"build recipe loaded up", Indent: indent + 3, Toggle: doDebug);
                         }
                     }
+                    Debug.Divider(4, Const.HONLY, Count: 56, Indent: indent + 2, Toggle: doDebug);
                 }
+
                 int chance = 0;
                 int reverseEngineerBonus = 0;
                 if (tinkerData != null || (learnableMods != null && learnableMods.Count > 0))
@@ -220,6 +254,7 @@ namespace XRL.World.Parts
                     }
                     if (interrupt)
                     {
+                        Debug.LastIndent = indent;
                         return false;
                     }
                     chance += reverseEngineerBonus;
@@ -283,6 +318,7 @@ namespace XRL.World.Parts
                         }
                         if (tinkerData != null || (learnableMods != null && learnableMods.Count > 0))
                         {
+                            vendorTinkering = Vendor.RequirePart<UD_VendorTinkering>();
                             string reverseEngineerMessage = "";
                             if (tinkerData != null)
                             {
@@ -325,18 +361,23 @@ namespace XRL.World.Parts
                             }
                             if (tinkerData != null)
                             {
-                                GameObject dataDisk = TinkerData.createDataDisk(tinkerData);
-                                dataDisk.SetStringProperty("WontSell", "Don't do it. PLEASE!");
-                                Vendor.ReceiveObject(dataDisk);
+                                bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
+                                if (vendorTinkering.LearnRecipe(tinkerData, shouldScribeRecipe))
+                                { 
+                                    KnownRecipes.Add(tinkerData);
+                                    Debug.CheckYeh(4, $"{tinkerData.DisplayName} \"Learned\"", Indent: indent + 2, Toggle: doDebug);
+                                }
                             }
-                            if (learnableMods != null)
+                            if (!learnableMods.IsNullOrEmpty())
                             {
-                                GameObject dataDisk = null;
                                 foreach (TinkerData learnableMod in learnableMods)
                                 {
-                                    dataDisk = TinkerData.createDataDisk(learnableMod);
-                                    dataDisk.SetStringProperty("WontSell", "Don't do it. PLEASE!");
-                                    Vendor.ReceiveObject(dataDisk);
+                                    bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
+                                    if (vendorTinkering.LearnRecipe(learnableMod, shouldScribeRecipe))
+                                    {
+                                        KnownRecipes.Add(learnableMod);
+                                        Debug.CheckYeh(4, $"{learnableMod.DisplayName} \"Learned\"", Indent: indent + 2, Toggle: doDebug);
+                                    }
                                 }
                             }
                         }
@@ -396,6 +437,8 @@ namespace XRL.World.Parts
                     The.Player.UseEnergy(totalEnergyCost, "Vendor Tinkering Disassemble");
                 }
             }
+            Debug.Divider(4, Const.HONLY, Indent: indent + 1, Toggle: doDebug);
+            Debug.LastIndent = indent;
             return true;
         }
 
@@ -485,7 +528,7 @@ namespace XRL.World.Parts
             }
         }
 
-        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostperItem, ref Disassembly Disassembly)
+        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostperItem, ref Disassembly Disassembly, IEnumerable<TinkerData> KnownRecipes)
         {
             if (Vendor == null || Item == null || TinkerItem == null)
             {
@@ -496,6 +539,7 @@ namespace XRL.World.Parts
 
             Disassembly.EnergyCostPer = 0;
             bool interrupt = false;
+
             while (!interrupt
                 && !Disassembly.Abort)
             {
@@ -505,7 +549,8 @@ namespace XRL.World.Parts
                 Vendor.UseEnergy(energyCost, "Skill Tinkering Disassemble");
                 The.Player.UseEnergy(energyCost, "Vendor Tinkering Disassemble");
 
-                if (!VendorDisassemblyContinue(Vendor, Disassembly) && !Disassembly.GetInterruptBecause().IsNullOrEmpty())
+                if (!VendorDisassemblyContinue(Vendor, Disassembly, KnownRecipes.ToList() ?? new())
+                    && !Disassembly.GetInterruptBecause().IsNullOrEmpty())
                 {
                     interrupt = true;
                 }
@@ -533,7 +578,8 @@ namespace XRL.World.Parts
             Disassembly = null;
             if (completed)
             {
-                Loading.SetHideLoadStatus(true);
+                Loading.SetLoadingStatus(null);
+                Loading.SetHideLoadStatus(hidden: true);
             }
             return completed;
         }
@@ -605,7 +651,7 @@ namespace XRL.World.Parts
                 {
                     List<Action<GameObject>> broadcastActions = null;
 
-                    if (multipleItems && AutoAct.ShouldHostilesInterrupt("o"))
+                    if (multipleItems && (AutoAct.ShouldHostilesInterrupt("o") || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
                     {
                         Popup.ShowFail($"{Vendor.T()} cannot disassemble so many items at once with hostiles nearby.");
                         return false;
@@ -656,7 +702,7 @@ namespace XRL.World.Parts
 
                 Disassembly = new(E.Item, multipleItems ? itemCount : 1);
 
-                if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly))
+                if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly, UD_VendorTinkering.FindKnownRecipes(Vendor)))
                 {
                     return true;
                 }

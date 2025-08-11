@@ -6,6 +6,7 @@
     <part Name="Physics" Weight="1" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly 8 bits." />
     <part Name="TinkerItem" CanBuild="true" />
+    <part Name="UD_ByteReverseEngineer" />
     <part Name="Commerce" Value="40" />
     <removetag Name="Scrap" />
     <removetag Name="DefaultDisassemble" />
@@ -107,7 +108,7 @@
     <removetag Name="Scrap" />
     <removetag Name="DefaultDisassemble" />
     <tag Name="BaseObject" Value="*noinherit" />
-    <intproperty Name="NeverStack" Value="1" />
+    <property Name="NeverStack" Value="No stacks for me please." />
     <removestag Name="Scrap" />
     <removetag Name="Breakable" />
     <part Name="ItemElements" Elements="circuitry::8" />
