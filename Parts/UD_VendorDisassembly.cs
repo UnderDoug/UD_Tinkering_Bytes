@@ -528,7 +528,7 @@ namespace XRL.World.Parts
             }
         }
 
-        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostperItem, ref Disassembly Disassembly, IEnumerable<TinkerData> KnownRecipes)
+        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostPerItem, ref Disassembly Disassembly, IEnumerable<TinkerData> KnownRecipes)
         {
             if (Vendor == null || Item == null || TinkerItem == null)
             {
@@ -543,8 +543,8 @@ namespace XRL.World.Parts
             while (!interrupt
                 && !Disassembly.Abort)
             {
-                The.Player.UseDrams(CostperItem);
-                Vendor.GiveDrams(CostperItem);
+                The.Player.UseDrams(CostPerItem);
+                Vendor.GiveDrams(CostPerItem);
 
                 Vendor.UseEnergy(energyCost, "Skill Tinkering Disassemble");
                 The.Player.UseEnergy(energyCost, "Vendor Tinkering Disassemble");

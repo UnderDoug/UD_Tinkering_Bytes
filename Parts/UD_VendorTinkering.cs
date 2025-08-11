@@ -1,9 +1,11 @@
 ﻿using System;
-using System.Text;
+using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Text;
+using UD_Blink_Mutation;
+using UD_Tinkering_Bytes;
 using XRL.Language;
 using XRL.Messages;
 using XRL.Rules;
@@ -11,10 +13,6 @@ using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
-
-using UD_Blink_Mutation;
-
-using UD_Tinkering_Bytes;
 using SerializeField = UnityEngine.SerializeField;
 
 namespace XRL.World.Parts
@@ -146,23 +144,47 @@ namespace XRL.World.Parts
             return ScribeDisk(ParentObject, TinkerData);
         }
 
-        public static bool VendorDoBuild(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostperItem, ref Disassembly Disassembly, UD_VendorDisassembly VendorDisassembly)
+        public static bool VendorDoBuild(GameObject Vendor, TinkerData TinkerData, UD_VendorTinkering VendorTinkering)
         {
-            if (Vendor == null || Item == null || TinkerItem == null)
+            if (Vendor == null || TinkerData == null)
             {
-                Popup.ShowFail($"That trader or item doesn't exist, or the item can't be disassembled (this is an error).");
+                Popup.ShowFail($"That trader or recipe doesn't exist (this is an error).");
                 return false;
             }
+            Popup.Show("Let's pretend this item was tinkered!");
             return true;
         }
-        public static bool VendorDoMod(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostperItem, ref Disassembly Disassembly, UD_VendorDisassembly VendorDisassembly)
+        public static bool VendorDoMod(GameObject Vendor, GameObject Item, TinkerData TinkerData, int DramsCost)
         {
-            if (Vendor == null || Item == null || TinkerItem == null)
+            if (Vendor == null || Item == null || TinkerData == null)
             {
-                Popup.ShowFail($"That trader or item doesn't exist, or the item can't be disassembled (this is an error).");
+                Popup.ShowFail($"That trader or item doesn't exist or recipe doesn't exist (this is an error).");
                 return false;
             }
-            return true;
+
+            Item.SplitFromStack();
+
+            string itemNameBeforeMod = Item.t(Stripped: true);
+            bool didMod = ItemModding.ApplyModification(Item, TinkerData.PartName, out var ModPart, Item.GetTier(), DoRegistration: true, The.Player);
+            if (didMod)
+            {
+                Item.MakeUnderstood();
+                SoundManager.PlayUISound("Sounds/Abilities/sfx_ability_tinkerModItem");
+                Popup.Show(
+                    $"{Vendor.T()}{Vendor.GetVerb("mod")} {itemNameBeforeMod} to be " +
+                    $"{(ModPart.GetModificationDisplayName() ?? TinkerData.DisplayName).Color("C")}");
+
+                ItemModding.ApplyModification(Item, TinkerData.PartName, Actor: Vendor);
+                if (Item.Equipped == null && Item.InInventory == null)
+                {
+                    The.Player.ReceiveObject(Item);
+                }
+                The.Player.UseDrams(DramsCost);
+                Vendor.GiveDrams(DramsCost);
+            }
+            Item.CheckStack();
+
+            return didMod;
         }
 
         public override bool WantEvent(int ID, int Cascade)
@@ -232,39 +254,153 @@ namespace XRL.World.Parts
             {
                 GameObject Vendor = E.Vendor;
                 GameObject Item = E.Item;
+                GameObject player = The.Player;
                 if (E.Command == COMMAND_BUILD
                     && E.Item != null
                     && E.Item.TryGetPart(out DataDisk dataDisk))
                 {
                     int totalCost = (int)E.DramsCost;
-                    if (The.Player.GetFreeDrams() < totalCost)
+                    if (player.GetFreeDrams() < totalCost)
                     {
-                        Popup.ShowFail( $"You do not have the required {totalCost.Things("dram").Color("C")} to tinker this item.");
+                        Popup.ShowFail( $"{player.T()}{player.GetVerb("do")} not have the required {totalCost.Things("dram").Color("C")} to tinker this item.");
                     }
                     else if (Popup.ShowYesNo(
                         $"You may tinker this item for {totalCost.Things("dram")} of fresh water.") == DialogResult.Yes)
                     {
-                        Popup.Show("Let's pretend this item was tinkered!");
+                        if (VendorDoBuild(Vendor, dataDisk.Data, this))
+                        {
+                            return true;
+                        }
                     }
                 }
                 if (E.Command == COMMAND_MOD)
                 {
-                    if (E.Item.TryGetPart(out dataDisk))
+                    GameObject selectedObject = null;
+                    TinkerData modRecipe = null;
+                    string modName = null;
+                    if (!E.Item.TryGetPart(out dataDisk))
                     {
-                        int totalCost = (int)E.DramsCost;
+                        selectedObject = Item;
 
-                        if (The.Player.GetFreeDrams() < totalCost)
+                        List<GameObject> vendorHeldDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(
+                            GO => GO.TryGetPart(out DataDisk D) 
+                            && D.Data.Type == "Mod");
+
+                        List<GameObject> playerHeldDataDiskObjects = player?.Inventory?.GetObjectsViaEventList(
+                            GO => GO.TryGetPart(out DataDisk D) 
+                            && D.Data.Type == "Mod");
+
+                        if (KnownMods.IsNullOrEmpty() && vendorHeldDataDiskObjects.IsNullOrEmpty() && playerHeldDataDiskObjects.IsNullOrEmpty())
                         {
-                            Popup.ShowFail($"You do not have the required {totalCost.Things("dram").Color("C")} to mod any items.");
+                            Popup.ShowFail($"{Vendor.T()}{Vendor.GetVerb("do")} not know any item modifications.");
+                            return false;
                         }
-                        else if (Popup.ShowYesNo(
-                            $"You may mod an item for {totalCost.Things("dram")} of fresh water.") == DialogResult.Yes)
+                        Dictionary<TinkerData, string> applicableRecipes = new();
+                        if (!KnownMods.IsNullOrEmpty())
                         {
-                            Popup.Show("Let's pretend we picked an item to modify!");
+                            foreach (TinkerData knownMod in KnownMods)
+                            {
+                                if (ItemModding.ModAppropriate(selectedObject, knownMod))
+                                {
+                                    applicableRecipes.Add(knownMod, "known recipe");
+                                }
+                            }
                         }
+                        if (!vendorHeldDataDiskObjects.IsNullOrEmpty())
+                        {
+                            foreach (GameObject vendorHeldDataDiskObject in vendorHeldDataDiskObjects)
+                            {
+                                if (vendorHeldDataDiskObject.TryGetPart(out DataDisk heldDataDisk)
+                                    && !applicableRecipes.ContainsKey(heldDataDisk.Data)
+                                    && ItemModding.ModAppropriate(selectedObject, heldDataDisk.Data))
+                                {
+                                    applicableRecipes.Add(heldDataDisk.Data, "trader inventory");
+                                }
+                            }
+                        }
+                        if (!playerHeldDataDiskObjects.IsNullOrEmpty())
+                        {
+                            foreach (GameObject playerHeldDataDiskObject in vendorHeldDataDiskObjects)
+                            {
+                                if (playerHeldDataDiskObject.TryGetPart(out DataDisk heldDataDisk)
+                                    && !applicableRecipes.ContainsKey(heldDataDisk.Data)
+                                    && ItemModding.ModAppropriate(selectedObject, heldDataDisk.Data))
+                                {
+                                    applicableRecipes.Add(heldDataDisk.Data, "your inventory");
+                                }
+                            }
+                        }
+                        if (applicableRecipes.IsNullOrEmpty())
+                        {
+                            Popup.ShowFail($"{Vendor.T()}{Vendor.GetVerb("do")} not know any item modifications for {selectedObject.t()}.");
+                            return false;
+                        }
+                        List<char> hotkeys = new();
+                        List<string> lineItems = new();
+                        List<TinkerData> recipes = new();
+                        char nextHotkey = 'a';
+                        foreach ((TinkerData applicableRecipe, string context) in applicableRecipes)
+                        {
+                            if (nextHotkey == ' ' || hotkeys.Contains('z'))
+                            {
+                                nextHotkey = ' ';
+                                hotkeys.Add(nextHotkey);
+                            }
+                            else
+                            {
+                                hotkeys.Add(nextHotkey++);
+                            }
+                            string lineItem = $"{applicableRecipe.DisplayName} [{context}]";
+                            lineItems.Add(lineItem);
+                            recipes.Add(applicableRecipe);
+                        }
+                        int selectedOption = Popup.PickOption(
+                            Title: $"select which item mod to apply",
+                            Sound: "Sounds/UI/ui_notification", 
+                            Options: lineItems.ToArray(), 
+                            Hotkeys: hotkeys.ToArray(),
+                            Context: selectedObject,
+                            IntroIcon: selectedObject.RenderForUI(),
+                            AllowEscape: true, 
+                            PopupID: "VendorTinkeringApplyModMenu:" + (Item?.IDIfAssigned ?? "(noid)"));
+                        if (selectedOption < 0)
+                        {
+                            return false;
+                        }
+                        modRecipe = recipes[selectedOption];
+                        modName = $"{modRecipe.DisplayName}";
                     }
                     else
                     {
+                        modRecipe = dataDisk.Data;
+                        modName = $"{modRecipe.DisplayName}";
+                        List<GameObject> applicableObjects = player?.Inventory?.GetObjectsViaEventList(
+                            GO => ItemModding.ModAppropriate(GO, modRecipe));
+                        if (applicableObjects.IsNullOrEmpty())
+                        {
+                            Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have any items that can be modified with {modName}.");
+                            return false;
+                        }
+                        selectedObject = Popup.PickGameObject(
+                            Title: $"select an item to apply {modName} to",
+                            Objects: applicableObjects,
+                            AllowEscape: true);
+
+                        if (selectedObject == null)
+                        {
+                            return false;
+                        }
+                    }
+
+                    if (selectedObject != null && modRecipe != null)
+                    {
+
+                        if (!ItemModding.ModificationApplicable(modRecipe.PartName, selectedObject, Vendor))
+                        {
+                            Popup.ShowFail($"{selectedObject.T()}{Vendor.GetVerb("can")} not have for {modName} applied.");
+                            return false;
+                        }
+
                         int totalCost = (int)E.DramsCost;
 
                         if (The.Player.GetFreeDrams() < totalCost)
@@ -274,7 +410,11 @@ namespace XRL.World.Parts
                         else if (Popup.ShowYesNo(
                             $"You may mod this item for {totalCost.Things("dram")} of fresh water.") == DialogResult.Yes)
                         {
-                            Popup.Show("Let's pretend this item got modified!");
+                        }
+
+                        if (VendorDoMod(Vendor, selectedObject, modRecipe, totalCost))
+                        {
+                            return true;
                         }
                     }
                 }
