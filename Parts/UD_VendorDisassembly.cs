@@ -584,11 +584,24 @@ namespace XRL.World.Parts
             return completed;
         }
 
+        public override void Register(GameObject Object, IEventRegistrar Registrar)
+        {
+            Registrar.Register(AllowTradeWithNoInventoryEvent.ID, EventOrder.EARLY);
+            base.Register(Object, Registrar);
+        }
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
                 || (WantVendorActions && ID == GetVendorActionsEvent.ID)
                 || (WantVendorActions && ID == VendorActionEvent.ID);
+        }
+        public override bool HandleEvent(AllowTradeWithNoInventoryEvent E)
+        {
+            if (E.Trader != null && ParentObject == E.Trader && WantVendorActions)
+            {
+                return true;
+            }
+            return base.HandleEvent(E);
         }
         public virtual bool HandleEvent(GetVendorActionsEvent E)
         {
