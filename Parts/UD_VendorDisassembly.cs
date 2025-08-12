@@ -26,7 +26,7 @@ namespace XRL.World.Parts
         public const string COMMAND_DISASSEMBLE = "VendorCommand_Disassemble";
         public const string COMMAND_DISASSEMBLE_ALL = "VendorCommand_DisassembleAll";
 
-        public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Tinkering_Disassemble));
+        public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Tinkering_Disassemble)) && !ParentObject.IsPlayer();
 
         // Disassembly 
         public Disassembly Disassembly;

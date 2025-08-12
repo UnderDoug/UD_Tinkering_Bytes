@@ -1,26 +1,29 @@
-﻿using ConsoleLib.Console;
-using System;
-using System.CodeDom;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using UD_Blink_Mutation;
-using UD_Tinkering_Bytes;
-using UnityEngine;
+using ConsoleLib.Console;
+
 using XRL.Language;
 using XRL.Messages;
 using XRL.Rules;
 using XRL.UI;
-using XRL.UI.ObjectFinderClassifiers;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
+using XRL.Wish;
+
+using UD_Blink_Mutation;
+
+using UD_Tinkering_Bytes;
+
 using SerializeField = UnityEngine.SerializeField;
 
 namespace XRL.World.Parts
 {
+    [HasWishCommand]
     [Serializable]
     public class UD_VendorTinkering : IScribedPart, IVendorActionEventHandler
     {
@@ -29,7 +32,7 @@ namespace XRL.World.Parts
         public const string COMMAND_BUILD = "VendorCommand_Build";
         public const string COMMAND_MOD = "VendorCommand_Mod";
 
-        public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering));
+        public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
 
         [SerializeField]
         private List<TinkerData> _KnownRecipes;
@@ -50,7 +53,7 @@ namespace XRL.World.Parts
         public UD_VendorTinkering()
         {
             ScribesKnownRecipesOnRestock = true;
-            RestockScribeChance = 50;
+            RestockScribeChance = 15;
             LearnRecipes();
         }
 
@@ -125,9 +128,12 @@ namespace XRL.World.Parts
 
         public IEnumerable<TinkerData> GetKnownRecipes(Predicate<TinkerData> Filter = null)
         {
-            foreach (TinkerData tinkerData in FindKnownRecipes(ParentObject, Filter))
+            foreach (TinkerData tinkerData in KnownRecipes)
             {
-                yield return tinkerData;
+                if (Filter == null || Filter(tinkerData))
+                {
+                    yield return tinkerData;
+                }
             }
             yield break;
         }
@@ -199,12 +205,12 @@ namespace XRL.World.Parts
             return (int)Math.Max(2.0, -0.0667 + 1.24 * (double)x + 0.0967 * Math.Pow(x, 2.0) + 0.0979 * Math.Pow(x, 3.0));
         }
 
-        public static GameObject PickASupplier(GameObject Vendor, GameObject ForObject, string Title, string Message)
+        public static GameObject PickASupplier(GameObject Vendor, GameObject ForObject, string Title, string Message, bool CenterIntro = false)
         {
             List<string> bitSupplyOptions = new()
             {
-                $"I'll use my own if I have them.",
-                $"I would like {Vendor.t()} to supply them.",
+                $"Use my own if I have them.",
+                $"Pay {Vendor.t()} to supply them.",
             };
             List<char> bitSupplyHotkeys = new()
             {
@@ -223,16 +229,151 @@ namespace XRL.World.Parts
                 Hotkeys: bitSupplyHotkeys,
                 Icons: bitSupplyIcons,
                 IntroIcon: ForObject.RenderForUI(),
-                AllowEscape: true) switch
+                AllowEscape: true,
+                CenterIntro: CenterIntro) switch
             {
                 0 => The.Player,
                 1 => Vendor,
                 _ => null,
             };
         }
-        public GameObject PickASupplier(GameObject ForObject, string Title, string Message)
+        public GameObject PickASupplier(GameObject ForObject, string Title, string Message, bool CenterIntro = false)
         {
-            return PickASupplier(ParentObject, ForObject, Title, Message);
+            return PickASupplier(ParentObject, ForObject, Title, Message, CenterIntro);
+        }
+
+        public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true)
+        {
+            if (Tinker.TryGetPart(out BitLocker bitLocker) && ClearFirst)
+            {
+                Tinker.RemovePart(bitLocker);
+            }
+            bitLocker = Tinker.RequirePart<BitLocker>();
+            List<char> bitList = BitType.BitOrder;
+            Dictionary<char, (int low, int high)> bitRanges = new();
+            if (!bitList.IsNullOrEmpty())
+            {
+                foreach (char bit in bitList)
+                {
+                    bitRanges.Add(bit, (0, 0));
+                }
+                if (Tinker.HasSkill(nameof(Tinkering_Disassemble)))
+                {
+                    int upperLimit = bitList.Count / 3;
+                    for (int i = 0; i < upperLimit; i++)
+                    {
+                        char bitIndex = bitList[i];
+                        (int low, int high) currentRange = bitRanges[bitIndex];
+                        currentRange.low += 25;
+                        currentRange.high += 50;
+                        bitRanges[bitIndex] = currentRange;
+                    }
+                }
+                if (Tinker.HasSkill(nameof(Tinkering_ReverseEngineer)))
+                {
+                    int breakPoint = bitList.Count / 3;
+                    int upperLimit = breakPoint * 2;
+                    for (int i = 0; i < upperLimit; i++)
+                    {
+                        char bitIndex = bitList[i];
+                        (int low, int high) currentRange = bitRanges[bitIndex];
+                        if (i < breakPoint)
+                        {
+                            currentRange.high += 25;
+                        }
+                        else
+                        {
+                            currentRange.low += 25;
+                            currentRange.high += 50;
+                        }
+                        bitRanges[bitIndex] = currentRange;
+                    }
+                }
+                if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
+                {
+                    int upperLimit = bitList.Count / 3;
+                    for (int i = 0; i < upperLimit; i++)
+                    {
+                        char bitIndex = bitList[i];
+                        (int low, int high) currentRange = bitRanges[bitIndex];
+                        currentRange.low += 25;
+                        currentRange.high += 75;
+                        bitRanges[bitIndex] = currentRange;
+                    }
+                }
+                if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
+                {
+                    int breakPoint = bitList.Count / 3;
+                    int upperLimit = breakPoint * 2;
+                    for (int i = 0; i < upperLimit; i++)
+                    {
+                        char bitIndex = bitList[i];
+                        (int low, int high) currentRange = bitRanges[bitIndex];
+                        if (i < breakPoint)
+                        {
+                            currentRange.high += 25;
+                        }
+                        else
+                        {
+                            currentRange.low += 25;
+                            currentRange.high += 75;
+                        }
+                        bitRanges[bitIndex] = currentRange;
+                    }
+                }
+                if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
+                {
+                    int firstBreakPoint = bitList.Count / 3;
+                    int secondBreakPoint = firstBreakPoint * 2;
+                    for (int i = 0; i < bitList.Count; i++)
+                    {
+                        char bitIndex = bitList[i];
+                        (int low, int high) currentRange = bitRanges[bitIndex];
+                        if (i < firstBreakPoint)
+                        {
+                            currentRange.low += 50;
+                            currentRange.high += 50;
+                        }
+                        else if (i < secondBreakPoint)
+                        {
+                            currentRange.low += 25;
+                            currentRange.high += 25;
+                        }
+                        else if (i < bitList.Count - 1)
+                        {
+                            currentRange.low += 15;
+                            currentRange.high += 35;
+                        }
+                        else
+                        {
+                            currentRange.high += 5;
+                        }
+                        bitRanges[bitIndex] = currentRange;
+                    }
+                }
+                List<string> bitsToAdd = new();
+                foreach ((char bit, (int low, int high)) in bitRanges)
+                {
+                    string bits = "";
+                    int amountToAdd = Stat.RandomCosmetic(low, high);
+                    for (int i = 0; i < amountToAdd; i++)
+                    {
+                        bits += bit;
+                    }
+                    if (!bits.IsNullOrEmpty())
+                    {
+                        bitsToAdd.Add(bits);
+                    }
+                }
+                if (!bitsToAdd.IsNullOrEmpty())
+                {
+                    foreach (string bits in bitsToAdd)
+                    {
+                        bitLocker.AddBits(bits);
+                    }
+                }
+            }
+            return bitLocker;
         }
 
         public static bool VendorDoBuild(GameObject Vendor, TinkerData TinkerData, UD_VendorTinkering VendorTinkering)
@@ -284,6 +425,8 @@ namespace XRL.World.Parts
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
+                || (WantVendorActions && ID == AfterObjectCreatedEvent.ID)
+                || (WantVendorActions && ID == GetShortDescriptionEvent.ID)
                 || (WantVendorActions && ID == StockedEvent.ID)
                 || (WantVendorActions && ID == GetVendorActionsEvent.ID)
                 || (WantVendorActions && ID == VendorActionEvent.ID);
@@ -296,32 +439,104 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public override bool HandleEvent(StockedEvent E)
+        public override bool HandleEvent(AfterObjectCreatedEvent E)
         {
-            if (E.Object == ParentObject && WantVendorActions && ScribesKnownRecipesOnRestock)
+            if (E.Object != null && ParentObject == E.Object && WantVendorActions)
             {
-                GameObject Vendor = E.Object;
-                LearnRecipes();
-                if (!KnownRecipes.IsNullOrEmpty())
+                GiveRandomBits(E.Object);
+                List<TinkerData> allRecipes = new(TinkerData.TinkerRecipes);
+                allRecipes.RemoveAll(TD => !E.Object.HasSkill(DataDisk.GetRequiredSkill(TD.Tier)));
+                KnownRecipes ??= new();
+                if (!allRecipes.IsNullOrEmpty())
                 {
-                    List<GameObject> knownDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(GO => GO.TryGetPart(out DataDisk dataDisk) && KnownRecipes.Contains(dataDisk.Data));
-                    List<TinkerData> inventoryTinkerData = new();
-                    foreach (GameObject knownDataDiskObject in knownDataDiskObjects)
+                    int low = 2;
+                    int high = 4;
+                    if (E.Object.HasSkill(nameof(Tinkering_Tinker1)))
                     {
-                        if (knownDataDiskObject.TryGetPart(out DataDisk knownDataDisk))
-                        {
-                            inventoryTinkerData.Add(knownDataDisk.Data);
-                        }
+                        high++;
                     }
-                    foreach (TinkerData knownRecipe in KnownRecipes)
+                    if (E.Object.HasSkill(nameof(Tinkering_Tinker2)))
                     {
-                        if (!inventoryTinkerData.Contains(knownRecipe) && RestockScribeChance.in100())
+                        high += 2;
+                    }
+                    if (E.Object.HasSkill(nameof(Tinkering_Tinker3)))
+                    {
+                        high += 3;
+                    }
+                    if (E.Object.HasSkill(nameof(Tinkering_ReverseEngineer)))
+                    {
+                        high *= 2;
+                    }
+                    high = Math.Min(high, allRecipes.Count);
+                    int numberToKnow = Stat.Random(low, high);
+                    for (int i = 0; i < numberToKnow && !allRecipes.IsNullOrEmpty(); i++)
+                    {
+                        TinkerData recipeToKnow = allRecipes.DrawRandomToken();
+                        if (recipeToKnow != null && !KnownRecipes.Contains(recipeToKnow))
                         {
-                            ScribeDisk(knownRecipe);
+                            KnownRecipes.Add(recipeToKnow);
                         }
                     }
                 }
-                
+            }
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(GetShortDescriptionEvent E)
+        {
+            if (E.Object != null && ParentObject == E.Object && WantVendorActions)
+            {
+                string description = E.Object.GetPart<BitLocker>()?.GetBitsString();
+                if (!description.IsNullOrEmpty())
+                {
+                    E.Infix.AppendRules("Bit Locker:");
+                    E.Infix.AppendRules(description);
+                }
+                RenderEvent iconObject = GameObjectFactory.Factory.CreateSampleObject("DataDisk").RenderForUI();
+                if (!KnownRecipes.IsNullOrEmpty())
+                {
+                    E.Infix.AppendRules("Known Recipes:");
+                    foreach (TinkerData knownRecipe in KnownRecipes)
+                    {
+                        string recipeDisplayName = knownRecipe.DisplayName;
+                        if (knownRecipe.Type == "Mod")
+                        {
+                            recipeDisplayName = $"[{"Mod".Color("W")}] {recipeDisplayName}";
+                        }
+                        E.Infix.AppendRules("\u0007 ".Color("K") + recipeDisplayName); // iconObject
+                    }
+                }
+            }
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(StockedEvent E)
+        {
+            if (E.Object == ParentObject && WantVendorActions)
+            {
+                GameObject Vendor = E.Object;
+                LearnRecipes();
+                if (ScribesKnownRecipesOnRestock)
+                {
+                    if (!KnownRecipes.IsNullOrEmpty())
+                    {
+                        List<GameObject> knownDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(GO => GO.TryGetPart(out DataDisk dataDisk) && KnownRecipes.Contains(dataDisk.Data));
+                        List<TinkerData> inventoryTinkerData = new();
+                        foreach (GameObject knownDataDiskObject in knownDataDiskObjects)
+                        {
+                            if (knownDataDiskObject.TryGetPart(out DataDisk knownDataDisk))
+                            {
+                                inventoryTinkerData.Add(knownDataDisk.Data);
+                            }
+                        }
+                        foreach (TinkerData knownRecipe in KnownRecipes)
+                        {
+                            if (!inventoryTinkerData.Contains(knownRecipe) && RestockScribeChance.in100())
+                            {
+                                ScribeDisk(knownRecipe);
+                            }
+                        }
+                    }
+                }
+                GiveRandomBits(E.Object);
             }
             return base.HandleEvent(E);
         }
@@ -401,9 +616,11 @@ namespace XRL.World.Parts
                         {
                             foreach (TinkerData knownMod in KnownMods)
                             {
-                                if (ItemModding.ModAppropriate(selectedObject, knownMod))
+                                if (ItemModding.ModAppropriate(selectedObject, knownMod)
+                                    && vendor.HasSkill(DataDisk.GetRequiredSkill(knownMod.Tier))
+                                    && !applicableRecipes.ContainsKey(knownMod))
                                 {
-                                    applicableRecipes.Add(knownMod, "known recipe");
+                                    applicableRecipes.Add(knownMod, "known by trader");
                                 }
                             }
                         }
@@ -411,23 +628,25 @@ namespace XRL.World.Parts
                         {
                             foreach (GameObject vendorHeldDataDiskObject in vendorHeldDataDiskObjects)
                             {
-                                if (vendorHeldDataDiskObject.TryGetPart(out DataDisk heldDataDisk)
-                                    && !applicableRecipes.ContainsKey(heldDataDisk.Data)
-                                    && ItemModding.ModAppropriate(selectedObject, heldDataDisk.Data))
+                                if (vendorHeldDataDiskObject.TryGetPart(out DataDisk vendorHeldDataDisk)
+                                    && ItemModding.ModAppropriate(selectedObject, vendorHeldDataDisk.Data)
+                                    && vendor.HasSkill(vendorHeldDataDisk.GetRequiredSkill())
+                                    && !applicableRecipes.ContainsKey(vendorHeldDataDisk.Data))
                                 {
-                                    applicableRecipes.Add(heldDataDisk.Data, "trader inventory");
+                                    applicableRecipes.Add(vendorHeldDataDisk.Data, "trader inventory");
                                 }
                             }
                         }
                         if (!playerHeldDataDiskObjects.IsNullOrEmpty())
                         {
-                            foreach (GameObject playerHeldDataDiskObject in vendorHeldDataDiskObjects)
+                            foreach (GameObject playerHeldDataDiskObject in playerHeldDataDiskObjects)
                             {
-                                if (playerHeldDataDiskObject.TryGetPart(out DataDisk heldDataDisk)
-                                    && !applicableRecipes.ContainsKey(heldDataDisk.Data)
-                                    && ItemModding.ModAppropriate(selectedObject, heldDataDisk.Data))
+                                if (playerHeldDataDiskObject.TryGetPart(out DataDisk playerHeldDataDisk)
+                                    && ItemModding.ModAppropriate(selectedObject, playerHeldDataDisk.Data)
+                                    && vendor.HasSkill(playerHeldDataDisk.GetRequiredSkill())
+                                    && !applicableRecipes.ContainsKey(playerHeldDataDisk.Data))
                                 {
-                                    applicableRecipes.Add(heldDataDisk.Data, "your inventory");
+                                    applicableRecipes.Add(playerHeldDataDisk.Data, "your inventory");
                                 }
                             }
                         }
@@ -509,20 +728,32 @@ namespace XRL.World.Parts
                         GameObject temporaryIngredientObject = null;
                         if (!modRecipe.Ingredient.IsNullOrEmpty())
                         {
+                            List<string> recipeIngredientBlueprints = modRecipe.Ingredient.CachedCommaExpansion();
+
+                            string ingredientsMessage = $"This mod requires {recipeIngredientBlueprints.Count.Things("ingredient").Color("Y")} to apply:\n";
+                            foreach (string recipeIngredient in recipeIngredientBlueprints)
+                            {
+                                string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(recipeIngredient)?.DisplayName();
+                                if (!ingredientDisplayName.IsNullOrEmpty())
+                                {
+                                    ingredientsMessage += $"\u0007 {ingredientDisplayName}\n";
+                                }
+                            }
+                            for (int i = 0; i < 25; i++)
+                            {
+                                ingredientsMessage += Const.HONLY;
+                            }
+
                             recipeIngredientSupplier = PickASupplier(
                                 ForObject: selectedObject,
                                 Title: "Choose who supplies ingredients",
-                                Message: $"This modification requires ingredients to apply.\n\n"
-                                + $"Would you like to supply your own "
-                                + $"or see if {vendor.t()} can provide them for an additional cost?");
+                                Message: ingredientsMessage);
 
                             if (recipeIngredientSupplier == null)
                             {
                                 return false;
                             }
                             vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
-
-                            List<string> recipeIngredientBlueprints = modRecipe.Ingredient.CachedCommaExpansion();
                             foreach (string recipeIngredient in recipeIngredientBlueprints)
                             {
                                 ingredientObject = recipeIngredientSupplier.Inventory.FindObjectByBlueprint(recipeIngredient, Temporary.IsNotTemporary);
@@ -555,11 +786,24 @@ namespace XRL.World.Parts
                             }
                         }
 
+                        BitCost bitCost = new();
+                        int recipeTier = Tier.Constrain(modRecipe.Tier);
+
+                        int modSlotsUsed = selectedObject.GetModificationSlotsUsed();
+                        int noCostMods = selectedObject.GetIntProperty("NoCostMods");
+
+                        int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + selectedObject.GetTechTier());
+
+                        bitCost.Increment(BitType.TierBits[recipeTier]);
+                        bitCost.Increment(BitType.TierBits[existingModsTier]);
+
                         GameObject recipeBitSupplier = PickASupplier(
                             ForObject: selectedObject,
-                            Title: "Choose who supplies bits",
-                            Message: $"Would you like to supply your own bits "
-                            + $"or see if {vendor.t()} can provide them for an additional cost?");
+                            Title: $"| Bit Cost |".Color("y") + "\n"
+                            + $"{bitCost}" + "\n"
+                            + $":::".Color("y") + "\n",
+                            Message: "Choose who supplies bits",
+                            CenterIntro: true);
 
                         if (recipeBitSupplier == null)
                         {
@@ -569,11 +813,6 @@ namespace XRL.World.Parts
 
                         BitLocker bitSupplierBitLocker = recipeBitSupplier.RequirePart<BitLocker>();
 
-                        BitCost bitCost = new();
-                        int recipeTier = Tier.Constrain(modRecipe.Tier);
-                        int existingModsTier = Tier.Constrain(selectedObject.GetModificationSlotsUsed() - selectedObject.GetIntProperty("NoCostMods") + selectedObject.GetTechTier());
-                        bitCost.Increment(BitType.TierBits[recipeTier]);
-                        bitCost.Increment(BitType.TierBits[existingModsTier]);
                         ModifyBitCostEvent.Process(recipeBitSupplier, bitCost, "Mod");
 
                         if (!bitSupplierBitLocker.HasBits(bitCost))
@@ -631,6 +870,34 @@ namespace XRL.World.Parts
                 }
             }
             return base.HandleEvent(E);
+        }
+
+        [WishCommand(Command = "give random bits")]
+        public static void GiveRandomBitsWish()
+        {
+            BitLocker bitLocker = GiveRandomBits(The.Player, false);
+            Popup.Show(bitLocker.GetBitsString());
+        }
+
+        [WishCommand(Command = "random bits summary")]
+        public static void RandomBitsSummaryWish()
+        {
+            BitLocker bitLocker = null;
+            BitLocker originalBitLocker = The.Player.RequirePart<BitLocker>().DeepCopy(The.Player) as BitLocker;
+            for (int i = 0; i < 100; i++)
+            {
+                bitLocker = GiveRandomBits(The.Player, false);
+            }
+            foreach (char bit in BitType.BitOrder)
+            {
+                if (bitLocker.BitStorage.ContainsKey(bit))
+                {
+                    bitLocker.BitStorage[bit] /= 100;
+                }
+            }
+            Popup.Show(bitLocker.GetBitsString());
+            The.Player.RemovePart(bitLocker);
+            The.Player.AddPart(originalBitLocker);
         }
     }
 }
