@@ -54,7 +54,7 @@ namespace XRL.World.Parts
                 string bits = "bit";
                 if (tinkerItem != null)
                 {
-                    char bit = BitType.ReverseCharTranslateBit(tinkerItem.Bits[0]);
+                    char bit = tinkerItem.Bits[0];
                     if (BitType.BitMap.ContainsKey(bit))
                     {
                         BitType bitType = BitType.BitMap[bit];

@@ -218,13 +218,13 @@ namespace XRL.World.Parts
                         {
                             bytes = byteBlueprint.DisplayName();
                         }
-                        render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                     }
                     if (BitType.BitMap.ContainsKey(render.TileColor[1]))
                     {
                         BitType bitType = BitType.BitMap[render.TileColor[1]];
                         bits = bitType.Description;
                     }
+                    render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                 }
                 description.Short = description.Short.Replace("*32 bytes*", 32.Things(bytes));
                 description.Short = description.Short.Replace("*256 bits*", 256.Things(bits));
@@ -278,27 +278,24 @@ namespace XRL.World.Parts
 
                 if (!bytesBucket.IsNullOrEmpty())
                 {
-                    if (!bytesBucket.IsNullOrEmpty())
+                    Dictionary<string, string> receivedBytesSortable = new();
+                    List<string> byteBlueprints = new();
+                    List<string> receivedBytesList = new();
+                    foreach ((string _, GameObject byteStack) in bytesBucket)
                     {
-                        Dictionary<string, string> receivedBytesSortable = new();
-                        List<string> byteBlueprints = new();
-                        List<string> receivedBytesList = new();
-                        foreach ((string _, GameObject byteStack) in bytesBucket)
-                        {
-                            byteBlueprints.Add(byteStack.Blueprint);
-                            receivedBytesSortable.Add(byteStack.Blueprint, byteStack.Count.Things(byteStack.Render.DisplayName));
-                        }
-                        byteBlueprints.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
-                        foreach (string byteBlueprint in byteBlueprints)
-                        {
-                            receivedBytesList.Add(receivedBytesSortable[byteBlueprint]);
-                        }
-                        string thisPunnet = E.Command == COMMAND_UNPACK ? ParentObject.DisplayName : amountToUnpack.Things(ParentObject.DisplayName);
-                        string receivedString = Grammar.MakeAndList(receivedBytesList);
-                        E.Actor.ShowSuccess($"{E.Actor.GetVerb("unpack")} {E.Actor.Poss(thisPunnet)} into {receivedString}");
-                        return true;
+                        byteBlueprints.Add(byteStack.Blueprint);
+                        receivedBytesSortable.Add(byteStack.Blueprint, byteStack.Count.Things(byteStack.Render.DisplayName));
                     }
+                    byteBlueprints.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
+                    foreach (string byteBlueprint in byteBlueprints)
+                    {
+                        receivedBytesList.Add(receivedBytesSortable[byteBlueprint]);
+                    }
+                    string thisPunnet = E.Command == COMMAND_UNPACK ? ParentObject.DisplayName : amountToUnpack.Things(ParentObject.DisplayName);
+                    string receivedString = Grammar.MakeAndList(receivedBytesList);
+                    E.Actor.ShowSuccess($"{E.Actor.GetVerb("unpack")} {E.Actor.Poss(thisPunnet)} into {receivedString}");
                     E.RequestInterfaceExit();
+                    return true;
                 }
             }
             return base.HandleEvent(E);

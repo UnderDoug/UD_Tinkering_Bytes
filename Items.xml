@@ -1,5 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <objects>
+
+  <object Name="DataDisk" Load="Merge">
+    <part Name="UD_Byte_DataDisk" />
+  </object>
+    
   <object Name="BaseByte" Inherits="Scrap">
     <part Name="Render" DisplayName="[{{y|byte}}]" 
           DetailColor="y" Tile="0_byte.png" />

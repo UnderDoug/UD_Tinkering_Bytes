@@ -348,7 +348,7 @@ namespace XRL.World.Parts
                             }
                             if (!reverseEngineerMessage.IsNullOrEmpty())
                             {
-                                string eurikaMessage = $"Eureka! {Vendor.T()} may now {reverseEngineerMessage}.".Color("G");
+                                string eurikaMessage = $"Eureka! {Vendor.it} may now {reverseEngineerMessage}.".Color("G");
 
                                 if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                                 {
@@ -504,9 +504,9 @@ namespace XRL.World.Parts
                     The.Player.RequirePart<BitLocker>().AddBits(Disassembly.BitsDone);
                     if (Disassembly.DoBitMessage)
                     {
-                        finishedMessage = "You receive tinkering bits <{{|" + 
-                            BitType.GetDisplayString(Disassembly.BitsDone) + 
-                            "}}> from " + Vendor.t() + ".";
+                        finishedMessage = $"{Vendor.It}{Vendor.GetVerb("give")} " +
+                            $"{The.Player.t()} tinkering bits " +
+                            $"<{BitType.GetDisplayString(Disassembly.BitsDone)}>.";
                     }
                 }
                 else if (Disassembly.WasTemporary)
@@ -517,7 +517,7 @@ namespace XRL.World.Parts
                 {
                     SB.Compound(finishedMessage, ' ');
                 }
-                if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
+                if (false && Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                 {
                     MessageQueue.AddPlayerMessage(SB.ToString());
                 }
