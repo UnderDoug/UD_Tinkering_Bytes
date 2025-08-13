@@ -3,15 +3,16 @@
 using UD_Tinkering_Bytes;
 
 using UD_Blink_Mutation;
+using XRL.World.Tinkering;
 
 namespace XRL.World.Parts
 {
     [Serializable]
-    public class UD_ByteReverseEngineer : IScribedPart, IModEventHandler<GetVendorTinkeringBonusEvent>
+    public class UD_TinkeringByte : IScribedPart, IModEventHandler<GetVendorTinkeringBonusEvent>
     {
         public static bool WantTinkerBonusMax = true;
 
-        public UD_ByteReverseEngineer()
+        public UD_TinkeringByte()
         {
         }
 
@@ -26,7 +27,8 @@ namespace XRL.World.Parts
         }
         public override bool WantEvent(int ID, int Cascade)
         {
-            return base.WantEvent(ID, Cascade);
+            return base.WantEvent(ID, Cascade)
+                || ID == AfterObjectCreatedEvent.ID;
         }
         public virtual bool HandleEvent(GetVendorTinkeringBonusEvent E)
         {
@@ -41,6 +43,25 @@ namespace XRL.World.Parts
                     Debug.LastIndent = indent;
                     return true;
                 }
+            }
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(AfterObjectCreatedEvent E)
+        {
+            if (E.Object != null && E.Object == ParentObject && E.Object.TryGetPart(out Description description))
+            {
+                TinkerItem tinkerItem = E.Object.GetPart<TinkerItem>();
+                string bits = "bit";
+                if (tinkerItem != null)
+                {
+                    char bit = BitType.ReverseCharTranslateBit(tinkerItem.Bits[0]);
+                    if (BitType.BitMap.ContainsKey(bit))
+                    {
+                        BitType bitType = BitType.BitMap[bit];
+                        bits = bitType.Description;
+                    }
+                }
+                description.Short = description.Short.Replace("*8 bits*", 8.Things(bits));
             }
             return base.HandleEvent(E);
         }

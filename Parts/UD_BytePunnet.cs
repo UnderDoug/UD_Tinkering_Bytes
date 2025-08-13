@@ -194,8 +194,42 @@ namespace XRL.World.Parts
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
+                || ID == AfterObjectCreatedEvent.ID
                 || ID == GetInventoryActionsEvent.ID
                 || ID == InventoryActionEvent.ID;
+        }
+        public override bool HandleEvent(AfterObjectCreatedEvent E)
+        {
+            if (E.Object != null && E.Object == ParentObject && E.Object.TryGetPart(out Description description))
+            {
+                Render render = E.Object.GetPart<Render>();
+                string bytes = "byte";
+                string bits = "bit";
+                if (render != null)
+                {
+                    if (Bytes.Length > 1)
+                    {
+                        bytes = render.DisplayName.Replace("punnet of ", "");
+                    }
+                    else
+                    {
+                        GameObjectBlueprint byteBlueprint = GameObjectFactory.Factory.GetBlueprint(Bytes[0] + BYTE_BLUEPRINT_END);
+                        if (byteBlueprint != null)
+                        {
+                            bytes = byteBlueprint.DisplayName();
+                        }
+                        render.DisplayName.Replace("*bytes*", bytes.Pluralize());
+                    }
+                    if (BitType.BitMap.ContainsKey(render.TileColor[1]))
+                    {
+                        BitType bitType = BitType.BitMap[render.TileColor[1]];
+                        bits = bitType.Description;
+                    }
+                }
+                description.Short = description.Short.Replace("*32 bytes*", 32.Things(bytes));
+                description.Short = description.Short.Replace("*256 bits*", 256.Things(bits));
+            }
+            return base.HandleEvent(E);
         }
         public override bool HandleEvent(GetInventoryActionsEvent E)
         {
