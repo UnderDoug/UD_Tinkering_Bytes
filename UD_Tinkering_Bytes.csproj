@@ -7,7 +7,7 @@
 		<Company />
 	</PropertyGroup>
 	<ItemGroup>
-	  <Folder Include="Textures\" />
+	  <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Reference Include="UD_Blink_Mutation.dll">

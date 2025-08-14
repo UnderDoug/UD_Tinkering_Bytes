@@ -17,6 +17,7 @@ using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 
 using UD_Blink_Mutation;
+using UD_Vendor_Actions;
 
 using UD_Tinkering_Bytes;
 
@@ -560,7 +561,7 @@ namespace XRL.World.Parts
                     scrap = GetBitScrapItem(bit);
                     if (GameObject.Validate(ref scrap))
                     {
-                        totalValue += TradeUI.GetValue(scrap, Vendor != null);
+                        totalValue += TradeUI.GetValue(scrap, Vendor != null ? true : null);
                         scrap.Obliterate();
                     }
                 }
@@ -582,7 +583,7 @@ namespace XRL.World.Parts
                     GameObject ingredientObject = GameObjectFactory.Factory.CreateSampleObject(ingredient);
                     if (ingredientObject != null)
                     {
-                        totalValue += TradeUI.GetValue(ingredientObject, Vendor != null);
+                        totalValue += TradeUI.GetValue(ingredientObject, Vendor != null ? true : null);
                     }
                 }
             }
@@ -966,9 +967,9 @@ namespace XRL.World.Parts
 
                         int totalDramsCost = (int)E.DramsCost;
 
-                        double itemDramValue = TradeUI.GetValue(sampleItem);
+                        double itemDramValue = TradeUI.GetValue(sampleItem, true);
 
-                        double expertiseDramValue = TradeUI.GetValue(dataDiskObject) / 4;
+                        double expertiseDramValue = TradeUI.GetValue(dataDiskObject, true) / 4;
 
                         List<string> ingredientsList = null;
                         double ingredientsDramValue = 0;
@@ -998,7 +999,7 @@ namespace XRL.World.Parts
 
                         int depositDramCost = (int)(totalDramsCost - itemDramValue);
 
-                        if (!vendorSuppliesIngredients && !vendorSuppliesBits)
+                        if ((!buildRecipe.Ingredient.IsNullOrEmpty() && !vendorSuppliesIngredients) || !vendorSuppliesBits)
                         {
                             depositDramCost = 0;
                         }
@@ -1018,6 +1019,7 @@ namespace XRL.World.Parts
                             dividerLine += Const.HONLY;
                         }
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
+                        SB.Append("[").Append(buildRecipe.DisplayName.Color("y")).Append("]").AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
 
                         if (itemDramValue > materialsDramValue)
@@ -1029,13 +1031,13 @@ namespace XRL.World.Parts
                         {
                             SB.Append("Labour && Expertise: ").AppendColored("C", ((int)(labourDramValue + expertiseDramValue)).Things("dram")).AppendLine();
                         }
-                        if (vendorSuppliesIngredients)
+                        if (!buildRecipe.Ingredient.IsNullOrEmpty() && vendorSuppliesIngredients)
                         {
                             SB.Append($"{ingredientsList.Count.Things("Ingredient")}: ").AppendColored("C", ((int)ingredientsDramValue).Things("dram")).AppendLine();
                             foreach (string ingredient in ingredientsList)
                             {
                                 string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(ingredient)?.DisplayName();
-                                SB.Append($"\u0007 {ingredientDisplayName}\n").AppendLine();
+                                SB.AppendColored("K", "\u0007").Append($" {ingredientDisplayName}\n").AppendLine();
                             }
                         }
                         if (vendorSuppliesBits)
@@ -1044,9 +1046,9 @@ namespace XRL.World.Parts
                         }
                         if (vendorSuppliesIngredients || vendorSuppliesBits)
                         {
-                            SB.Append("Total cost to to tinker item: ").AppendColored("C", totalDramsCost.Things("dram")).AppendLine();
+                            SB.Append("Total cost to tinker item: ").AppendColored("C", totalDramsCost.Things("dram")).AppendLine();
                         }
-                        if (depositDramCost > 0)
+                        if (depositDramCost > 0 && depositDramCost < totalDramsCost)
                         {
                             SB.Append(dividerLine.Color("K")).AppendLine();
                             SB.Append("Will tinker and hold item for desposit of ").AppendColored("C", depositDramCost.Things("dram")).AppendLine();
@@ -1383,6 +1385,8 @@ namespace XRL.World.Parts
                             dividerLine += Const.HONLY;
                         }
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
+                        SB.Append("[Apply ").Append(modRecipe.DisplayName.Color("y"));
+                        SB.Append(" to ").Append(selectedObject.ShortDisplayNameSingle).Append("]").AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
                         if (vendorsRecipe)
                         {
@@ -1393,13 +1397,13 @@ namespace XRL.World.Parts
                             SB.Append("Labour: ");
                         }
                         SB.AppendColored("C", ((int)markUpDramValue).Things("dram")).AppendLine();
-                        if (vendorSuppliesIngredients)
+                        if (!modRecipe.Ingredient.IsNullOrEmpty() && vendorSuppliesIngredients)
                         {
                             SB.Append($"{ingredientsList.Count.Things("Ingredient")}: ").AppendColored("C", ((int)ingredientsDramValue).Things("dram")).AppendLine();
                             foreach (string ingredient in ingredientsList)
                             {
                                 string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(ingredient)?.DisplayName();
-                                SB.Append($"\u0007 {ingredientDisplayName}\n").AppendLine();
+                                SB.AppendColored("K", "\u0007").Append($" {ingredientDisplayName}\n").AppendLine();
                             }
                         }
                         if (vendorSuppliesBits)

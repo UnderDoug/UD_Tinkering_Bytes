@@ -3,7 +3,6 @@
   
   <!-- Adds a handler for the VenderActionEvents added by this mod -->
   <object Name="Creature" Load="Merge">
-    <part Name="UD_VendorActionHandler" />
     <part Name="UD_VendorDisassembly" />
     <part Name="UD_VendorTinkering" />
   </object>

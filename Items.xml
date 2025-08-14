@@ -68,7 +68,7 @@
     <part Name="Commerce" Value="280" />
   </object>
   <object Name="4 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{v|4}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{c|4}}-{{y|byte}}"
           TileColor="&amp;c" ColorString="&amp;c"
           Tile="4_byte.png" />
     <part Name="TinkerItem" Bits="44444444" />

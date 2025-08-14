@@ -5,5 +5,9 @@
     "version": "0.0.1",
     "author": "{{K-g-G-Y-G-g-K alternation|UnderDoug}}",
     "tags": "Tinkering,Extension,Quality of life",
-    "PreviewImage": "preview.png"
+    "PreviewImage": "preview.png",
+    "LoadAfter": "UD_Vendor_Actions",
+    "Dependencies": {
+        "UD_Vendor_Actions": ">=0.0.1"
+    }
 }
