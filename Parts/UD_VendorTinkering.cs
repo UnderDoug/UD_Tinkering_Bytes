@@ -16,11 +16,8 @@ using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 
+using UD_Blink_Mutation;
 using UD_Vendor_Actions;
-
-using UD_Modding_Toolbox;
-
-using static UD_Modding_Toolbox.Const;
 
 using UD_Tinkering_Bytes;
 
@@ -315,73 +312,31 @@ namespace XRL.World.Parts
             Dictionary<char, (int low, int high)> bitRanges = new();
             if (!bitList.IsNullOrEmpty())
             {
-                int upperLimit = bitList.Count;
-                int firstBreakPoint = upperLimit / 3;
-                int secondBreakPoint = firstBreakPoint * 2;
                 foreach (char bit in bitList)
                 {
                     bitRanges.Add(bit, (0, 0));
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Disassemble)))
                 {
+                    int upperLimit = bitList.Count / 3;
                     for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.low += 25;
-                            currentRange.high += 50;
-                        }
-                        else if (i < secondBreakPoint)
-                        {
-                            currentRange.high += 15;
-                        }
-                        else if (i < bitList.Count - 2)
-                        {
-                            currentRange.high += 10;
-                        }
-                        else
-                        {
-                            if (2.in10())
-                            {
-                                currentRange.low += 1;
-                                currentRange.high += 1;
-                            }
-                            currentRange.high += 2;
-                        }
-
-                        bitRanges[bitIndex] = currentRange;
-                    }
-                }
-                if (Tinker.HasSkill(nameof(Tinkering_Scavenger)))
-                {
-                    for (int i = 0; i < secondBreakPoint; i++)
-                    {
-                        char bitIndex = bitList[i];
-                        (int low, int high) currentRange = bitRanges[bitIndex];
-
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.low += 25;
-                            currentRange.high += 50;
-                        }
-                        else if (i < secondBreakPoint)
-                        {
-                            currentRange.high += 15;
-                        }
-
+                        currentRange.low += 25;
+                        currentRange.high += 50;
                         bitRanges[bitIndex] = currentRange;
                     }
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_ReverseEngineer)))
                 {
-                    for (int i = 0; i < secondBreakPoint; i++)
+                    int breakPoint = bitList.Count / 3;
+                    int upperLimit = breakPoint * 2;
+                    for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-                        if (i < firstBreakPoint)
+                        if (i < breakPoint)
                         {
                             currentRange.high += 25;
                         }
@@ -395,7 +350,8 @@ namespace XRL.World.Parts
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
                 {
-                    for (int i = 0; i < firstBreakPoint; i++)
+                    int upperLimit = bitList.Count / 3;
+                    for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
@@ -406,11 +362,13 @@ namespace XRL.World.Parts
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
                 {
-                    for (int i = 0; i < secondBreakPoint; i++)
+                    int breakPoint = bitList.Count / 3;
+                    int upperLimit = breakPoint * 2;
+                    for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-                        if (i < firstBreakPoint)
+                        if (i < breakPoint)
                         {
                             currentRange.high += 25;
                         }
@@ -424,6 +382,8 @@ namespace XRL.World.Parts
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
                 {
+                    int firstBreakPoint = bitList.Count / 3;
+                    int secondBreakPoint = firstBreakPoint * 2;
                     for (int i = 0; i < bitList.Count; i++)
                     {
                         char bitIndex = bitList[i];
@@ -808,19 +768,19 @@ namespace XRL.World.Parts
                 if (!byteGameObjectBlueprints.IsNullOrEmpty())
                 {
                     Debug.Entry(3, $"Spinning up data disks for {ParentObject?.DebugName ?? Const.NULL}...", Indent: 0);
-                    foreach (GameObjectBlueprint byteGameObjectBlueprint in byteGameObjectBlueprints)
+                    foreach (GameObjectBlueprint byteBlueprint in byteGameObjectBlueprints)
                     {
-                        Debug.LoopItem(3, $"{byteGameObjectBlueprint.DisplayName().Strip()}", Indent: 1);
-                        byteBlueprints.Add(byteGameObjectBlueprint.Name);
+                        Debug.LoopItem(3, $"{byteBlueprint.DisplayName().Strip()}", Indent: 1);
+                        byteBlueprints.Add(byteBlueprint.Name);
                     }
                 }
                 if (!byteBlueprints.IsNullOrEmpty())
                 {
-                    foreach (TinkerData tinkerRecipe in TinkerData.TinkerRecipes)
+                    foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
                     {
-                        if (byteBlueprints.Contains(tinkerRecipe.Blueprint) && !KnownRecipes.Contains(tinkerRecipe))
+                        if (byteBlueprints.Contains(tinkerDatum.Blueprint) && !KnownRecipes.Contains(tinkerDatum))
                         {
-                            KnownRecipes.Add(tinkerRecipe);
+                            KnownRecipes.Add(tinkerDatum);
                         }
                     }
                 }
@@ -1485,13 +1445,6 @@ namespace XRL.World.Parts
                 }
             }
             return base.HandleEvent(E);
-        }
-
-        [WishCommand(Command = "give random new bits")]
-        public static void GiveRandomNewBitsWish()
-        {
-            BitLocker bitLocker = GiveRandomBits(The.Player, false);
-            Popup.Show(bitLocker.GetBitsString());
         }
 
         [WishCommand(Command = "give random bits")]

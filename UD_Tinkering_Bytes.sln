@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36408.4 d17.14
+VisualStudioVersion = 17.14.36310.24
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UD_Tinkering_Bytes", "UD_Tinkering_Bytes.csproj", "{6FAE9C23-5708-446C-3F09-8C3BAFF9E168}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UD_Modding_Toolbox", "..\UD_Modding_Toolbox\UD_Modding_Toolbox.csproj", "{DF3E783B-EF08-EEB6-80AB-551E1B8DA2E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UD_Vendor_Actions", "..\UD_Vendor_Actions\UD_Vendor_Actions.csproj", "{43C2E4C2-0448-9906-9879-5230CBBF2E06}"
 EndProject
@@ -19,10 +17,6 @@ Global
 		{6FAE9C23-5708-446C-3F09-8C3BAFF9E168}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6FAE9C23-5708-446C-3F09-8C3BAFF9E168}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6FAE9C23-5708-446C-3F09-8C3BAFF9E168}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DF3E783B-EF08-EEB6-80AB-551E1B8DA2E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DF3E783B-EF08-EEB6-80AB-551E1B8DA2E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DF3E783B-EF08-EEB6-80AB-551E1B8DA2E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DF3E783B-EF08-EEB6-80AB-551E1B8DA2E8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{43C2E4C2-0448-9906-9879-5230CBBF2E06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{43C2E4C2-0448-9906-9879-5230CBBF2E06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{43C2E4C2-0448-9906-9879-5230CBBF2E06}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -32,6 +26,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {1E48D599-8986-4C90-B661-066F7B21F157}
+		SolutionGuid = {E38515FC-1222-47F4-BA51-8582218A3F21}
 	EndGlobalSection
 EndGlobal

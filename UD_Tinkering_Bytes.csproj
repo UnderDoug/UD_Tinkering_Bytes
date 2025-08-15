@@ -6,15 +6,13 @@
 		<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
 		<Company />
 	</PropertyGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Reference Include="UD_Blink_Mutation.dll">
+	    <HintPath>..\..\..\ModAssemblies\UD_Blink_Mutation.dll</HintPath>
+	  </Reference>
+	</ItemGroup>
   <Import Project="../Mods.csproj" />
-  <ItemGroup>
-    <ProjectReference Include="..\UD_Modding_Toolbox\UD_Modding_Toolbox.csproj">
-      <Project>DF3E783B-EF08-EEB6-80AB-551E1B8DA2E8</Project>
-      <Name>UD_Modding_Toolbox</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj">
-      <Project>43C2E4C2-0448-9906-9879-5230CBBF2E06</Project>
-      <Name>UD_Vendor_Actions</Name>
-    </ProjectReference>
-  </ItemGroup>
 </Project>
