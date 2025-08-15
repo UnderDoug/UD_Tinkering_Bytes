@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,7 +11,10 @@ using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 
-using UD_Blink_Mutation;
+using UD_Modding_Toolbox;
+
+using static UD_Modding_Toolbox.Const;
+
 using UD_Vendor_Actions;
 
 using UD_Tinkering_Bytes;

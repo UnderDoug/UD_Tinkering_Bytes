@@ -6,8 +6,9 @@
     "author": "{{K-g-G-Y-G-g-K alternation|UnderDoug}}",
     "tags": "Tinkering,Extension,Quality of life",
     "PreviewImage": "preview.png",
-    "LoadAfter": "UD_Vendor_Actions",
+    "LoadAfter": [ "UD_Modding_Toolbox", "UD_Vendor_Actions" ],
     "Dependencies": {
+        "UD_Modding_Toolbox": ">=0.0.1",
         "UD_Vendor_Actions": ">=0.0.1"
     }
 }
