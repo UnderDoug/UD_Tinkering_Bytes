@@ -24,8 +24,8 @@ namespace XRL.World.Parts
     {
         private static bool doDebug = true;
 
-        public const string COMMAND_DISASSEMBLE = "VendorCommand_Disassemble";
-        public const string COMMAND_DISASSEMBLE_ALL = "VendorCommand_DisassembleAll";
+        public const string COMMAND_DISASSEMBLE = "CmdVendorDisassemble";
+        public const string COMMAND_DISASSEMBLE_ALL = "CmdVendorDisassembleAll";
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Tinkering_Disassemble)) && !ParentObject.IsPlayer();
 
@@ -349,7 +349,7 @@ namespace XRL.World.Parts
                             }
                             if (!reverseEngineerMessage.IsNullOrEmpty())
                             {
-                                string eurikaMessage = $"Eureka! {Vendor.it} may now {reverseEngineerMessage}.".Color("G");
+                                string eurikaMessage = $"\nEureka! {Vendor.it} may now {reverseEngineerMessage}.".Color("G");
 
                                 if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                                 {
@@ -357,7 +357,7 @@ namespace XRL.World.Parts
                                 }
                                 else
                                 {
-                                    Disassembly.ReverseEngineeringMessage = $"{Disassembly.ReverseEngineeringMessage}\n\n{eurikaMessage}";
+                                    Disassembly.ReverseEngineeringMessage = $"{Disassembly.ReverseEngineeringMessage}\n{eurikaMessage}";
                                 }
                             }
                             if (tinkerData != null)
