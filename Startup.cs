@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using UD_Blink_Mutation;
+﻿using System.Collections.Generic;
+
 using XRL;
 using XRL.UI;
 using XRL.World;
-using XRL.World.Parts.Mutation;
 using XRL.World.Tinkering;
-using Debug = UD_Blink_Mutation.Debug;
+
+using UD_Modding_Toolbox;
 
 namespace UD_Tinkering_Bytes
 {

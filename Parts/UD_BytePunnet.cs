@@ -12,7 +12,7 @@ using XRL.World.Tinkering;
 
 using UD_Tinkering_Bytes;
 
-using UD_Blink_Mutation;
+using UD_Modding_Toolbox;
 
 namespace XRL.World.Parts
 {

@@ -16,7 +16,7 @@ using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 
-using UD_Blink_Mutation;
+using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
 using UD_Tinkering_Bytes;
@@ -253,54 +253,6 @@ namespace XRL.World.Parts
             return value;
         }
 
-        public static GameObject PickASupplier(GameObject Vendor, GameObject ForObject, string Title, string Message = null, bool CenterIntro = false, BitCost BitCost = null)
-        {
-            BitCost playerBitCost = null;
-            BitCost vendorBitCost = null;
-            if (BitCost != null)
-            {
-                playerBitCost = new();
-                vendorBitCost = new();
-                playerBitCost.Import(BitCost.ToBits());
-                vendorBitCost.Import(BitCost.ToBits());
-                ModifyBitCostEvent.Process(The.Player, playerBitCost, "Build");
-                ModifyBitCostEvent.Process(Vendor, vendorBitCost, "Build");
-            }
-            List<string> bitSupplyOptions = new()
-            {
-                $"Use my own if I have {(playerBitCost != null ? $"the required <{playerBitCost}> bits" : "them")}.",
-                $"Pay {Vendor.t()} to supply {(playerBitCost != null ? $"the required <{vendorBitCost}> bits" : "them")}.",
-            };
-            List<char> bitSupplyHotkeys = new()
-            {
-                'a',
-                'b',
-            };
-            List<IRenderable> bitSupplyIcons = new()
-            {
-                The.Player.RenderForUI(),
-                Vendor.RenderForUI()
-            };
-            return Popup.PickOption(
-                Title: Title,
-                Intro: Message,
-                Options: bitSupplyOptions,
-                Hotkeys: bitSupplyHotkeys,
-                Icons: bitSupplyIcons,
-                IntroIcon: ForObject.RenderForUI(),
-                AllowEscape: true,
-                CenterIntro: CenterIntro) switch
-            {
-                0 => The.Player,
-                1 => Vendor,
-                _ => null,
-            };
-        }
-        public GameObject PickASupplier(GameObject ForObject, string Title, string Message = null, bool CenterIntro = false, BitCost BitCost = null)
-        {
-            return PickASupplier(ParentObject, ForObject, Title, Message, CenterIntro, BitCost);
-        }
-
         public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true)
         {
             if (Tinker.TryGetPart(out BitLocker bitLocker) && ClearFirst)
@@ -435,37 +387,84 @@ namespace XRL.World.Parts
             return bitLocker;
         }
 
+        public static GameObject PickASupplier(GameObject Vendor, GameObject ForObject, string Title, string Message = null, bool CenterIntro = false, BitCost BitCost = null)
+        {
+            BitCost playerBitCost = null;
+            BitCost vendorBitCost = null;
+            if (BitCost != null)
+            {
+                playerBitCost = new();
+                vendorBitCost = new();
+                playerBitCost.Import(BitCost.ToBits());
+                vendorBitCost.Import(BitCost.ToBits());
+                ModifyBitCostEvent.Process(The.Player, playerBitCost, "Build");
+                ModifyBitCostEvent.Process(Vendor, vendorBitCost, "Build");
+            }
+            List<string> bitSupplyOptions = new()
+            {
+                $"Use my own if I have {(playerBitCost != null ? $"the required <{playerBitCost}> bits" : "them")}.",
+                $"Pay {Vendor.t()} to supply {(playerBitCost != null ? $"the required <{vendorBitCost}> bits" : "them")}.",
+            };
+            List<char> bitSupplyHotkeys = new()
+            {
+                'a',
+                'b',
+            };
+            List<IRenderable> bitSupplyIcons = new()
+            {
+                The.Player.RenderForUI(),
+                Vendor.RenderForUI()
+            };
+            return Popup.PickOption(
+                Title: Title,
+                Intro: Message,
+                Options: bitSupplyOptions,
+                Hotkeys: bitSupplyHotkeys,
+                Icons: bitSupplyIcons,
+                IntroIcon: ForObject.RenderForUI(),
+                AllowEscape: true,
+                CenterIntro: CenterIntro) switch
+            {
+                0 => The.Player,
+                1 => Vendor,
+                _ => null,
+            };
+        }
+        public GameObject PickASupplier(GameObject ForObject, string Title, string Message = null, bool CenterIntro = false, BitCost BitCost = null)
+        {
+            return PickASupplier(ParentObject, ForObject, Title, Message, CenterIntro, BitCost);
+        }
+
         public static bool PickIngredientSupplier(GameObject Vendor, GameObject ForObject, TinkerData TinkerData, out GameObject RecipeIngredientSupplier)
         {
             RecipeIngredientSupplier = Vendor;
 
             string itemOrMod = TinkerData.Type == "Build" ? "item" : "mod";
-            string craftOrApply = TinkerData.Type == "Build" ? "craft" : "apply";
+            string craftOrApply = TinkerData.Type == "Build" ? "tinker" : "apply";
 
             GameObject ingredientObject = null;
             GameObject temporaryIngredientObject = null;
             if (!TinkerData.Ingredient.IsNullOrEmpty())
             {
+                string modPrefix = TinkerData.Type == "Mod" ? $"[{"Mod".Color("W")}] " : "";
+
                 List<string> recipeIngredientBlueprints = TinkerData.Ingredient.CachedCommaExpansion();
 
-                string ingredientsMessage = $"This {itemOrMod} requires {recipeIngredientBlueprints.Count.Things("ingredient").Color("Y")} to {craftOrApply}:\n";
+                string ingredientsMessage = $"Ingredient{(recipeIngredientBlueprints.Count > 1 ? "s" : "")}:" + "\n";
                 foreach (string recipeIngredient in recipeIngredientBlueprints)
                 {
                     string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(recipeIngredient)?.DisplayName();
                     if (!ingredientDisplayName.IsNullOrEmpty())
                     {
-                        ingredientsMessage += $"\u0007 {ingredientDisplayName}\n";
+                        ingredientsMessage += $"\u0007 ".Color("K") + $"{ingredientDisplayName}" + "\n";
                     }
-                }
-                for (int i = 0; i < 25; i++)
-                {
-                    ingredientsMessage += Const.HONLY;
                 }
 
                 RecipeIngredientSupplier = PickASupplier(
                     Vendor: Vendor,
                     ForObject: ForObject,
-                    Title: "Choose who supplies ingredients",
+                    Title: $"{modPrefix}{TinkerData.DisplayName}" + "\n"
+                    + $"| {recipeIngredientBlueprints.Count.Things("Ingredient").Color("Y")} Required |" + "\n",
                     Message: ingredientsMessage);
 
                 if (RecipeIngredientSupplier == null)
@@ -639,7 +638,7 @@ namespace XRL.World.Parts
                 string comeBackToPickItUp = "";
                 if (VendorKeepsItem)
                 {
-                    string themIt = $"{(tinkerItem.NumberMade > 1 ? "them" : sampleItem.it)}";
+                    string themIt = $"{(tinkerItem.NumberMade > 1 || sampleItem.IsPlural ? "them" : sampleItem.it)}";
                     comeBackToPickItUp += "\n\n"
                         + $"Once you have the drams for {themIt}, come back to pick {themIt} up!";
                 }
@@ -1018,8 +1017,15 @@ namespace XRL.World.Parts
                         {
                             dividerLine += Const.HONLY;
                         }
+
+                        int numberMade = 1;
+                        TinkerItem tinkerItem = sampleItem.GetPart<TinkerItem>();
+                        if (tinkerItem != null)
+                        {
+                            numberMade = tinkerItem.NumberMade;
+                        }
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
-                        SB.Append("[").Append(buildRecipe.DisplayName.Color("y")).Append("]").AppendLine();
+                        SB.Append("Description: Tinker ").Append(numberMade.Things($"x {buildRecipe.DisplayName.Color("y")}")).AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
 
                         if (itemDramValue > materialsDramValue)
@@ -1033,7 +1039,12 @@ namespace XRL.World.Parts
                         }
                         if (!buildRecipe.Ingredient.IsNullOrEmpty() && vendorSuppliesIngredients)
                         {
-                            SB.Append($"{ingredientsList.Count.Things("Ingredient")}: ").AppendColored("C", ((int)ingredientsDramValue).Things("dram")).AppendLine();
+                            SB.Append($"{ingredientsList.Count.Things("Ingredient")}: ").AppendColored("C", ((int)ingredientsDramValue).Things("dram"));
+                            if (itemDramValue > materialsDramValue)
+                            {
+                                SB.Append(" (").AppendColored("K", "included in item value").Append(")");
+                            }
+                            SB.AppendLine();
                             foreach (string ingredient in ingredientsList)
                             {
                                 string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(ingredient)?.DisplayName();
@@ -1042,13 +1053,18 @@ namespace XRL.World.Parts
                         }
                         if (vendorSuppliesBits)
                         {
-                            SB.Append($"Bits <{bitCost}>: ").AppendColored("C", ((int)bitsDramValue).Things("dram")).AppendLine();
+                            SB.Append($"Bits <{bitCost}>: ").AppendColored("C", ((int)bitsDramValue).Things("dram"));
+                            if (itemDramValue > materialsDramValue)
+                            {
+                                SB.Append(" (").AppendColored("K", "included in item value").Append(")");
+                            }
+                            SB.AppendLine();
                         }
                         if (vendorSuppliesIngredients || vendorSuppliesBits)
                         {
                             SB.Append("Total cost to tinker item: ").AppendColored("C", totalDramsCost.Things("dram")).AppendLine();
                         }
-                        if (depositDramCost > 0 && depositDramCost < totalDramsCost)
+                        if (depositDramCost > 0 && depositDramCost < totalDramsCost && player.GetFreeDrams() < totalDramsCost)
                         {
                             SB.Append(dividerLine.Color("K")).AppendLine();
                             SB.Append("Will tinker and hold item for desposit of ").AppendColored("C", depositDramCost.Things("dram")).AppendLine();
@@ -1064,15 +1080,22 @@ namespace XRL.World.Parts
                             return false;
                         }
                         if (player.GetFreeDrams() < totalDramsCost
-                            && (depositDramCost > 0 && player.GetFreeDrams() > depositDramCost)
-                            && Popup.ShowYesNo(
-                            $"{player.T()}{player.GetVerb("do")} not have the required {totalDramsCost.Things("dram").Color("C")} to tinker this item.\n\n" +
-                            $"{vendor.T()} will tinker this item for {depositDramCost.Things("dram").Color("C")} of fresh water, " +
-                            $"however {vendor.t()} will hold onto it until you have the remaining {((int)itemDramValue).Things("dram").Color("C")} of fresh water.\n\n" +
-                            $"Please note: {vendor.it} will only hold onto this item for 2 restocks.\n\n{invoice}") == DialogResult.Yes)
+                            && (depositDramCost > 0 && player.GetFreeDrams() > depositDramCost))
                         {
-                            vendorHoldsItem = true;
-                        }
+                            DialogResult takeDeposit = Popup.ShowYesNo(
+                                $"{player.T()}{player.GetVerb("do")} not have the required {totalDramsCost.Things("dram").Color("C")} to tinker this item.\n\n" +
+                                $"{vendor.T()} will tinker this item for {depositDramCost.Things("dram").Color("C")} of fresh water, " +
+                                $"however {vendor.it} will hold onto it until you have the remaining {((int)itemDramValue).Things("dram").Color("C")} of fresh water.\n\n" +
+                                $"Please note: {vendor.T()} will only hold onto this item for 2 restocks.\n\n{invoice}");
+                            if (takeDeposit == DialogResult.Yes)
+                            {
+                                vendorHoldsItem = true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }                        
                         if (!vendorHoldsItem
                             && totalDramsCost > 0
                             && Popup.ShowYesNo($"{vendor.T()} will tinker this item for {totalDramsCost.Things("dram")} of fresh water." +
@@ -1385,8 +1408,8 @@ namespace XRL.World.Parts
                             dividerLine += Const.HONLY;
                         }
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
-                        SB.Append("[Apply ").Append(modRecipe.DisplayName.Color("y"));
-                        SB.Append(" to ").Append(selectedObject.ShortDisplayNameSingle).Append("]").AppendLine();
+                        SB.Append("Description: Apply ").Append(modRecipe.DisplayName.Color("y"));
+                        SB.Append(" to ").Append(selectedObject.ShortDisplayNameSingle).AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
                         if (vendorsRecipe)
                         {

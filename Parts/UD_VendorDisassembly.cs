@@ -12,7 +12,7 @@ using XRL.World.Capabilities;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 
-using UD_Blink_Mutation;
+using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
 using UD_Tinkering_Bytes;
@@ -492,7 +492,7 @@ namespace XRL.World.Parts
                 {
                     if (Disassembly.ReverseEngineeringMessage.Contains('\n'))
                     {
-                        SB.Append("\n\n").Append(Disassembly.ReverseEngineeringMessage).Append("\n\n");
+                        SB.AppendLines(2).Append(Disassembly.ReverseEngineeringMessage).AppendLines(2);
                     }
                     else
                     {
@@ -516,16 +516,9 @@ namespace XRL.World.Parts
                 }
                 if (!finishedMessage.IsNullOrEmpty())
                 {
-                    SB.Compound(finishedMessage, ' ');
+                    SB.AppendLine().Compound(finishedMessage, ' ');
                 }
-                if (false && Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
-                {
-                    MessageQueue.AddPlayerMessage(SB.ToString());
-                }
-                else
-                {
-                    Popup.Show(SB.ToString());
-                }
+                Popup.Show(SB.ToString());
             }
         }
 

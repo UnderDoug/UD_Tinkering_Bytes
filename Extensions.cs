@@ -16,5 +16,33 @@ namespace UD_Tinkering_Bytes
             }
             return output;
         }
+        public static StringBuilder AppendLines(this StringBuilder SB, string BeforeLines, int Lines, string AfterLines)
+        {
+            if (!BeforeLines.IsNullOrEmpty())
+            {
+                SB.Append(BeforeLines);
+            }
+            for (int i = 0; i < Lines; i++)
+            {
+                SB.AppendLine();
+            }
+            if (!AfterLines.IsNullOrEmpty())
+            {
+                SB.Append(AfterLines);
+            }
+            return SB;
+        }
+        public static StringBuilder AppendLines(this StringBuilder SB, int Lines, string AfterLines)
+        {
+            return SB.AppendLines(null, Lines, AfterLines);
+        }
+        public static StringBuilder AppendLines(this StringBuilder SB, string BeforeLines, int Lines)
+        {
+            return SB.AppendLines(BeforeLines, Lines, null);
+        }
+        public static StringBuilder AppendLines(this StringBuilder SB, int Lines)
+        {
+            return SB.AppendLines(null, Lines, null);
+        }
     }
 }

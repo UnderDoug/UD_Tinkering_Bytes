@@ -4,14 +4,14 @@
 		<PackageId>UD_Tinkering_Bytes</PackageId>
 		<Authors>UnderDoug</Authors>
 		<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
-		<Company />
+    <Title>UD Tinkering Bytes</Title>
 	</PropertyGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Reference Include="UD_Blink_Mutation.dll">
-	    <HintPath>..\..\..\ModAssemblies\UD_Blink_Mutation.dll</HintPath>
+	  <Reference Include="UD_Modding_Toolbox.dll">
+	    <HintPath>..\..\..\ModAssemblies\UD_Modding_Toolbox.dll</HintPath>
 	  </Reference>
 	</ItemGroup>
   <Import Project="../Mods.csproj" />

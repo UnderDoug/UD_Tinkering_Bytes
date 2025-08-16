@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 using XRL.World.Tinkering;
 
-using UD_Blink_Mutation;
+using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
 using UD_Tinkering_Bytes;

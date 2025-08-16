@@ -4,7 +4,7 @@ using System.Text;
 using XRL.Messages;
 using XRL.World;
 
-using UD_Blink_Mutation;
+using UD_Modding_Toolbox;
 
 namespace UD_Tinkering_Bytes
 {
