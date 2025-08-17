@@ -189,7 +189,7 @@ namespace XRL.World.Parts
                             int punnetDropCount = (int)Math.Floor((double)currentDroppableBits / bitsPerPunnet);
 
                             Debug.LoopItem(4,
-                                $"{nameof(bytePunnetBlueprints)}, " +
+                                $"{bytePunnetBlueprints}, " +
                                 $"{nameof(punnetDropCount)}: {punnetDropCount}",
                                 Indent: indent + 4, Toggle: doDebug);
 
@@ -202,7 +202,7 @@ namespace XRL.World.Parts
                             int byteDropCount = (int)Math.Floor((double)currentDroppableBits / bitsPerByte);
 
                             Debug.LoopItem(4,
-                                $"{nameof(byteBlueprints)}, " +
+                                $"{byteBlueprints}, " +
                                 $"{nameof(byteDropCount)}: {byteDropCount}",
                                 Indent: indent + 4, Toggle: doDebug);
 
@@ -215,7 +215,7 @@ namespace XRL.World.Parts
                             string scrapBlueprint = GetScrapBlueprintFromColor(bit);
 
                             Debug.LoopItem(4,
-                                $"{nameof(scrapBlueprint)}, " +
+                                $"{scrapBlueprint}, " +
                                 $"{nameof(currentDroppableBits)}: {currentDroppableBits}",
                                 Indent: indent + 4, Toggle: doDebug);
 
@@ -295,8 +295,6 @@ namespace XRL.World.Parts
                                 ParentEvent: E);
 
                             DroppedEvent.Send(ParentObject, bitItemToDrop);
-
-                            Debug.Entry(4, $"{nameof(DroppedEvent)} sent.", Indent: indent + 3, Toggle: doDebug);
                         }
                     }
                     catch (Exception x)
