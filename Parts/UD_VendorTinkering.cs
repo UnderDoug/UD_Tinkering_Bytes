@@ -23,6 +23,8 @@ using static UD_Modding_Toolbox.Const;
 
 using UD_Tinkering_Bytes;
 
+using static UD_Tinkering_Bytes.Utils;
+
 using SerializeField = UnityEngine.SerializeField;
 
 namespace XRL.World.Parts
@@ -173,22 +175,7 @@ namespace XRL.World.Parts
             if (Bit != default)
             {
                 char bit = BitType.CharTranslateBit(Bit);
-                string scrapBlueprint = bit switch
-                {
-                    'A' => "Scrap Metal",
-                    'B' => "Scrap Crystal",
-                    'C' => "Scrap Electronics",
-                    'D' => "Scrap Energy",
-                    '1' => "Scrap 1",
-                    '2' => "Scrap 2",
-                    '3' => "Scrap 3",
-                    '4' => "Scrap 4",
-                    '5' => "Scrap 5",
-                    '6' => "Scrap 6",
-                    '7' => "Scrap 7",
-                    '8' => "Scrap 8",
-                    _ => null,
-                };
+                string scrapBlueprint = GetScrapBlueprintFromBit(bit);
                 if (!scrapBlueprint.IsNullOrEmpty())
                 {
                     scrapItem = GameObjectFactory.Factory.CreateSampleObject(scrapBlueprint);
@@ -1005,37 +992,37 @@ namespace XRL.World.Parts
 
                         int totalDramsCost = (int)E.DramsCost;
 
-                        double itemDramValue = TradeUI.GetValue(sampleItem, true);
+                        double itemDramValue = Math.Round(TradeUI.GetValue(sampleItem, true), 2);
 
-                        double expertiseDramValue = TradeUI.GetValue(dataDiskObject, true) / 4;
+                        double expertiseDramValue = Math.Round(TradeUI.GetValue(dataDiskObject, true) / 4, 2);
 
                         List<string> ingredientsList = null;
                         double ingredientsDramValue = 0;
                         if (!buildRecipe.Ingredient.IsNullOrEmpty())
                         {
                             ingredientsList = buildRecipe.Ingredient.CachedCommaExpansion();
-                            ingredientsDramValue = GetIngedientsValueInDrams(buildRecipe.Ingredient);
+                            ingredientsDramValue = Math.Round(GetIngedientsValueInDrams(buildRecipe.Ingredient), 2);
                         }
 
-                        double bitsDramValue = GetBitsValueInDrams(bitCost, vendor);
+                        double bitsDramValue = Math.Round(GetBitsValueInDrams(bitCost, vendor), 2);
 
-                        double materialsDramValue = expertiseDramValue + ingredientsDramValue + bitsDramValue;
+                        double materialsDramValue = Math.Round(expertiseDramValue + ingredientsDramValue + bitsDramValue, 2);
 
-                        double labourDramValue = GetExamineCost(sampleItem);
+                        double labourDramValue = Math.Round(GetExamineCost(sampleItem), 2);
 
-                        totalDramsCost = (int)(labourDramValue + (itemDramValue > materialsDramValue ? itemDramValue : materialsDramValue));
+                        totalDramsCost = (int)Math.Ceiling(labourDramValue + (itemDramValue > materialsDramValue ? itemDramValue : materialsDramValue));
 
                         if (!vendorSuppliesIngredients)
                         {
-                            totalDramsCost -= (int)ingredientsDramValue;
+                            totalDramsCost -= (int)Math.Floor(ingredientsDramValue);
                         }
 
                         if (!vendorSuppliesBits)
                         {
-                            totalDramsCost -= (int)bitsDramValue;
+                            totalDramsCost -= (int)Math.Floor(bitsDramValue);
                         }
 
-                        int depositDramCost = (int)(totalDramsCost - itemDramValue);
+                        int depositDramCost = totalDramsCost - (int)Math.Floor(itemDramValue);
 
                         if ((!buildRecipe.Ingredient.IsNullOrEmpty() && !vendorSuppliesIngredients) || !vendorSuppliesBits)
                         {
@@ -1063,20 +1050,21 @@ namespace XRL.World.Parts
                         {
                             numberMade = tinkerItem.NumberMade;
                         }
-                        
+
+                        string sampleItemDisplayName = sampleItem?.t(AsIfKnown: true, Single: true).Color("y");
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
-                        SB.Append("Description: Tinker ").Append(numberMade.Things($"x {sampleItem.t(Single: true).Color("y")}")).AppendLine();
+                        SB.Append("Description: Tinker ").Append(numberMade.Things($"x {sampleItemDisplayName}")).AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
 
                         // Item or Material Cost
                         if (itemDramValue > materialsDramValue)
                         {
-                            SB.Append("Item Value: ").AppendColored("C", (itemDramValue).Things("dram")).AppendLine();
-                            SB.Append("Labour: ").AppendColored("C", (labourDramValue).Things("dram")).AppendLine();
+                            SB.Append("Item Value: ").AppendColored("C", itemDramValue.Things("dram")).AppendLine();
+                            SB.Append("Labour: ").AppendColored("C", labourDramValue.Things("dram")).AppendLine();
                         }
                         else
                         {
-                            SB.Append("Labour && Expertise: ").AppendColored("C", ((labourDramValue + expertiseDramValue)).Things("dram")).AppendLine();
+                            SB.Append("Labour && Expertise: ").AppendColored("C", (labourDramValue + expertiseDramValue).Things("dram")).AppendLine();
                         }
 
                         // Ingredients
@@ -1085,7 +1073,7 @@ namespace XRL.World.Parts
                             SB.Append($"{ingredientsList.Count.Things("Ingredient")}: ");
                             if (vendorSuppliesIngredients)
                             {
-                                SB.AppendColored("C", (ingredientsDramValue).Things("dram"));
+                                SB.AppendColored("C", ingredientsDramValue.Things("dram"));
                                 if (itemDramValue > materialsDramValue)
                                 {
                                     SB.Append(" (").AppendColored("K", "included in item value").Append(")");
@@ -1107,7 +1095,7 @@ namespace XRL.World.Parts
                         SB.Append($"Bits <{bitCost}>: ");
                         if (vendorSuppliesBits)
                         {
-                            SB.AppendColored("C", ((int)bitsDramValue).Things("dram"));
+                            SB.AppendColored("C", bitsDramValue.Things("dram"));
                             if (itemDramValue > materialsDramValue)
                             {
                                 SB.Append(" (").AppendColored("K", "included in item value").Append(")");
@@ -1321,7 +1309,7 @@ namespace XRL.World.Parts
                         modRecipe = dataDisk.Data;
                         if (!vendor.HasSkill(DataDisk.GetRequiredSkill(modRecipe.Tier)))
                         {
-                            vendor.Fail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(modRecipe.Tier)}!");
+                            Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(modRecipe.Tier)}!");
                             return false;
                         }
                         modName = $"{modRecipe.DisplayName}";
@@ -1431,8 +1419,8 @@ namespace XRL.World.Parts
 
                         GameObject sampleDataDiskObject = TinkerData.createDataDisk(modRecipe);
 
-                        double labourDramValue = GetExamineCost(selectedObject);
-                        double expertiseDramValue = vendorsRecipe ? TradeUI.GetValue(sampleDataDiskObject, true) / 2 : 0;
+                        double labourDramValue = Math.Round(GetExamineCost(selectedObject), 2);
+                        double expertiseDramValue = vendorsRecipe ? Math.Round(TradeUI.GetValue(sampleDataDiskObject, true) / 2, 2) : 0;
                         double markUpDramValue = labourDramValue + expertiseDramValue;
 
                         if (GameObject.Validate(ref sampleDataDiskObject))
@@ -1445,13 +1433,13 @@ namespace XRL.World.Parts
                         if (vendorSuppliesIngredients)
                         {
                             ingredientsList = modRecipe.Ingredient.CachedCommaExpansion();
-                            ingredientsDramValue = GetIngedientsValueInDrams(modRecipe.Ingredient);
+                            ingredientsDramValue = Math.Round(GetIngedientsValueInDrams(modRecipe.Ingredient), 2);
                         }
 
                         double bitsDramValue = 0;
                         if (vendorSuppliesBits)
                         {
-                            bitsDramValue = GetBitsValueInDrams(bitCost, vendor);
+                            bitsDramValue = Math.Round(GetBitsValueInDrams(bitCost, vendor), 2);
                         }
 
                         if (vendor.IsPlayerLed())
@@ -1463,7 +1451,7 @@ namespace XRL.World.Parts
 
                         if (markUpDramValue > -1)
                         {
-                            totalDramsCost = (int)(markUpDramValue + bitsDramValue + ingredientsDramValue);
+                            totalDramsCost = (int)Math.Ceiling(markUpDramValue + bitsDramValue + ingredientsDramValue);
                         }
 
                         string dividerLine = "";
@@ -1473,7 +1461,7 @@ namespace XRL.World.Parts
                         }
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
                         SB.Append("Description: Apply ").Append(modRecipe.DisplayName.Color("y"));
-                        SB.Append(" to ").Append(selectedObject.t(Single: true)).AppendLine();
+                        SB.Append(" to ").Append(selectedObject?.t(AsIfKnown: true, Single: true)).AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
                        
                         // Labour & Material Costs
@@ -1511,7 +1499,7 @@ namespace XRL.World.Parts
                         SB.Append($"Bits <{bitCost}>: ");
                         if (vendorSuppliesBits)
                         {
-                            SB.AppendColored("C", (bitsDramValue).Things("dram"));
+                            SB.AppendColored("C", bitsDramValue.Things("dram"));
                         }
                         else
                         {

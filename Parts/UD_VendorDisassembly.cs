@@ -705,13 +705,13 @@ namespace XRL.World.Parts
                             broadcastAction(The.Player);
                         }
                     }
-                }
 
-                Disassembly = new(E.Item, multipleItems ? itemCount : 1);
+                    Disassembly = new(E.Item, multipleItems ? itemCount : 1);
 
-                if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly, UD_VendorTinkering.FindKnownRecipes(Vendor)))
-                {
-                    return true;
+                    if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly, UD_VendorTinkering.FindKnownRecipes(Vendor)))
+                    {
+                        return true;
+                    }
                 }
             }
             return base.HandleEvent(E);

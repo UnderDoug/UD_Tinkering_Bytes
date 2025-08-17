@@ -12,6 +12,8 @@ namespace XRL.World.Parts
     {
         public static bool WantTinkerBonusMax = true;
 
+        public static int BitsPerByte => 8;
+
         public UD_TinkeringByte()
         {
         }
@@ -39,7 +41,8 @@ namespace XRL.World.Parts
                     int indent = Debug.LastIndent;
                     E.Bonus = 9999;
                     E.SecondaryBonus = 9999;
-                    Debug.CheckYeh(4, $"{E.Item.T(Single: true)}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!", Indent: indent + 1, Toggle: true);
+                    Debug.CheckYeh(4, $"{E.Item.T(Single: true)}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
+                        Indent: indent + 1, Toggle: true);
                     Debug.LastIndent = indent;
                     return true;
                 }

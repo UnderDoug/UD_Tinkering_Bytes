@@ -24,6 +24,7 @@ namespace XRL.World.Parts
         public const string BYTE_BLUEPRINT_END = " Byte";
 
         public static int BytesPerPunnet => 32;
+        public static int BitsPerPunnet => BytesPerPunnet * UD_TinkeringByte.BitsPerByte;
 
         private static int MaxByte => BytesOrder.Count - 1;
 
@@ -226,8 +227,8 @@ namespace XRL.World.Parts
                     }
                     render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                 }
-                description.Short = description.Short.Replace("*32 bytes*", 32.Things(bytes));
-                description.Short = description.Short.Replace("*256 bits*", 256.Things(bits));
+                description.Short = description.Short.Replace("*32 bytes*", BytesPerPunnet.Things(bytes));
+                description.Short = description.Short.Replace("*256 bits*", BitsPerPunnet.Things(bits));
             }
             return base.HandleEvent(E);
         }
