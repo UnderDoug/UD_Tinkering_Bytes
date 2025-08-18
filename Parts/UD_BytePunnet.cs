@@ -230,8 +230,9 @@ namespace XRL.World.Parts
                     }
                     render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                 }
-                description._Short = description.Short.Replace("*32 bytes*", BytesPerPunnet.Things(bytes));
-                description._Short = description.Short.Replace("*256 bits*", BitsPerPunnet.Things(bits, bits));
+                description._Short = description._Short
+                    .Replace("*32 bytes*", BytesPerPunnet.Things(bytes))
+                    .Replace("*256 bits*", BitsPerPunnet.Things(bits, bits));
             }
             return base.HandleEvent(E);
         }

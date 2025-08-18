@@ -653,8 +653,9 @@ namespace XRL.World.Parts
                     inventory.AddObject(tinkeredItem);
                 }
 
+                string singleShortKnownDisplayName = sampleItem.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
                 string whatWasTinkeredUp = tinkerItem.NumberMade > 1
-                    ? $"{Grammar.Cardinal(tinkerItem.NumberMade)} {Grammar.Pluralize(sampleItem.ShortDisplayName)}"
+                    ? $"{Grammar.Cardinal(tinkerItem.NumberMade)} {Grammar.Pluralize(singleShortKnownDisplayName)}"
                     : $"{tinkeredItem.an()}";
 
                 string comeBackToPickItUp = "";
@@ -819,6 +820,20 @@ namespace XRL.World.Parts
                     }
                 }
 
+                if (vendor.IsGiganticCreature || vendor.HasPart("GigantismPlus"))
+                {
+                    Debug.Entry(3, $"Spinning up {nameof(ModGigantic)} data disks for {vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
+                    foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
+                    {
+                        if (tinkerDatum.PartName == nameof(ModGigantic))
+                        {
+                            Debug.CheckYeh(3, $"{nameof(ModGigantic)}: Found", Indent: 1, Toggle: doDebug);
+                            KnownRecipes.Add(tinkerDatum);
+                            break;
+                        }
+                    }
+                }
+
                 List<TinkerData> avaialableRecipes = new(TinkerData.TinkerRecipes);
                 avaialableRecipes.RemoveAll(r => !E.Object.HasSkill(DataDisk.GetRequiredSkill(r.Tier)) && !KnownRecipes.Contains(r));
 
@@ -922,6 +937,7 @@ namespace XRL.World.Parts
                             }
                             E.Infix.AppendRules("\u0007 ".Color("K") + recipeDisplayName);
                         }
+                        E.Infix.AppendLine();
                     }
                 }
                 if (DebugTinkerSkillsDebugDescriptions)
@@ -1122,7 +1138,7 @@ namespace XRL.World.Parts
                             numberMade = tinkerItem.NumberMade;
                         }
 
-                        string sampleItemDisplayName = sampleItem?.ShortDisplayNameSingle?.Color("y");
+                        string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Single: true, Short: true)?.Color("y");
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
                         SB.Append("Description: Tinker ").Append(numberMade.Things($"x {sampleItemDisplayName}")).AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
@@ -1428,7 +1444,8 @@ namespace XRL.World.Parts
                             {
                                 context = $" [{"Equipped".Color("K")}]";
                             }
-                            string lineItem = $"<{recipeBitCost}> {applicableObject.ShortDisplayNameSingle}{context}";
+                            string singleShortKnownDisplayName = applicableObject.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
+                            string lineItem = $"<{recipeBitCost}> {singleShortKnownDisplayName}{context}";
                             lineItems.Add(lineItem);
 
                             lineIcons.Add(applicableObject.RenderForUI());
@@ -1459,7 +1476,7 @@ namespace XRL.World.Parts
                     {
                         if (!ItemModding.ModificationApplicable(modRecipe.PartName, selectedObject, vendor))
                         {
-                            Popup.ShowFail($"{selectedObject.T(Single: true)}{vendor.GetVerb("can")} not have {modName} applied.");
+                            Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
                             return false;
                         }
 

@@ -41,7 +41,7 @@ namespace XRL.World.Parts
                     int indent = Debug.LastIndent;
                     E.Bonus = 9999;
                     E.SecondaryBonus = 9999;
-                    Debug.CheckYeh(4, $"{E.Item.T(Single: true)}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
+                    Debug.CheckYeh(4, $"{E.Item.ShortDisplayNameSingle}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
                         Indent: indent + 1, Toggle: true);
                     Debug.LastIndent = indent;
                     return true;

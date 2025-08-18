@@ -76,7 +76,6 @@ namespace XRL.World.Parts
                 {
                     try
                     {
-                        Debug.LoopItem(4, $"{nameof(bit)}: {bit}, {nameof(count)}: {count}", Indent: indent + 3, Toggle: doDebug);
                         int amountToDrop = count * BitChance / 100;
                         if (wasBurnt)
                         {
@@ -88,9 +87,13 @@ namespace XRL.World.Parts
                         }
                         if (amountToDrop > 0)
                         {
-                            Debug.LoopItem(4, $"{nameof(amountToDrop)}: {amountToDrop}", Indent: indent + 4, Toggle: doDebug);
                             droppableBits.Add(bit, amountToDrop);
                         }
+                        Debug.LoopItem(4, 
+                            $"{nameof(bit)}: {bit}, " +
+                            $"{nameof(count)}: {count}, " +
+                            $"{nameof(amountToDrop)}: {amountToDrop}, ", 
+                            Indent: indent + 3, Toggle: doDebug);
                     }
                     catch (Exception x)
                     {
@@ -114,10 +117,6 @@ namespace XRL.World.Parts
                     {
                         string blueprintName = byteBlueprint.Name;
                         string byteBits = byteBlueprint.GetPartParameter<string>(nameof(TinkerItem), "Bits");
-                        Debug.LoopItem(4,
-                            $"{nameof(blueprintName)}: {blueprintName}, " +
-                            $"{nameof(byteBits)}: {byteBits ?? NULL}",
-                            Indent: indent + 3, Toggle: doDebug);
                         if (!byteBits.IsNullOrEmpty())
                         {
                             char byteBit = byteBits[0];
@@ -126,7 +125,11 @@ namespace XRL.World.Parts
                                 byteBit = BitType.ReverseCharTranslateBit(byteBits[0]);
                             }
 
-                            Debug.LoopItem(4, $"{nameof(byteBit)}: {byteBit}", Indent: indent + 4, Toggle: doDebug);
+                            Debug.LoopItem(4,
+                                $"{nameof(blueprintName)}: {blueprintName}, " +
+                                $"{nameof(byteBits)}: {byteBits ?? NULL}, " +
+                                $"{nameof(byteBit)}: {byteBit}",
+                                Indent: indent + 3, Toggle: doDebug);
 
                             if (byteBit != '?' && !byteBlueprints.ContainsKey(byteBit))
                             {
@@ -148,15 +151,15 @@ namespace XRL.World.Parts
                     {
                         string blueprintName = bytePunnetBlueprint.Name;
                         string bytePunnetBytes = bytePunnetBlueprint.GetPartParameter<string>(nameof(UD_BytePunnet), "Bytes");
-                        Debug.LoopItem(4,
-                            $"{nameof(blueprintName)}: {blueprintName}, " +
-                            $"{nameof(bytePunnetBytes)}: {bytePunnetBytes ?? NULL}",
-                            Indent: indent + 3, Toggle: doDebug);
                         if (!bytePunnetBytes.IsNullOrEmpty())
                         {
                             char bytePunnetBit = BitType.ReverseCharTranslateBit(bytePunnetBytes[0]);
 
-                            Debug.LoopItem(4, $"{nameof(bytePunnetBit)}: {bytePunnetBit}", Indent: indent + 4, Toggle: doDebug);
+                            Debug.LoopItem(4,
+                                $"{nameof(blueprintName)}: {blueprintName}, " +
+                                $"{nameof(bytePunnetBytes)}: {bytePunnetBytes ?? NULL}, " +
+                                $"{nameof(bytePunnetBit)}: {bytePunnetBit}",
+                                Indent: indent + 3, Toggle: doDebug);
 
                             if (bytePunnetBit != '?' && !bytePunnetBlueprints.ContainsKey(bytePunnetBit))
                             {
@@ -213,14 +216,15 @@ namespace XRL.World.Parts
                         if (currentDroppableBits > 1)
                         {
                             string scrapBlueprint = GetScrapBlueprintFromColor(bit);
+                            int scrapToDrop = currentDroppableBits;
 
                             Debug.LoopItem(4,
                                 $"{scrapBlueprint}, " +
-                                $"{nameof(currentDroppableBits)}: {currentDroppableBits}",
+                                $"{nameof(scrapToDrop)}: {scrapToDrop}",
                                 Indent: indent + 4, Toggle: doDebug);
 
-                            bitBlueprintsToDrop.Add(scrapBlueprint, currentDroppableBits);
-                            droppableBits[bit] -= currentDroppableBits;
+                            bitBlueprintsToDrop.Add(scrapBlueprint, scrapToDrop);
+                            droppableBits[bit] -= scrapToDrop;
                             currentDroppableBits = droppableBits[bit];
                         }
                     }
@@ -243,9 +247,10 @@ namespace XRL.World.Parts
                     try
                     {
                         Debug.LoopItem(4,
-                            $"{nameof(bitBlueprintToDrop)}: {bitBlueprintToDrop}, " +
+                            $"{bitBlueprintToDrop}, " +
                             $"{nameof(count)}: {count}",
-                            Indent: indent + 2, Toggle: doDebug);
+                            Indent: indent + 3, Toggle: doDebug);
+
                         GameObject bitItemToDrop = GameObjectFactory.Factory.CreateObject(bitBlueprintToDrop, Context: nameof(UD_DropBits));
                         if (bitItemToDrop != null)
                         {
