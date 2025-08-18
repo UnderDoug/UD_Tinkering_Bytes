@@ -6,6 +6,8 @@ using XRL.World.Tinkering;
 using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
+using static UD_Modding_Toolbox.Const;
+
 using UD_Tinkering_Bytes;
 
 namespace XRL.World.Parts
@@ -30,18 +32,28 @@ namespace XRL.World.Parts
         {
             if (E.Object != null && E.Object == ParentObject && ParentObject.TryGetPart(out DataDisk dataDisk))
             {
-                List<GameObjectBlueprint> byteGameObjectBlueprints = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte");
                 List<string> byteBlueprints = new();
-                if (!byteGameObjectBlueprints.IsNullOrEmpty())
+                foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
                 {
-                    foreach (GameObjectBlueprint byteBlueprint in byteGameObjectBlueprints)
-                    {
-                        byteBlueprints.Add(byteBlueprint.Name);
-                    }
+                    byteBlueprints.Add(byteBlueprint.Name);
                 }
                 if (!byteBlueprints.IsNullOrEmpty() && byteBlueprints.Contains(dataDisk.Data.Blueprint))
                 {
                     E.ReplacementObject = GameObjectFactory.Factory.CreateObject(ParentObject.Blueprint);
+                    int indent = Debug.LastIndent;
+                    Debug.Entry(4, 
+                        $"{nameof(UD_Byte_DataDisk)}." +
+                        $"{nameof(HandleEvent)}(" +
+                        $"{nameof(AfterObjectCreatedEvent)} E)",
+                        Indent: indent + 1, Toggle: true);
+                    Debug.Entry(4, $"{nameof(E.ReplacementObject)}: {E.ReplacementObject.DebugName ?? NULL}",
+                        Indent: indent + 2, Toggle: true);
+                    if (E.ReplacementObject != null && E.ReplacementObject.TryGetPart(out DataDisk replacementDataDisk))
+                    {
+                        Debug.Entry(4, $"{nameof(replacementDataDisk)}: {replacementDataDisk?.Data?.Blueprint ?? NULL}",
+                            Indent: indent + 2, Toggle: true);
+                    }
+                    Debug.LastIndent = indent;
                 }
             }
             return base.HandleEvent(E);

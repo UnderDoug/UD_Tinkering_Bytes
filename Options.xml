@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<options>
+
+  <!-- 
+  Debug Options
+  -->
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugBitLockerDebugDescriptions"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC BitLocker internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, internal debug information relating to BitLockers will be displayed when [{{W|l}}]ooking at Tinker NPCs.
+
+      {{M|BitLocker}}:
+      {{W|General}}: Literally the contents of the Tinker NPC's BitLocker as though it were the player's.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugKnownRecipesDebugDescriptions"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC KnownRecipes internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, internal debug information relating to KnownRecipes will be displayed when [{{W|l}}]ooking at Tinker NPCs.
+
+      {{M|KnownRecipes}}:
+      {{W|General}}: Literally just a list of the recipes that the NPC &quot;knows&quot; in the order they were assigned them at creation and, later, &quot;learned&quot; them if they've done so.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugTinkerSkillsDebugDescriptions"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC Tinkering Skills internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, internal debug information relating to Tinkering Skills will be displayed when [{{W|l}}]ooking at Tinker NPCs.
+
+      {{M|Tinkering Skills}}:
+      {{W|General}}: Literally just a list of the tinkering skills that the NPC has, in the order they appear in in the creature's Skills part.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <!-- 
+  Mod Options
+  -->
+  <!--option
+        ID="Option_UD_Tinkering_Bytes_ExampleOption"
+        DisplayText="Enable an example Option."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="Yes"
+    >
+    <helptext>
+      When enabled, this option is true.
+
+      The default is {{w|Enabled}}.
+    </helptext>
+  </option-->
+
+  <!-- End of Mod Options -->
+  
+</options>

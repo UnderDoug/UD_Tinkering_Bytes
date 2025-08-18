@@ -622,6 +622,7 @@ namespace XRL.World.Parts
             {
                 GameObject Vendor = E.Vendor;
                 GameObject Item = E.Item;
+                GameObject player = The.Player;
 
                 int itemCount = Item.Count;
                 bool multipleItems = E.Command == COMMAND_DISASSEMBLE_ALL && itemCount > 1;
@@ -646,14 +647,21 @@ namespace XRL.World.Parts
                 int realCostPerItem = multipleItems ? totalCost / itemCount : totalCost;
                 totalCost = multipleItems ? itemCount * realCostPerItem : realCostPerItem;
 
-                if (The.Player.GetFreeDrams() < totalCost)
+                if (Vendor.IsPlayerLed())
+                {
+                    costPerItem = 0;
+                    realCostPerItem = 0;
+                    totalCost = 0;
+                }
+
+                if (player.GetFreeDrams() < totalCost)
                 {
                     Popup.ShowFail(
-                        $"You do not have the required {totalCost.Color("C")} {((totalCost == 1) ? "dram" : "drams")} " +
+                        $"{player.T()}{player.GetVerb("do")} not have the required {totalCost.Color("C")} {((totalCost == 1) ? "dram" : "drams")} " +
                         $"to disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")}.");
                 }
                 else if (Popup.ShowYesNo(
-                    $"You may disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")} " +
+                    $"{player.T()} may have {Vendor.T()} disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")} " +
                     $"for {totalCost.Things("dram")} of fresh water.") == DialogResult.Yes)
                 {
                     List<Action<GameObject>> broadcastActions = null;
@@ -665,7 +673,7 @@ namespace XRL.World.Parts
                     }
                     if (Item.IsImportant())
                     {
-                        if (Item.ConfirmUseImportant(The.Player, "disassemble", null, (!multipleItems) ? 1 : itemCount))
+                        if (Item.ConfirmUseImportant(player, "disassemble", null, (!multipleItems) ? 1 : itemCount))
                         {
                             return false;
                         }
@@ -687,7 +695,7 @@ namespace XRL.World.Parts
                         broadcastActions.Add(Item.Physics.BroadcastForHelp);
                     }
                     GameObject container = Item.InInventory;
-                    if (container != null && container != The.Player && !container.Owner.IsNullOrEmpty() && container.Owner != Item.Owner && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
+                    if (container != null && container != player && !container.Owner.IsNullOrEmpty() && container.Owner != Item.Owner && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
                     {
                         if (Popup.ShowYesNoCancel(
                             $"{container.Does("are")} not owned by you. " +
@@ -702,7 +710,7 @@ namespace XRL.World.Parts
                     {
                         foreach (Action<GameObject> broadcastAction in broadcastActions)
                         {
-                            broadcastAction(The.Player);
+                            broadcastAction(player);
                         }
                     }
 

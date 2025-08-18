@@ -189,7 +189,7 @@ namespace XRL.World.Parts
                             int punnetDropCount = (int)Math.Floor((double)currentDroppableBits / bitsPerPunnet);
 
                             Debug.LoopItem(4,
-                                $"{bytePunnetBlueprints}, " +
+                                $"{bytePunnetBlueprints[bit]}, " +
                                 $"{nameof(punnetDropCount)}: {punnetDropCount}",
                                 Indent: indent + 4, Toggle: doDebug);
 
@@ -202,7 +202,7 @@ namespace XRL.World.Parts
                             int byteDropCount = (int)Math.Floor((double)currentDroppableBits / bitsPerByte);
 
                             Debug.LoopItem(4,
-                                $"{byteBlueprints}, " +
+                                $"{byteBlueprints[bit]}, " +
                                 $"{nameof(byteDropCount)}: {byteDropCount}",
                                 Indent: indent + 4, Toggle: doDebug);
 
@@ -253,41 +253,9 @@ namespace XRL.World.Parts
                             {
                                 bitItemToDrop.Stacker.StackCount = count;
                             }
+
                             Temporary.CarryOver(ParentObject, bitItemToDrop);
                             Phase.carryOver(ParentObject, bitItemToDrop);
-                            if (ParentObject.HasProperName)
-                            {
-                                bitItemToDrop.SetStringProperty("CreatureName", ParentObject.BaseDisplayName);
-                            }
-                            else
-                            {
-                                string creatureName = NameMaker.MakeName(ParentObject, FailureOkay: true);
-                                if (creatureName != null)
-                                {
-                                    bitItemToDrop.SetStringProperty("CreatureName", creatureName);
-                                }
-                            }
-                            if (ParentObject.HasID)
-                            {
-                                bitItemToDrop.SetStringProperty("SourceID", ParentObject.ID);
-                            }
-                            bitItemToDrop.SetStringProperty("SourceBlueprint", ParentObject.Blueprint);
-                            if (E.Killer != null && E.Killer != ParentObject)
-                            {
-                                if (E.Killer.HasID)
-                                {
-                                    bitItemToDrop.SetStringProperty("KillerID", E.Killer.ID);
-                                }
-                                bitItemToDrop.SetStringProperty("KillerBlueprint", E.Killer.Blueprint);
-                            }
-                            if (!E.ThirdPersonReason.IsNullOrEmpty())
-                            {
-                                bitItemToDrop.SetStringProperty("DeathReason", E.ThirdPersonReason);
-                            }
-                            if (ParentObject.HasProperty("StoredByPlayer") || ParentObject.HasProperty("FromStoredByPlayer"))
-                            {
-                                bitItemToDrop.SetIntProperty("FromStoredByPlayer", 1);
-                            }
 
                             dropInventory.AddObjectToInventory(
                                 Object: bitItemToDrop,

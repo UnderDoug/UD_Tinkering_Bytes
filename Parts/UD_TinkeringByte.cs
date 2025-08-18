@@ -64,7 +64,7 @@ namespace XRL.World.Parts
                         bits = bitType.Description;
                     }
                 }
-                description.Short = description.Short.Replace("*8 bits*", 8.Things(bits));
+                description._Short = description.Short.Replace("*8 bits*", BitsPerByte.Things(bits, bits));
             }
             return base.HandleEvent(E);
         }

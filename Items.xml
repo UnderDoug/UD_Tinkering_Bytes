@@ -23,80 +23,80 @@
   </object>
 
   <object Name="A Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{R|A}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{R|A}} {{y|byte}}"
           TileColor="&amp;R" ColorString="&amp;R"
           Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="RRRRRRRR" />
   </object>
   <object Name="B Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{G|B}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{G|B}} {{y|byte}}"
           TileColor="&amp;G" ColorString="&amp;G"
           Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="GGGGGGGG" />
   </object>
   <object Name="C Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{B|C}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{B|C}} {{y|byte}}"
           TileColor="&amp;B" ColorString="&amp;B"
           Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="BBBBBBBB" />
   </object>
   <object Name="D Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{C|D}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{C|D}} {{y|byte}}"
           TileColor="&amp;C" ColorString="&amp;C"
           Tile="0_byte.png" />
     <part Name="TinkerItem" Bits="CCCCCCCC" />
   </object>
   <object Name="1 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{r|1}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{r|1}} {{y|byte}}"
           TileColor="&amp;r" ColorString="&amp;r"
           Tile="1_byte.png" />
     <part Name="TinkerItem" Bits="11111111" />
     <part Name="Commerce" Value="120" />
   </object>
   <object Name="2 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{g|2}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{g|2}} {{y|byte}}"
           TileColor="&amp;g" ColorString="&amp;g"
           Tile="2_byte.png" />
     <part Name="TinkerItem" Bits="22222222" />
     <part Name="Commerce" Value="200" />
   </object>
   <object Name="3 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{b|3}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{b|3}} {{y|byte}}"
           TileColor="&amp;b" ColorString="&amp;b"
           Tile="3_byte.png" />
     <part Name="TinkerItem" Bits="33333333" />
     <part Name="Commerce" Value="280" />
   </object>
   <object Name="4 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{c|4}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{c|4}} {{y|byte}}"
           TileColor="&amp;c" ColorString="&amp;c"
           Tile="4_byte.png" />
     <part Name="TinkerItem" Bits="44444444" />
     <part Name="Commerce" Value="360" />
   </object>
   <object Name="5 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{K|5}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{K|5}} {{y|byte}}"
           TileColor="&amp;K" ColorString="&amp;K"
           Tile="5_byte.png" />
     <part Name="TinkerItem" Bits="55555555" />
     <part Name="Commerce" Value="440" />
   </object>
   <object Name="6 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{W|6}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{W|6}} {{y|byte}}"
           TileColor="&amp;W" ColorString="&amp;W"
           Tile="6_byte.png" />
     <part Name="TinkerItem" Bits="66666666" />
     <part Name="Commerce" Value="520" />
   </object>
   <object Name="7 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{Y|7}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{Y|7}} {{y|byte}}"
           TileColor="&amp;Y" ColorString="&amp;Y"
           Tile="7_byte.png" />
     <part Name="TinkerItem" Bits="77777777" />
     <part Name="Commerce" Value="600" />
   </object>
   <object Name="8 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{M|8}}-{{y|byte}}"
+    <part Name="Render" DisplayName="{{M|8}} {{y|byte}}"
           TileColor="&amp;M" ColorString="&amp;M"
           Tile="8_byte.png" />
     <part Name="TinkerItem" Bits="88888888" />

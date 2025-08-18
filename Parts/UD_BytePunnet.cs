@@ -220,15 +220,18 @@ namespace XRL.World.Parts
                             bytes = byteBlueprint.DisplayName();
                         }
                     }
-                    if (BitType.BitMap.ContainsKey(render.TileColor[1]))
+                    if (render.TileColor.IsNullOrEmpty() && render.TileColor.Length > 1)
                     {
-                        BitType bitType = BitType.BitMap[render.TileColor[1]];
-                        bits = bitType.Description;
+                        if (BitType.BitMap.ContainsKey(render.TileColor[1]))
+                        {
+                            BitType bitType = BitType.BitMap[render.TileColor[1]];
+                            bits = bitType.Description;
+                        }
                     }
                     render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                 }
-                description.Short = description.Short.Replace("*32 bytes*", BytesPerPunnet.Things(bytes));
-                description.Short = description.Short.Replace("*256 bits*", BitsPerPunnet.Things(bits));
+                description._Short = description.Short.Replace("*32 bytes*", BytesPerPunnet.Things(bytes));
+                description._Short = description.Short.Replace("*256 bits*", BitsPerPunnet.Things(bits, bits));
             }
             return base.HandleEvent(E);
         }
