@@ -6,6 +6,7 @@
     <part Name="UD_DropBits" />
     <part Name="UD_VendorTinkering" />
     <part Name="UD_VendorDisassembly" />
+    <skill Name="UD_Basics" />
   </object>
   
   <!-- Adding Disassemble to a few more NPCs-->

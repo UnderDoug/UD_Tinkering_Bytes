@@ -10,8 +10,10 @@
           DetailColor="y" Tile="0_byte.png" />
     <part Name="Physics" Weight="1" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly *8 bits*." />
-    <part Name="TinkerItem" CanBuild="true" BuildTier="1" />
+    <part Name="TinkerItem" CanBuild="true" BuildTier="0" />
     <part Name="UD_TinkeringByte" />
+    <tag Name="TinkerCategory" Value="bytes" />
+    <tag Name="Tier" Value="0" />
     <part Name="Commerce" Value="40" />
     <removetag Name="Scrap" />
     <removetag Name="DefaultDisassemble" />

@@ -33,7 +33,7 @@ namespace XRL.World.Parts
             if (E.Object != null && E.Object == ParentObject && ParentObject.TryGetPart(out DataDisk dataDisk))
             {
                 List<string> byteBlueprints = new();
-                foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
+                foreach (GameObjectBlueprint byteBlueprint in UD_TinkeringByte.GetByteGameObjectBlueprints())
                 {
                     byteBlueprints.Add(byteBlueprint.Name);
                 }

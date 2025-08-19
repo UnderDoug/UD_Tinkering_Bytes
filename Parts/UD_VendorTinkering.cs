@@ -259,97 +259,124 @@ namespace XRL.World.Parts
                 {
                     bitRanges.Add(bit, (0, 0));
                 }
+
+                int upperLimit = bitList.Count;
+                int firstBreakPoint = upperLimit / 3;
+                int secondBreakPoint = upperLimit - (firstBreakPoint / 2);
+
                 if (Tinker.HasSkill(nameof(Tinkering_Disassemble)))
                 {
-                    int upperLimit = bitList.Count / 3;
                     for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-                        currentRange.low += 25;
-                        currentRange.high += 50;
+
+                        if (i < firstBreakPoint)
+                        {
+                            currentRange.low += 25;
+                            currentRange.high += 50;
+                        }
+                        if (i < secondBreakPoint)
+                        {
+                            currentRange.low += 10;
+                            currentRange.high += 20;
+                        }
+                        currentRange.high += 5;
+
                         bitRanges[bitIndex] = currentRange;
                     }
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_ReverseEngineer)))
                 {
-                    int breakPoint = bitList.Count / 3;
-                    int upperLimit = breakPoint * 2;
                     for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-                        if (i < breakPoint)
+
+                        if (i < firstBreakPoint)
                         {
-                            currentRange.high += 25;
+                            currentRange.high += 15;
                         }
-                        else
+                        if (i < secondBreakPoint)
                         {
-                            currentRange.low += 25;
-                            currentRange.high += 50;
+                            currentRange.low += 5;
+                            currentRange.high += 10;
                         }
+                        currentRange.low += 2;
+                        currentRange.high += 2;
+
                         bitRanges[bitIndex] = currentRange;
                     }
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
                 {
-                    int upperLimit = bitList.Count / 3;
                     for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-                        currentRange.low += 25;
-                        currentRange.high += 75;
+
+                        if (i < firstBreakPoint)
+                        {
+                            currentRange.low += 25;
+                            currentRange.high += 75;
+                        }
+                        if (!i.in10())
+                        {
+                            currentRange.high += 3;
+                        }
+
                         bitRanges[bitIndex] = currentRange;
                     }
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
                 {
-                    int breakPoint = bitList.Count / 3;
-                    int upperLimit = breakPoint * 2;
                     for (int i = 0; i < upperLimit; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
-                        if (i < breakPoint)
+
+                        if (i < firstBreakPoint)
                         {
                             currentRange.high += 25;
                         }
-                        else
+                        if (i < secondBreakPoint)
                         {
                             currentRange.low += 25;
                             currentRange.high += 75;
                         }
+                        if (!i.in10())
+                        {
+                            currentRange.low += 3;
+                            currentRange.high += 5;
+                        }
+
                         bitRanges[bitIndex] = currentRange;
                     }
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
                 {
-                    int firstBreakPoint = bitList.Count / 3;
-                    int secondBreakPoint = firstBreakPoint * 2;
                     for (int i = 0; i < bitList.Count; i++)
                     {
                         char bitIndex = bitList[i];
                         (int low, int high) currentRange = bitRanges[bitIndex];
+
                         if (i < firstBreakPoint)
                         {
                             currentRange.low += 50;
                             currentRange.high += 50;
                         }
-                        else if (i < secondBreakPoint)
-                        {
-                            currentRange.low += 25;
-                            currentRange.high += 25;
-                        }
-                        else if (i < bitList.Count - 1)
+                        if (i < secondBreakPoint)
                         {
                             currentRange.low += 15;
                             currentRange.high += 35;
                         }
-                        else
+                        if (!i.in10())
                         {
+                            currentRange.low += 3;
                             currentRange.high += 5;
                         }
+                        currentRange.high += 5;
+
                         bitRanges[bitIndex] = currentRange;
                     }
                 }
@@ -927,16 +954,79 @@ namespace XRL.World.Parts
                 {
                     if (!KnownRecipes.IsNullOrEmpty())
                     {
-                        E.Infix.AppendRules("Known Recipes".Color("M") + ":");
+                        List<string> byteBlueprints = new(UD_TinkeringByte.GetByteBlueprints());
+                        List<string> tierIRecipes = new();
+                        List<string> tierIIRecipes = new();
+                        List<string> tierIIIRecipes = new();
+
                         foreach (TinkerData knownRecipe in KnownRecipes)
                         {
+                            if (byteBlueprints.Contains(knownRecipe.Blueprint))
+                            {
+                                continue;
+                            }
                             string recipeDisplayName = knownRecipe.DisplayName;
                             if (knownRecipe.Type == "Mod")
                             {
                                 recipeDisplayName = $"[{"Mod".Color("W")}] {recipeDisplayName}";
                             }
-                            E.Infix.AppendRules("\u0007 ".Color("K") + recipeDisplayName);
+                            switch (DataDisk.GetRequiredSkill(knownRecipe.Tier))
+                            {
+                                case nameof(Tinkering_Tinker1):
+                                    tierIRecipes.TryAdd(recipeDisplayName);
+                                    break;
+                                case nameof(Tinkering_Tinker2):
+                                    tierIIRecipes.TryAdd(recipeDisplayName);
+                                    break;
+                                case nameof(Tinkering_Tinker3):
+                                    tierIIIRecipes.TryAdd(recipeDisplayName);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
+
+                        E.Infix.AppendRules("Known Recipes".Color("M") + ":");
+
+                        E.Infix.AppendRules("Tier I".Color("W") + ":");
+                        if (!tierIRecipes.IsNullOrEmpty())
+                        {
+                            foreach (string tier1IRecipe in tierIRecipes)
+                            {
+                                E.Infix.AppendRules("\u0007 ".Color("K") + tier1IRecipe);
+                            }
+                        }
+                        else
+                        {
+                            E.Infix.AppendRules("\u0007 ".Color("K") + "none");
+                        }
+
+                        E.Infix.AppendRules("Tier II".Color("W") + ":");
+                        if (!tierIIRecipes.IsNullOrEmpty())
+                        {
+                            foreach (string tier1IIRecipe in tierIIRecipes)
+                            {
+                                E.Infix.AppendRules("\u0007 ".Color("K") + tier1IIRecipe);
+                            }
+                        }
+                        else
+                        {
+                            E.Infix.AppendRules("\u0007 ".Color("K") + "none");
+                        }
+
+                        E.Infix.AppendRules("Tier III".Color("W") + ":");
+                        if (!tierIIIRecipes.IsNullOrEmpty())
+                        {
+                            foreach (string tier1IIIRecipe in tierIIIRecipes)
+                            {
+                                E.Infix.AppendRules("\u0007 ".Color("K") + tier1IIIRecipe);
+                            }
+                        }
+                        else
+                        {
+                            E.Infix.AppendRules("\u0007 ".Color("K") + "none");
+                        }
+
                         E.Infix.AppendLine();
                     }
                 }
@@ -948,7 +1038,7 @@ namespace XRL.World.Parts
                         E.Infix.AppendRules("Tinkering Skills".Color("M") + ":");
                         foreach (BaseSkill skill in ParentObject.GetPart<Skills>().SkillList)
                         {
-                            if (skill.GetType().Name.StartsWith(nameof(Skill.Tinkering)))
+                            if (skill.GetType().Name.StartsWith(nameof(Skill.Tinkering)) || skill.GetType().Name == nameof(UD_Basics))
                             {
                                 E.Infix.AppendRules("\u0007 ".Color("K") + skill.DisplayName.Color("y"));
                             }
@@ -977,9 +1067,12 @@ namespace XRL.World.Parts
                                 inventoryTinkerData.Add(knownDataDisk.Data);
                             }
                         }
+                        List<string> byteBlueprints = new(UD_TinkeringByte.GetByteBlueprints());
                         foreach (TinkerData knownRecipe in KnownRecipes)
                         {
-                            if (!inventoryTinkerData.Contains(knownRecipe) && RestockScribeChance.in100())
+                            if (!byteBlueprints.Contains(knownRecipe.Blueprint) 
+                                && !inventoryTinkerData.Contains(knownRecipe) 
+                                && RestockScribeChance.in100())
                             {
                                 ScribeDisk(knownRecipe);
                             }
@@ -1015,7 +1108,7 @@ namespace XRL.World.Parts
                             E.AddAction("ModFromDataDisk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                         }
                     }
-                    else if (E.Item.InInventory != E.Vendor && !ItemModding.ModKey(E.Item).IsNullOrEmpty())
+                    else if (E.Item.InInventory != E.Vendor && !ItemModding.ModKey(E.Item).IsNullOrEmpty() && E.Item.Understood())
                     {
                         E.AddAction("ModFromDataDisk", "mod with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -2, DramsCost: 100, ClearAndSetUpTradeUI: true);
                     }
@@ -1235,8 +1328,8 @@ namespace XRL.World.Parts
                             }
                         }                        
                         if (!vendorHoldsItem
-                            && totalDramsCost > 0
-                            && Popup.ShowYesNo($"{vendor.T()} will tinker this item for {totalDramsCost.Things("dram")} of fresh water." +
+                            && Popup.ShowYesNo($"{vendor.T()} will tinker this item for " +
+                                $"{totalDramsCost.Things("dram")} of fresh water." +
                                 $"\n\n{invoice}") != DialogResult.Yes)
                         {
                             return false;
@@ -1403,7 +1496,9 @@ namespace XRL.World.Parts
                         modName = $"{modRecipe.DisplayName}";
 
                         List<GameObject> applicableObjects = Event.NewGameObjectList(List:
-                            player?.GetInventoryAndEquipment(GO => ItemModding.ModAppropriate(GO, modRecipe))
+                            player?.GetInventoryAndEquipment(
+                                GO => ItemModding.ModAppropriate(GO, modRecipe)
+                                && GO.Understood())
                             );
 
                         if (applicableObjects.IsNullOrEmpty())
@@ -1444,8 +1539,8 @@ namespace XRL.World.Parts
                             {
                                 context = $" [{"Equipped".Color("K")}]";
                             }
-                            string singleShortKnownDisplayName = applicableObject.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
-                            string lineItem = $"<{recipeBitCost}> {singleShortKnownDisplayName}{context}";
+                            string singleShortDisplayName = applicableObject.GetDisplayName(Single: true, Short: true);
+                            string lineItem = $"<{recipeBitCost}> {singleShortDisplayName}{context}";
                             lineItems.Add(lineItem);
 
                             lineIcons.Add(applicableObject.RenderForUI());
@@ -1474,7 +1569,7 @@ namespace XRL.World.Parts
 
                     if (selectedObject != null && modRecipe != null)
                     {
-                        if (!ItemModding.ModificationApplicable(modRecipe.PartName, selectedObject, vendor))
+                        if (!ItemModding.ModificationApplicable(modRecipe.PartName, selectedObject))
                         {
                             Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
                             return false;
@@ -1615,9 +1710,9 @@ namespace XRL.World.Parts
                             return false;
                         }
 
-                        if (totalDramsCost == 0 
-                            || Popup.ShowYesNo($"{vendor.T()} will mod this item for {totalDramsCost.Things("dram")} of fresh water." +
-                                $"\n\n{invoice}") == DialogResult.Yes)
+                        if (Popup.ShowYesNo($"{vendor.T()} will mod this item for " +
+                            $"{totalDramsCost.Things("dram")} of fresh water." +
+                            $"\n\n{invoice}") == DialogResult.Yes)
                         {
                             if (VendorDoMod(vendor, selectedObject, modRecipe, recipeIngredientSupplier))
                             {

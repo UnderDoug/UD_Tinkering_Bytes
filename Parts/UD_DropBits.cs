@@ -108,10 +108,9 @@ namespace XRL.World.Parts
                     return;
                 }
 
-
                 Dictionary<char, string> byteBlueprints = new();
                 Debug.Entry(4, $"Getting {nameof(byteBlueprints)}...", Indent: indent + 2, Toggle: doDebug);
-                foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
+                foreach (GameObjectBlueprint byteBlueprint in UD_TinkeringByte.GetByteGameObjectBlueprints())
                 {
                     try
                     {

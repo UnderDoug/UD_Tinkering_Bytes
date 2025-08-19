@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
-
+using UD_Modding_Toolbox;
 using XRL;
 using XRL.UI;
 using XRL.World;
+using XRL.World.Parts;
 using XRL.World.Tinkering;
-
-using UD_Modding_Toolbox;
 
 namespace UD_Tinkering_Bytes
 {
@@ -20,7 +19,9 @@ namespace UD_Tinkering_Bytes
             Debug.Header(3, $"{nameof(LearnAllTheBytes)}", $"{nameof(mutate)}(GameObject player: {player.DebugName})");
             
             Debug.Entry(3, $"Spinning up data disks...", Indent: 1);
-            List<GameObjectBlueprint> byteGameObjectBlueprints = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte");
+
+            List<string> byteBlueprints = new();
+            List<GameObjectBlueprint> byteGameObjectBlueprints = new(UD_TinkeringByte.GetByteGameObjectBlueprints());
             if (!byteGameObjectBlueprints.IsNullOrEmpty())
             {
                 foreach (GameObjectBlueprint byteBlueprint in byteGameObjectBlueprints)

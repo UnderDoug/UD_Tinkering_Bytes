@@ -4,6 +4,7 @@ using UD_Tinkering_Bytes;
 
 using UD_Modding_Toolbox;
 using XRL.World.Tinkering;
+using System.Collections.Generic;
 
 namespace XRL.World.Parts
 {
@@ -16,6 +17,23 @@ namespace XRL.World.Parts
 
         public UD_TinkeringByte()
         {
+        }
+
+        public static IEnumerable<GameObjectBlueprint> GetByteGameObjectBlueprints()
+        {
+            foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
+            {
+                yield return byteBlueprint;
+            }
+            yield break;
+        }
+        public static IEnumerable<string> GetByteBlueprints()
+        {
+            foreach (GameObjectBlueprint byteBlueprint in GetByteGameObjectBlueprints())
+            {
+                yield return byteBlueprint.Name;
+            }
+            yield break;
         }
 
         public override bool AllowStaticRegistration()
@@ -64,7 +82,7 @@ namespace XRL.World.Parts
                         bits = bitType.Description;
                     }
                 }
-                description._Short = description.Short.Replace("*8 bits*", BitsPerByte.Things(bits, bits));
+                description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, bits));
             }
             return base.HandleEvent(E);
         }
