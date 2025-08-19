@@ -4,6 +4,7 @@ using System;
 
 using XRL.World;
 using XRL.World.Parts;
+using XRL.World.Parts.Skill;
 
 using static UD_Tinkering_Bytes.Options;
 using static UD_Tinkering_Bytes.Utils;
@@ -25,7 +26,7 @@ namespace UD_Tinkering_Bytes.Harmony
         {
             if (Tier < 1)
             {
-                __result = "UD_Basics";
+                __result = nameof(UD_Basics);
                 return false;
             }
             return true;
@@ -41,7 +42,7 @@ namespace UD_Tinkering_Bytes.Harmony
         {
             if (Tier < 1)
             {
-                __result = "Basic Life Skills";
+                __result = new UD_Basics()?.DisplayName;
                 return false;
             }
             return true;
