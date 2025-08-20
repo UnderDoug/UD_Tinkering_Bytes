@@ -71,19 +71,23 @@ namespace XRL.World.Parts
 
                 Dictionary<char, int> droppableBits = new();
 
+                int chanceToDrop = BitChance * 100;
+                chanceToDrop = (int)(chanceToDrop * (wasBurnt ? BurntChanceModifier / 100.0 : 1.0));
+                chanceToDrop = (int)(chanceToDrop * (wasVaporised ? VaporizedChanceModifier / 100.0 : 1.0));
+
                 Debug.Entry(4, $"Getting bits from {nameof(bitLocker.BitStorage)}...", Indent: indent + 2, Toggle: doDebug);
                 foreach ((char bit, int count) in bitLocker.BitStorage)
                 {
                     try
                     {
-                        int amountToDrop = count * BitChance / 100;
-                        if (wasBurnt)
+                        int amountToDrop = 0;
+
+                        for (int i = 0; i < count; i++)
                         {
-                            amountToDrop *= BurntChanceModifier / 100;
-                        }
-                        if (wasVaporised)
-                        {
-                            amountToDrop *= VaporizedChanceModifier / 100;
+                            if (chanceToDrop.in10000())
+                            {
+                                amountToDrop++;
+                            }
                         }
                         if (amountToDrop > 0)
                         {

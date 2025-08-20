@@ -2,10 +2,23 @@
 <objects>
   
   <!-- Adds a handler for the VenderActionEvents added by this mod -->
-  <object Name="Creature" Load="Merge">
+  <object Name="PhysicalObject" Load="Merge">
     <part Name="UD_DropBits" />
     <part Name="UD_VendorTinkering" />
     <part Name="UD_VendorDisassembly" />
+    <tag Name="AnimatedSkills" Value="UD_Basics" />
+    <property Name="AnimatedSkills" Value="UD_Basics" />
+  </object>
+  
+  <object Name="Creature" Load="Merge">
+    <skill Name="UD_Basics" />
+  </object>
+  
+  <object Name="ActiveFungus" Load="Merge">
+    <skill Name="UD_Basics" />
+  </object>
+  
+  <object Name="BaseAnimatedObject" Load="Merge">
     <skill Name="UD_Basics" />
   </object>
   

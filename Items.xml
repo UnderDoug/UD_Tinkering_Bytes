@@ -8,7 +8,7 @@
   <object Name="BaseByte" Inherits="Scrap">
     <part Name="Render" DisplayName="[{{y|byte}}]" 
           DetailColor="y" Tile="0_byte.png" />
-    <part Name="Physics" Weight="1" />
+    <part Name="Physics" Weight="1" Category="Bytes" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly *8 bits*." />
     <part Name="TinkerItem" CanBuild="true" BuildTier="0" />
     <part Name="UD_TinkeringByte" />
@@ -108,7 +108,7 @@
   <object Name="BaseBytePunnet" Inherits="Scrap">
     <part Name="Render" DisplayName="punnet of *bytes*" 
           DetailColor="y" Tile="byte_punnet.png" />
-    <part Name="Physics" Weight="16" />
+    <part Name="Physics" Weight="16" Category="Bytes" />
     <part Name="Description" Short="A tidily packed punnet of exactly *32 bytes*, equal to *256 bits*." />
     <removepart Name="TinkerItem" />
     <part Name="Commerce" Value="400" />

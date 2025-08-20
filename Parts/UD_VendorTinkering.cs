@@ -1,31 +1,25 @@
-﻿using System;
+﻿using ConsoleLib.Console;
+using System;
 using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
-using ConsoleLib.Console;
-
+using UD_Modding_Toolbox;
+using UD_Tinkering_Bytes;
+using UD_Vendor_Actions;
 using XRL.Language;
 using XRL.Rules;
 using XRL.UI;
 using XRL.Wish;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
+using XRL.World.Conversations.Parts;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
-
-using UD_Modding_Toolbox;
-using UD_Vendor_Actions;
-
 using static UD_Modding_Toolbox.Const;
-
-using UD_Tinkering_Bytes;
-
-using static UD_Tinkering_Bytes.Utils;
 using static UD_Tinkering_Bytes.Options;
-
+using static UD_Tinkering_Bytes.Utils;
 using SerializeField = UnityEngine.SerializeField;
 
 namespace XRL.World.Parts
@@ -35,6 +29,68 @@ namespace XRL.World.Parts
     public class UD_VendorTinkering : IScribedPart, IVendorActionEventHandler
     {
         private static bool doDebug = true;
+
+        public class Invoice
+        {
+            public TinkerData Recipe = null;
+
+            public GameObject SampleItem = null;
+
+            private bool GotPerformance = false;
+            private double Performance = 1.0;
+
+            public string ItemName = "";
+            public double ItemValue = 0;
+
+            public double ExpertiseValue = 0;
+
+            public double IngredientsValue = 0;
+            public bool VendorSuppliesIngredients = false;
+
+            public double BitsValue = 0;
+            public bool VendorSuppliesBits = false;
+
+            public double LabourValue = 0;
+
+            public double TotalCost = 0;
+            public double DepositCost = 0;
+
+            public Invoice()
+            {
+            }
+            public Invoice(GameObject Vendor, TinkerData Recipe)
+                : this()
+            {
+                this.Recipe = Recipe;
+
+                if (Recipe?.Type == "Build")
+                {
+                    CalculatePerformance(Vendor);
+                    SampleItem = GameObjectFactory.Factory.CreateSampleObject(Recipe.Blueprint);
+                    ItemName = Recipe.DisplayName;
+                }
+            }
+
+            public void CalculatePerformance(GameObject Vendor)
+            {
+                Performance = GetTradePerformanceEvent.GetFor(The.Player, Vendor);
+                GotPerformance = true;
+            }
+
+            public double GetItemValue(GameObject Vendor = null)
+            {
+                if (!GotPerformance && Vendor != null)
+                {
+                    CalculatePerformance(Vendor);
+                }
+                return SampleItem != null ? Math.Round(SampleItem.ValueEach * Performance, 2) : 0.0;
+            }
+
+            public double GetMarkUpValue()
+            {
+                return LabourValue + ExpertiseValue;
+            }
+        }
 
         public const string COMMAND_BUILD = "CmdVendorBuild";
         public const string COMMAND_MOD = "CmdVendorMod";
@@ -246,15 +302,27 @@ namespace XRL.World.Parts
 
         public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true)
         {
+            int indent = Debug.LastIndent;
+            Debug.Entry(4, 
+                $"{nameof(UD_VendorTinkering)}." +
+                $"{nameof(GiveRandomBits)}(" +
+                $"{nameof(Tinker)}: {Tinker?.DebugName ?? NULL}, " +
+                $"{nameof(ClearFirst)}: {ClearFirst})", 
+                Indent: indent + 1, Toggle: doDebug);
+
             if (Tinker.TryGetPart(out BitLocker bitLocker) && ClearFirst)
             {
                 Tinker.RemovePart(bitLocker);
             }
+
             bitLocker = Tinker.RequirePart<BitLocker>();
             List<char> bitList = BitType.BitOrder;
             Dictionary<char, (int low, int high)> bitRanges = new();
+
+            Debug.Entry(4, $"Finding {nameof(bitRanges)} of scrap to disassemble...", Indent: indent + 2, Toggle: doDebug);
             if (!bitList.IsNullOrEmpty())
             {
+                Debug.CheckYeh(4, $"{nameof(bitList)} not null or empty", Indent: indent + 3, Toggle: doDebug);
                 foreach (char bit in bitList)
                 {
                     bitRanges.Add(bit, (0, 0));
@@ -264,122 +332,137 @@ namespace XRL.World.Parts
                 int firstBreakPoint = upperLimit / 3;
                 int secondBreakPoint = upperLimit - (firstBreakPoint / 2);
 
-                if (Tinker.HasSkill(nameof(Tinkering_Disassemble)))
+                bool hasDisassemble = Tinker.HasSkill(nameof(Tinkering_Disassemble));
+                bool hasScavenger = Tinker.HasSkill(nameof(Tinkering_Scavenger));
+                bool hasReverseEngineer = Tinker.HasSkill(nameof(Tinkering_ReverseEngineer));
+                int tinkeringSkill = 0;
+
+                if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
                 {
-                    for (int i = 0; i < upperLimit; i++)
-                    {
-                        char bitIndex = bitList[i];
-                        (int low, int high) currentRange = bitRanges[bitIndex];
-
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.low += 25;
-                            currentRange.high += 50;
-                        }
-                        if (i < secondBreakPoint)
-                        {
-                            currentRange.low += 10;
-                            currentRange.high += 20;
-                        }
-                        currentRange.high += 5;
-
-                        bitRanges[bitIndex] = currentRange;
-                    }
+                    tinkeringSkill++;
                 }
-                if (Tinker.HasSkill(nameof(Tinkering_ReverseEngineer)))
+                if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
                 {
-                    for (int i = 0; i < upperLimit; i++)
-                    {
-                        char bitIndex = bitList[i];
-                        (int low, int high) currentRange = bitRanges[bitIndex];
+                    tinkeringSkill++;
+                }
+                if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
+                {
+                    tinkeringSkill++;
+                }
 
+                Debug.LoopItem(4, $"{nameof(hasDisassemble)}", $"{hasDisassemble}",
+                    Good: hasDisassemble, Indent: indent + 3, Toggle: doDebug);
+
+                Debug.LoopItem(4, $"{nameof(hasReverseEngineer)}", $"{hasDisassemble}",
+                    Good: hasReverseEngineer, Indent: indent + 3, Toggle: doDebug);
+
+                Debug.LoopItem(4, $"{tinkeringSkill}] {nameof(tinkeringSkill)}",
+                    Indent: indent + 3, Toggle: doDebug);
+
+                Debug.Entry(4, $"Iterating over {nameof(bitList)}...", Indent: indent + 3, Toggle: doDebug);
+                for (int i = 0; i < upperLimit; i++)
+                {
+                    char bitIndex = bitList[i];
+                    (int low, int high) currentRange = bitRanges[bitIndex];
+
+                    int bitTier = DataDisk.GetRequiredSkill((int)Math.Max(0, i - 4.0)) switch
+                    {
+                        nameof(Tinkering_Tinker1) => 1,
+                        nameof(Tinkering_Tinker2) => 2,
+                        nameof(Tinkering_Tinker3) => 3,
+                        _ => 0,
+                    };
+
+                    string iterationLabel = i.ToString().PadLeft(upperLimit.ToString().Length);
+                    Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
+                    Debug.LoopItem(4, 
+                        $"{iterationLabel}] " +
+                        $"{nameof(bitIndex)}: {bitIndex}, " +
+                        $"{nameof(bitTier)}: {bitTier}",
+                        Indent: indent + 4, Toggle: doDebug);
+
+                    if (hasDisassemble || hasReverseEngineer)
+                    {
                         if (i < firstBreakPoint)
-                        {
-                            currentRange.high += 15;
-                        }
-                        if (i < secondBreakPoint)
                         {
                             currentRange.low += 5;
                             currentRange.high += 10;
                         }
-                        currentRange.low += 2;
-                        currentRange.high += 2;
-
-                        bitRanges[bitIndex] = currentRange;
+                        if (i < secondBreakPoint)
+                        {
+                            currentRange.low += 2;
+                            currentRange.high += 5;
+                        }
+                        if (i == upperLimit && !Math.Max(0, i - 4).ChanceIn(upperLimit - 3))
+                        {
+                            currentRange.high += 1;
+                        }
+                        Debug.CheckYeh(4, $"Have Ancillary Skill, {nameof(currentRange)}: {currentRange}",
+                            Indent: indent + 5, Toggle: doDebug);
                     }
-                }
-                if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
-                {
-                    for (int i = 0; i < upperLimit; i++)
+                    if (hasScavenger && hasDisassemble)
                     {
-                        char bitIndex = bitList[i];
-                        (int low, int high) currentRange = bitRanges[bitIndex];
-
                         if (i < firstBreakPoint)
                         {
-                            currentRange.low += 25;
-                            currentRange.high += 75;
-                        }
-                        if (!i.in10())
-                        {
-                            currentRange.high += 3;
-                        }
-
-                        bitRanges[bitIndex] = currentRange;
-                    }
-                }
-                if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
-                {
-                    for (int i = 0; i < upperLimit; i++)
-                    {
-                        char bitIndex = bitList[i];
-                        (int low, int high) currentRange = bitRanges[bitIndex];
-
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.high += 25;
+                            currentRange.low += 5;
+                            currentRange.high += 10;
                         }
                         if (i < secondBreakPoint)
                         {
-                            currentRange.low += 25;
-                            currentRange.high += 75;
-                        }
-                        if (!i.in10())
-                        {
-                            currentRange.low += 3;
+                            currentRange.low += 2;
                             currentRange.high += 5;
                         }
-
-                        bitRanges[bitIndex] = currentRange;
+                        Debug.CheckYeh(4, $"Have Scavenger, {nameof(currentRange)}: {currentRange}",
+                            Indent: indent + 5, Toggle: doDebug);
                     }
-                }
-                if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
-                {
-                    for (int i = 0; i < bitList.Count; i++)
+                    if (hasReverseEngineer)
                     {
-                        char bitIndex = bitList[i];
-                        (int low, int high) currentRange = bitRanges[bitIndex];
-
-                        if (i < firstBreakPoint)
+                        if (i == upperLimit && !Math.Max(0, i - 4).ChanceIn(upperLimit - 3))
                         {
-                            currentRange.low += 50;
-                            currentRange.high += 50;
+                            currentRange.high += 1;
                         }
+                        Debug.CheckYeh(4, $"Have Reverse Engineering, {nameof(currentRange)}: {currentRange}",
+                            Indent: indent + 5, Toggle: doDebug);
+                    }
+                    if (bitTier < tinkeringSkill)
+                    {
+                        currentRange.low += 10;
+                        currentRange.high += 20;
+                        Debug.CheckYeh(4, 
+                            $"{nameof(bitTier)} < {nameof(tinkeringSkill)}, " +
+                            $"{nameof(currentRange)}: {currentRange}",
+                            Indent: indent + 5, Toggle: doDebug);
+                    }
+                    if (bitTier == tinkeringSkill)
+                    {
                         if (i < secondBreakPoint)
                         {
-                            currentRange.low += 15;
-                            currentRange.high += 35;
+                            currentRange.low += 2;
+                            currentRange.high += 7;
                         }
-                        if (!i.in10())
+                        else if (i < upperLimit)
                         {
-                            currentRange.low += 3;
-                            currentRange.high += 5;
+                            currentRange.low += 1;
+                            currentRange.high += 2;
                         }
-                        currentRange.high += 5;
-
-                        bitRanges[bitIndex] = currentRange;
+                        else
+                        {
+                            currentRange.high += 1;
+                        }
+                        Debug.CheckYeh(4,
+                            $"{nameof(bitTier)} == {nameof(tinkeringSkill)}, " +
+                            $"{nameof(currentRange)}: {currentRange}",
+                            Indent: indent + 5, Toggle: doDebug);
                     }
+
+                    bitRanges[bitIndex] = currentRange;
+
+                    Debug.Entry(4, $"{nameof(bitRanges)}[{nameof(bitIndex)}]: {bitRanges[bitIndex]}",
+                        Indent: indent + 4, Toggle: doDebug);
                 }
+                Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
+
+                Debug.Entry(4, $"Disassembling bits...", Indent: indent + 3, Toggle: doDebug);
                 List<string> bitsToAdd = new();
                 foreach ((char bit, (int low, int high)) in bitRanges)
                 {
@@ -393,16 +476,159 @@ namespace XRL.World.Parts
                     {
                         bitsToAdd.Add(bits);
                     }
+                    Debug.LoopItem(4, $"{bit}]" +
+                        $"{nameof(low)}: {low}, " +
+                        $"{nameof(high)}: {high}, " +
+                        $"{nameof(amountToAdd)}: {amountToAdd}", Indent: indent + 4, Toggle: doDebug);
                 }
+
+                Debug.Entry(4, $"Throwing bits in Locker...", Indent: indent + 3, Toggle: doDebug);
                 if (!bitsToAdd.IsNullOrEmpty())
                 {
                     foreach (string bits in bitsToAdd)
                     {
+                        Debug.LoopItem(4, $"{nameof(bits)}: {bits[0]} x {bits.Length}", Indent: indent + 4, Toggle: doDebug);
                         bitLocker.AddBits(bits);
                     }
                 }
+                Debug.Entry(4, $"Scrap found, disassembled, and stored...", Indent: indent + 2, Toggle: doDebug);
             }
+            Debug.LastIndent = indent;
             return bitLocker;
+        }
+
+        public static bool LearnByteRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
+        {
+            if (Vendor == null)
+            {
+                return false;
+            }
+            KnownRecipes ??= new();
+            List<string> byteBlueprints = new();
+            Debug.Entry(3, $"Spinning up byte data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
+            foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
+            {
+                Debug.LoopItem(3, $"{byteBlueprint.DisplayName().Strip()}", Indent: 1, Toggle: doDebug);
+                byteBlueprints.Add(byteBlueprint.Name);
+            }
+            bool learned = false;
+            if (!byteBlueprints.IsNullOrEmpty())
+            {
+                foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
+                {
+                    if (byteBlueprints.Contains(tinkerDatum.Blueprint) && !KnownRecipes.Contains(tinkerDatum))
+                    {
+                        KnownRecipes.Add(tinkerDatum);
+                        learned = true;
+                    }
+                }
+            }
+            return learned;
+        }
+        public static bool LearnGiganticRecipe(GameObject Vendor, List<TinkerData> KnownRecipes)
+        {
+            if (Vendor == null)
+            {
+                return false;
+            }    
+            KnownRecipes ??= new();
+            bool learned = false;
+            if (Vendor.IsGiganticCreature || Vendor.HasPart("GigantismPlus"))
+            {
+                Debug.Entry(3, $"Spinning up {nameof(ModGigantic)} data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
+                foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
+                {
+                    if (tinkerDatum.PartName == nameof(ModGigantic))
+                    {
+                        Debug.CheckYeh(3, $"{nameof(ModGigantic)}: Found", Indent: 1, Toggle: doDebug);
+                        KnownRecipes.Add(tinkerDatum);
+                        break;
+                    }
+                }
+            }
+            return learned;
+        }
+        public static bool LearnSkillRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
+        {
+            if (Vendor == null)
+            {
+                return false;
+            }    
+            KnownRecipes ??= new();
+            bool learned = false; List<TinkerData> avaialableRecipes = new(TinkerData.TinkerRecipes);
+            avaialableRecipes.RemoveAll(r => !Vendor.HasSkill(DataDisk.GetRequiredSkill(r.Tier)) && !KnownRecipes.Contains(r));
+
+            if (!avaialableRecipes.IsNullOrEmpty())
+            {
+                Debug.Entry(3, $"Spinning up other data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
+
+                Debug.LoopItem(3,
+                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_Tinker1)})",
+                    $"{Vendor.HasSkill(nameof(Tinkering_Tinker1))}",
+                    Good: Vendor.HasSkill(nameof(Tinkering_Tinker1)), Indent: 1, Toggle: doDebug);
+
+                Debug.LoopItem(3,
+                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_Tinker2)})",
+                    $"{Vendor.HasSkill(nameof(Tinkering_Tinker2))}",
+                    Good: Vendor.HasSkill(nameof(Tinkering_Tinker2)), Indent: 1, Toggle: doDebug);
+
+                Debug.LoopItem(3,
+                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_Tinker3)})",
+                    $"{Vendor.HasSkill(nameof(Tinkering_Tinker3))}",
+                    Good: Vendor.HasSkill(nameof(Tinkering_Tinker3)), Indent: 1, Toggle: doDebug);
+
+                Debug.LoopItem(3,
+                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_ReverseEngineer)})",
+                    $"{Vendor.HasSkill(nameof(Tinkering_ReverseEngineer))}",
+                    Good: Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)), Indent: 1, Toggle: doDebug);
+
+                int low = 2;
+                int high = 4;
+                if (Vendor.HasSkill(nameof(Tinkering_Tinker1)))
+                {
+                    high++;
+                }
+                if (Vendor.HasSkill(nameof(Tinkering_Tinker2)))
+                {
+                    low += 1;
+                    high += 2;
+                }
+                if (Vendor.HasSkill(nameof(Tinkering_Tinker3)))
+                {
+                    low += 1;
+                    high += 3;
+                }
+                if (Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)))
+                {
+                    low = (int)Math.Floor(low * 1.5);
+                    high *= 2;
+                }
+                high = Math.Min(high, avaialableRecipes.Count);
+                low = Math.Min(low, high);
+                int numberToKnow = Stat.Random(low, high);
+
+                Debug.LoopItem(3,
+                    $"{nameof(low)}: {low}, " +
+                    $"{nameof(high)}: {high}, " +
+                    $"{nameof(numberToKnow)}: {numberToKnow}",
+                    Indent: 1, Toggle: doDebug);
+
+                string vendorRecipeSeed = $"{The.Game.GetWorldSeed()}-{Vendor.ID}";
+                Debug.Entry(3,
+                    $"Spinning up skill-based data disks for {Vendor?.DebugName ?? NULL} (" +
+                    $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0);
+
+                for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
+                {
+                    TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(AfterObjectCreatedEvent));
+                    if (recipeToKnow != null && !KnownRecipes.Contains(recipeToKnow))
+                    {
+                        Debug.LoopItem(3, $"{recipeToKnow.DisplayName.Strip()}", Indent: 1);
+                        KnownRecipes.Add(recipeToKnow);
+                    }
+                }
+            }
+            return learned;
         }
 
         public static GameObject PickASupplier(GameObject Vendor, GameObject ForObject, string Title, string Message = null, bool CenterIntro = false, BitCost BitCost = null, bool Multiple = false)
@@ -806,6 +1032,7 @@ namespace XRL.World.Parts
         {
             return base.WantEvent(ID, Cascade)
                 || (WantVendorActions && ID == AfterObjectCreatedEvent.ID)
+                || (WantVendorActions && ID == AnimateEvent.ID)
                 || (WantVendorActions && ID == GetShortDescriptionEvent.ID)
                 || (WantVendorActions && ID == StockedEvent.ID)
                 || (WantVendorActions && ID == GetVendorActionsEvent.ID)
@@ -823,117 +1050,27 @@ namespace XRL.World.Parts
         {
             if (E.Object != null && ParentObject == E.Object && WantVendorActions)
             {
-                bool doDebug = true;
-                GameObject vendor = E.Object;
+                GiveRandomBits(E.Object);
 
-                GiveRandomBits(vendor);
+                LearnByteRecipes(E.Object, KnownRecipes);
 
-                KnownRecipes ??= new();
-                List<string> byteBlueprints = new();
-                Debug.Entry(3, $"Spinning up byte data disks for {vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
-                foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
-                {
-                    Debug.LoopItem(3, $"{byteBlueprint.DisplayName().Strip()}", Indent: 1, Toggle: doDebug);
-                    byteBlueprints.Add(byteBlueprint.Name);
-                }
-                if (!byteBlueprints.IsNullOrEmpty())
-                {
-                    foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
-                    {
-                        if (byteBlueprints.Contains(tinkerDatum.Blueprint) && !KnownRecipes.Contains(tinkerDatum))
-                        {
-                            KnownRecipes.Add(tinkerDatum);
-                        }
-                    }
-                }
+                LearnGiganticRecipe(E.Object, KnownRecipes);
 
-                if (vendor.IsGiganticCreature || vendor.HasPart("GigantismPlus"))
-                {
-                    Debug.Entry(3, $"Spinning up {nameof(ModGigantic)} data disks for {vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
-                    foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
-                    {
-                        if (tinkerDatum.PartName == nameof(ModGigantic))
-                        {
-                            Debug.CheckYeh(3, $"{nameof(ModGigantic)}: Found", Indent: 1, Toggle: doDebug);
-                            KnownRecipes.Add(tinkerDatum);
-                            break;
-                        }
-                    }
-                }
+                LearnSkillRecipes(E.Object, KnownRecipes);
+            }
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(AnimateEvent E)
+        {
+            if (E.Object != null && ParentObject == E.Object && WantVendorActions)
+            {
+                GiveRandomBits(E.Object);
 
-                List<TinkerData> avaialableRecipes = new(TinkerData.TinkerRecipes);
-                avaialableRecipes.RemoveAll(r => !E.Object.HasSkill(DataDisk.GetRequiredSkill(r.Tier)) && !KnownRecipes.Contains(r));
+                LearnByteRecipes(E.Object, KnownRecipes);
 
-                if (!avaialableRecipes.IsNullOrEmpty())
-                {
-                    Debug.Entry(3, $"Spinning up other data disks for {vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
+                LearnGiganticRecipe(E.Object, KnownRecipes);
 
-                    Debug.LoopItem(3, 
-                        $"{nameof(vendor.HasSkill)}({nameof(Tinkering_Tinker1)})",
-                        $"{vendor.HasSkill(nameof(Tinkering_Tinker1))}",
-                        Good: vendor.HasSkill(nameof(Tinkering_Tinker1)), Indent: 1, Toggle: doDebug);
-
-                    Debug.LoopItem(3, 
-                        $"{nameof(vendor.HasSkill)}({nameof(Tinkering_Tinker2)})",
-                        $"{vendor.HasSkill(nameof(Tinkering_Tinker2))}",
-                        Good: vendor.HasSkill(nameof(Tinkering_Tinker2)), Indent: 1, Toggle: doDebug);
-
-                    Debug.LoopItem(3, 
-                        $"{nameof(vendor.HasSkill)}({nameof(Tinkering_Tinker3)})",
-                        $"{vendor.HasSkill(nameof(Tinkering_Tinker3))}",
-                        Good: vendor.HasSkill(nameof(Tinkering_Tinker3)), Indent: 1, Toggle: doDebug);
-
-                    Debug.LoopItem(3, 
-                        $"{nameof(vendor.HasSkill)}({nameof(Tinkering_ReverseEngineer)})",
-                        $"{vendor.HasSkill(nameof(Tinkering_ReverseEngineer))}",
-                        Good: vendor.HasSkill(nameof(Tinkering_ReverseEngineer)), Indent: 1, Toggle: doDebug);
-
-                    int low = 2;
-                    int high = 4;
-                    if (vendor.HasSkill(nameof(Tinkering_Tinker1)))
-                    {
-                        high++;
-                    }
-                    if (vendor.HasSkill(nameof(Tinkering_Tinker2)))
-                    {
-                        low += 1;
-                        high += 2;
-                    }
-                    if (vendor.HasSkill(nameof(Tinkering_Tinker3)))
-                    {
-                        low += 1;
-                        high += 3;
-                    }
-                    if (vendor.HasSkill(nameof(Tinkering_ReverseEngineer)))
-                    {
-                        low = (int)Math.Floor(low * 1.5);
-                        high *= 2;
-                    }
-                    high = Math.Min(high, avaialableRecipes.Count);
-                    low = Math.Min(low, high);
-                    int numberToKnow = Stat.Random(low, high);
-
-                    Debug.LoopItem(3,
-                        $"{nameof(low)}: {low}, " +
-                        $"{nameof(high)}: {high}, " +
-                        $"{nameof(numberToKnow)}: {numberToKnow}",
-                        Indent: 1, Toggle: doDebug);
-
-                    string vendorRecipeSeed = $"{The.Game.GetWorldSeed()}-{vendor.ID}";
-                    Debug.Entry(3, 
-                        $"Spinning up other data disks for {vendor?.DebugName ?? NULL} (" +
-                        $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0);
-
-                    for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
-                    {
-                        TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(AfterObjectCreatedEvent));
-                        if (recipeToKnow != null && !KnownRecipes.Contains(recipeToKnow))
-                        {
-                            Debug.LoopItem(3, $"{recipeToKnow.DisplayName.Strip()}", Indent: 1);
-                            KnownRecipes.Add(recipeToKnow);
-                        }
-                    }
-                }
+                LearnSkillRecipes(E.Object, KnownRecipes);
             }
             return base.HandleEvent(E);
         }
@@ -1232,8 +1369,12 @@ namespace XRL.World.Parts
                         }
 
                         string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Single: true, Short: true)?.Color("y");
+                        if (numberMade != 1)
+                        {
+                            sampleItemDisplayName = Grammar.Pluralize(sampleItemDisplayName);
+                        }
                         StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
-                        SB.Append("Description: Tinker ").Append(numberMade.Things($"x {sampleItemDisplayName}")).AppendLine();
+                        SB.Append("Description: Tinker ").Append($"{numberMade}x ").Append(sampleItemDisplayName).AppendLine();
                         SB.Append(dividerLine.Color("K")).AppendLine();
 
                         // Item or Material Cost
