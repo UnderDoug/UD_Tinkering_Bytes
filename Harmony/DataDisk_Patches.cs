@@ -42,7 +42,7 @@ namespace UD_Tinkering_Bytes.Harmony
         {
             if (Tier < 1)
             {
-                __result = new UD_Basics()?.DisplayName;
+                __result = "Basic Life Skills";
                 return false;
             }
             return true;
