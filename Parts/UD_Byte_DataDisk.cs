@@ -15,6 +15,8 @@ namespace XRL.World.Parts
     [Serializable]
     public class UD_Byte_DataDisk : IScribedPart, IModEventHandler<GetVendorTinkeringBonusEvent>
     {
+        private static bool doDebug => false; 
+
         public UD_Byte_DataDisk()
         {
         }
@@ -30,7 +32,10 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(AfterObjectCreatedEvent E)
         {
-            if (E.Object != null && E.Object == ParentObject && ParentObject.TryGetPart(out DataDisk dataDisk))
+            if (E.Object != null 
+                && E.Object == ParentObject 
+                && ParentObject.TryGetPart(out DataDisk dataDisk) 
+                && E.Context != "Sample")
             {
                 List<string> byteBlueprints = new();
                 foreach (GameObjectBlueprint byteBlueprint in UD_TinkeringByte.GetByteGameObjectBlueprints())
@@ -45,13 +50,13 @@ namespace XRL.World.Parts
                         $"{nameof(UD_Byte_DataDisk)}." +
                         $"{nameof(HandleEvent)}(" +
                         $"{nameof(AfterObjectCreatedEvent)} E)",
-                        Indent: indent + 1, Toggle: true);
+                        Indent: indent + 1, Toggle: doDebug);
                     Debug.Entry(4, $"{nameof(E.ReplacementObject)}: {E.ReplacementObject.DebugName ?? NULL}",
-                        Indent: indent + 2, Toggle: true);
+                        Indent: indent + 2, Toggle: doDebug);
                     if (E.ReplacementObject != null && E.ReplacementObject.TryGetPart(out DataDisk replacementDataDisk))
                     {
                         Debug.Entry(4, $"{nameof(replacementDataDisk)}: {replacementDataDisk?.Data?.Blueprint ?? NULL}",
-                            Indent: indent + 2, Toggle: true);
+                            Indent: indent + 2, Toggle: doDebug);
                     }
                     Debug.LastIndent = indent;
                 }
