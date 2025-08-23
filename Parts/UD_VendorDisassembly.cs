@@ -575,7 +575,6 @@ namespace XRL.World.Parts
             if (completed)
             {
                 Loading.SetLoadingStatus(null);
-                Loading.SetHideLoadStatus(hidden: true);
             }
             return completed;
         }
@@ -720,9 +719,11 @@ namespace XRL.World.Parts
 
                     if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly, KnownRecipes))
                     {
+                        Loading.SetLoadingStatus(null);
                         return true;
                     }
                 }
+                return false;
             }
             return base.HandleEvent(E);
         }

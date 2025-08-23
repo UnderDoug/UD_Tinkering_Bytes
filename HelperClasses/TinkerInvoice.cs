@@ -8,6 +8,7 @@ using XRL.UI;
 using XRL.Wish;
 using XRL.World;
 using XRL.World.Capabilities;
+using XRL.World.Effects;
 using XRL.World.Parts;
 using XRL.World.Tinkering;
 using static UD_Modding_Toolbox.Const;
@@ -393,7 +394,19 @@ namespace UD_Tinkering_Bytes
                 SB.Append("Total cost to tinker item: ").AppendColored("C", GetTotalCost().Things("dram"));
                 if (Besties)
                 {
-                    SB.Append(" for my ").AppendColored("M", "bestie!");
+                    if (Vendor.HasEffect<Lovesick>())
+                    {
+                        SB.Append(" for ").AppendColored("love", "my love!");
+                    }
+                    else
+                    if (Vendor.HasEffect<Proselytized>() || Vendor.HasEffect<Beguiled>())
+                    {
+                        SB.Append(" for my ").AppendColored("M", "bestie!");
+                    }
+                    else
+                    {
+                        SB.Append(" for my ").Append(Vendor.GetWaterRitualLiquidName()).Append(" ").Append(player.siblingTerm).Append("!");
+                    }
                 }
                 SB.AppendLine();
             }
@@ -553,7 +566,6 @@ namespace UD_Tinkering_Bytes
             finally
             {
                 Loading.SetLoadingStatus(null);
-                Loading.SetHideLoadStatus(hidden: true);
                 if (GameObject.Validate(ref sampleBep))
                 {
                     sampleBep?.Obliterate();
@@ -641,7 +653,6 @@ namespace UD_Tinkering_Bytes
             finally
             {
                 Loading.SetLoadingStatus(null);
-                Loading.SetHideLoadStatus(hidden: true);
                 if (GameObject.Validate(ref sampleBep))
                 {
                     sampleBep.Obliterate();
