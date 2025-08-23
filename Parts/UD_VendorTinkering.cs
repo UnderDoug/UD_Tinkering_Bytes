@@ -662,10 +662,11 @@ namespace XRL.World.Parts
 
             if (!BitSupplierBitLocker.HasBits(BitCost))
             {
-                Popup.ShowFail(Message:
+                string message = GameText.VariableReplace(
                     $"{RecipeBitSupplier.T()}{RecipeBitSupplier.GetVerb("do")} not have the required <{BitCost}> bits! " +
-                    $"{RecipeBitSupplier.It}{RecipeBitSupplier.GetVerb("have")}:\n\n " +
-                    $"{BitSupplierBitLocker.GetBitsString()}");
+                    $"{RecipeBitSupplier.It} =verb:have:afterpronoun=:\n\n " +
+                    $"{BitSupplierBitLocker.GetBitsString()}", RecipeBitSupplier);
+                Popup.ShowFail(Message: message);
                 return false;
             }
 
@@ -1145,11 +1146,7 @@ namespace XRL.World.Parts
                         if (player.GetFreeDrams() < totalDramsCost
                             && (depositDramCost > 0 && player.GetFreeDrams() > depositDramCost))
                         {
-                            DialogResult takeDeposit = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage()
-                                /* $"{player.T()}{player.GetVerb("do")} not have the required {totalDramsCost.Things("dram").Color("C")} for {vendor.T()} to tinker {tinkerInvoice.SampleItem.indicativeProximal} {(tinkerInvoice.NumberMade == 1 ? "item" : "items")}.\n\n" +
-                                $"{vendor.It} will tinker this item for a deposit of {depositDramCost.Things("dram").Color("C")} of fresh water, " +
-                                $"however {vendor.it} will hold onto {(tinkerInvoice.NumberMade == 1 ? tinkerInvoice.SampleItem.it : "them")} until you have the remaining {itemDramValue.Things("dram").Color("C")} of fresh water.\n\n" +
-                                $"Please note: {vendor.T()} will only hold onto this item for 2 restocks.\n\n{tinkerInvoice}" */);
+                            DialogResult takeDeposit = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage());
                             if (takeDeposit == DialogResult.Yes)
                             {
                                 vendorHoldsItem = true;
