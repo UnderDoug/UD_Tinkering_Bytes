@@ -112,7 +112,7 @@ namespace UD_Tinkering_Bytes
             }
             return ItemValue;
         }
-        public static double GetExamineCost(GameObject Item)
+        public static double GetExamineCost(GameObject Item, double Performance = 1.0)
         {
             if (Item == null)
             {
@@ -125,36 +125,31 @@ namespace UD_Tinkering_Bytes
             // int Cost = (int)Math.Max(2, -0.0667 + 1.24 * x + 0.0967 * Math.Pow(x, 2) + 0.0979 * Math.Pow(x, 3));
 
             float x = Item.GetComplexity() + Item.GetExamineDifficulty();
-            return Math.Max(2.0, -0.0667 + 1.24 * (double)x + 0.0967 * Math.Pow(x, 2.0) + 0.0979 * Math.Pow(x, 3.0));
+            double examinCost = -0.0667 + 1.24 * (double)x + 0.0967 * Math.Pow(x, 2.0) + 0.0979 * Math.Pow(x, 3.0);
+            return Math.Max(2.0, examinCost / Performance);
         }
-        public static double GetExamineCost(GameObjectBlueprint Item)
+        public static double GetExamineCost(GameObjectBlueprint Item, double Performance = 1.0)
         {
-            return GetExamineCost(Item?.Name);
+            return GetExamineCost(Item?.Name, Performance);
         }
-        public static double GetExamineCost(string Item)
+        public static double GetExamineCost(string Item, double Performance = 1.0)
         {
             double value = 0;
-            GameObject sampleObject = null;
-            try
+            GameObject sampleObject = GameObjectFactory.Factory.CreateSampleObject(Item);
+            value = GetExamineCost(sampleObject, Performance);
+            if (GameObject.Validate(ref sampleObject))
             {
-                value = GetExamineCost(GameObjectFactory.Factory.CreateSampleObject(Item));
-            }
-            finally
-            {
-                if (GameObject.Validate(ref sampleObject))
-                {
-                    sampleObject.Obliterate();
-                }
+                sampleObject.Obliterate();
             }
             return value;
         }
 
         public double GetExpertiseValue()
         {
-            if (ExpertiseValue == 0 && VendorOwnsRecipe)
+            if (VendorOwnsRecipe && ExpertiseValue == 0)
             {
                 GameObject sampleDataDiskObject = TinkerData.createDataDisk(Recipe);
-                ExpertiseValue = Math.Round(TradeUI.GetValue(sampleDataDiskObject, true) / 2, 2);
+                ExpertiseValue = Math.Round(Math.Max(2, TradeUI.GetValue(sampleDataDiskObject, true) / 3), 2);
 
                 if (GameObject.Validate(ref sampleDataDiskObject))
                 {
@@ -168,7 +163,7 @@ namespace UD_Tinkering_Bytes
         {
             if (LabourValue == 0)
             {
-                LabourValue = Math.Round(GetExamineCost(SampleItem), 2);
+                LabourValue = Math.Round(GetExamineCost(SampleItem, Performance), 2);
             }
             return LabourValue;
         }

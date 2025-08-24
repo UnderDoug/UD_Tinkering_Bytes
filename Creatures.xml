@@ -88,7 +88,7 @@
   </object>
 
   <!-- Testing -->
-  <!--object Name="Une" Load="Merge">
+  <object Name="Une" Load="Merge">
     <skill Name="Tinkering" />
     <skill Name="Tinkering_Repair" />
     <skill Name="Tinkering_Tinker1" />
@@ -99,6 +99,7 @@
     <skill Name="Tinkering_Scavenger" />
     <skill Name="Tinkering_ReverseEngineer" />
     <skill Name="Tinkering_Tinker3" />
-  </object-->
+    <part Name="CyberneticsHasImplants" Implants="Schemasoft4@head" />
+  </object>
   
 </objects>
