@@ -4,6 +4,11 @@
   <object Name="DataDisk" Load="Merge">
     <part Name="UD_Byte_DataDisk" />
   </object>
+
+  <object Name="KnownRecipe" Inherits="UD_TradeUI_DisplayItem">
+    <property Name="NeverStack" Value="No stacks for me please." />
+    <part Name="Physics" Category="Able To Tinker" />
+  </object>
     
   <object Name="BaseByte" Inherits="Scrap">
     <part Name="Render" DisplayName="[{{y|byte}}]" 

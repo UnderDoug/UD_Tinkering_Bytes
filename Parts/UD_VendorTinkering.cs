@@ -144,24 +144,40 @@ namespace XRL.World.Parts
 
         public IEnumerable<TinkerData> GetKnownRecipes(Predicate<TinkerData> Filter = null, bool IncludeInstalled = true)
         {
+            int indent = Debug.LastIndent;
+            bool doDebug = false;
+            Debug.Entry(3, 
+                $"{nameof(UD_VendorTinkering)}.{nameof(GetKnownRecipes)}(" +
+                $"{nameof(Filter)}? {Filter != null}, " +
+                $"{nameof(IncludeInstalled)}: {IncludeInstalled})", 
+                Indent: indent + 1, Toggle: doDebug);
+            Debug.CheckYeh(3, $"KnownRecipes", Indent: indent + 2, Toggle: doDebug);
+            foreach (TinkerData tinkerData in KnownRecipes)
+            {
+                bool includeRecipe = (Filter == null || Filter(tinkerData)) && (!IncludeInstalled || !InstalledRecipes.Contains(tinkerData));
+                Debug.CheckYeh(3, $"{tinkerData.Blueprint ?? tinkerData.PartName ?? tinkerData.DisplayName.Strip()}",
+                    Good: includeRecipe, Indent: indent + 3, Toggle: doDebug);
+                if (includeRecipe)
+                {
+                    yield return tinkerData;
+                }
+            }
             if (IncludeInstalled && !InstalledRecipes.IsNullOrEmpty())
             {
+                Debug.CheckYeh(3, $"InstalledRecipes", Indent: indent + 2, Toggle: doDebug);
                 foreach (TinkerData installedRecipe in InstalledRecipes)
                 {
-                    if (Filter == null || Filter(installedRecipe))
+                    bool includeRecipe = Filter == null || Filter(installedRecipe);
+                    Debug.CheckYeh(3, $"{installedRecipe.Blueprint ?? installedRecipe.PartName ?? installedRecipe.DisplayName.Strip()}", 
+                        Good: includeRecipe, 
+                        Indent: indent + 3, Toggle: doDebug);
+                    if (includeRecipe)
                     {
                         yield return installedRecipe;
                     }
                 }
             }
-            foreach (TinkerData tinkerData in KnownRecipes)
-            {
-                if (Filter == null || Filter(tinkerData) 
-                    && (!IncludeInstalled || !InstalledRecipes.Contains(tinkerData)))
-                {
-                    yield return tinkerData;
-                }
-            }
+            Debug.LastIndent = indent;
             yield break;
         }
 
@@ -503,7 +519,7 @@ namespace XRL.World.Parts
                     TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(LearnSkillRecipes));
                     if (recipeToKnow != null && !KnownRecipes.Contains(recipeToKnow))
                     {
-                        Debug.LoopItem(3, $"{recipeToKnow.DisplayName.Strip()}", Indent: 1);
+                        Debug.LoopItem(3, $"{recipeToKnow.Blueprint ?? recipeToKnow.PartName ?? recipeToKnow.DisplayName.Strip()}", Indent: 1);
                         KnownRecipes.Add(recipeToKnow);
                         learned = true;
                     }
@@ -517,7 +533,7 @@ namespace XRL.World.Parts
             {
                 return false;
             }
-            InstalledRecipes = new();
+            InstalledRecipes.Clear();
             bool learned = false;
             List<GameObject> installedCybernetics = Event.NewGameObjectList(Vendor.GetInstalledCybernetics());
 
@@ -546,7 +562,7 @@ namespace XRL.World.Parts
                                     && availableRecipe.Category == implantedSchemasoft.Category)
                                 {
                                     InstalledRecipes.TryAdd(availableRecipe);
-                                    Debug.LoopItem(3, $"{availableRecipe.DisplayName.Strip()}", Indent: 2);
+                                    Debug.LoopItem(3, $"{availableRecipe.Blueprint ?? availableRecipe.PartName ?? availableRecipe.DisplayName.Strip()}", Indent: 2);
                                     learned = true;
                                 }
                             }
@@ -1013,17 +1029,17 @@ namespace XRL.World.Parts
                         List<string> tierIIRecipes = new();
                         List<string> tierIIIRecipes = new();
 
+                        string recipeBullet = "\u0007 ".Color("K");
+                        string creditBullet = "\u009B ".Color("c");
                         foreach (TinkerData knownRecipe in knownRecipes)
                         {
                             string recipeDisplayName = knownRecipe.DisplayName;
+                            bool isInstalledRecipe = InstalledRecipes.Contains(knownRecipe);
                             if (knownRecipe.Type == "Mod")
                             {
                                 recipeDisplayName = $"[{"Mod".Color("W")}]{recipeDisplayName}";
                             }
-                            if (InstalledRecipes.Contains(knownRecipe))
-                            {
-                                recipeDisplayName = $" [{"\u009B".Color("c")}]{recipeDisplayName}";
-                            }
+                            recipeDisplayName = $"{(isInstalledRecipe ? creditBullet : recipeBullet)}{recipeDisplayName}";
                             switch (DataDisk.GetRequiredSkill(knownRecipe.Tier))
                             {
                                 case nameof(Tinkering_Tinker1):
@@ -1040,21 +1056,21 @@ namespace XRL.World.Parts
                             }
                         }
 
-                        E.Infix.AppendRules("Known Recipes".Color("M") + ":");
+                        string noRecipe = recipeBullet + "none";
 
-                        string recipeBullet = "\u0007 ".Color("K");
+                        E.Infix.AppendRules("Known Recipes".Color("M") + ":");
 
                         E.Infix.AppendRules("Tier I".Color("W") + ":");
                         if (!tierIRecipes.IsNullOrEmpty())
                         {
                             foreach (string tier1IRecipe in tierIRecipes)
                             {
-                                E.Infix.AppendRules(recipeBullet + tier1IRecipe);
+                                E.Infix.AppendRules(tier1IRecipe);
                             }
                         }
                         else
                         {
-                            E.Infix.AppendRules(recipeBullet + "none");
+                            E.Infix.AppendRules(noRecipe);
                         }
 
                         E.Infix.AppendRules("Tier II".Color("W") + ":");
@@ -1062,12 +1078,12 @@ namespace XRL.World.Parts
                         {
                             foreach (string tier1IIRecipe in tierIIRecipes)
                             {
-                                E.Infix.AppendRules(recipeBullet + tier1IIRecipe);
+                                E.Infix.AppendRules(tier1IIRecipe);
                             }
                         }
                         else
                         {
-                            E.Infix.AppendRules(recipeBullet + "none");
+                            E.Infix.AppendRules(noRecipe);
                         }
 
                         E.Infix.AppendRules("Tier III".Color("W") + ":");
@@ -1075,12 +1091,12 @@ namespace XRL.World.Parts
                         {
                             foreach (string tier1IIIRecipe in tierIIIRecipes)
                             {
-                                E.Infix.AppendRules(recipeBullet + tier1IIIRecipe);
+                                E.Infix.AppendRules(tier1IIIRecipe);
                             }
                         }
                         else
                         {
-                            E.Infix.AppendRules(recipeBullet + "none");
+                            E.Infix.AppendRules(noRecipe);
                         }
 
                         E.Infix.AppendLine();
@@ -1112,9 +1128,10 @@ namespace XRL.World.Parts
                 LearnRecipes();
                 if (ScribesKnownRecipesOnRestock)
                 {
-                    if (!GetKnownRecipes().IsNullOrEmpty())
+                    List<TinkerData> knownRecipes = new(GetKnownRecipes());
+                    if (!knownRecipes.IsNullOrEmpty())
                     {
-                        List<GameObject> knownDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(GO => GO.TryGetPart(out DataDisk dataDisk) && GetKnownRecipes().Contains(dataDisk.Data));
+                        List<GameObject> knownDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(GO => GO.TryGetPart(out DataDisk dataDisk) && knownRecipes.Contains(dataDisk.Data));
                         List<TinkerData> inventoryTinkerData = new();
                         foreach (GameObject knownDataDiskObject in knownDataDiskObjects)
                         {
@@ -1124,7 +1141,7 @@ namespace XRL.World.Parts
                             }
                         }
                         List<string> byteBlueprints = new(UD_TinkeringByte.GetByteBlueprints());
-                        foreach (TinkerData knownRecipe in GetKnownRecipes())
+                        foreach (TinkerData knownRecipe in knownRecipes)
                         {
                             if (!byteBlueprints.Contains(knownRecipe.Blueprint) 
                                 && !inventoryTinkerData.Contains(knownRecipe) 
