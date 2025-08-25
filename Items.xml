@@ -3,6 +3,8 @@
 
   <object Name="DataDisk" Load="Merge">
     <part Name="UD_Byte_DataDisk" />
+    <part Name="Physics" Category="Able To Tinker" />
+    <tag Name="TradeUI_DisplayOnly"/>
   </object>
 
   <object Name="KnownRecipe" Inherits="UD_TradeUI_DisplayItem">
