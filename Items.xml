@@ -3,13 +3,18 @@
 
   <object Name="DataDisk" Load="Merge">
     <part Name="UD_Byte_DataDisk" />
-    <part Name="Physics" Category="Able To Tinker" />
-    <tag Name="TradeUI_DisplayOnly"/>
   </object>
 
-  <object Name="KnownRecipe" Inherits="UD_TradeUI_DisplayItem">
+  <object Name="UD_VendorKnownRecipe" Inherits="UD_TradeUI_DisplayItem">
+    <part Name="Render" DisplayName="Known Recipe" DetailColor="y" TileColor="&amp;Y" Tile="items/sw_data_disc.bmp" />
     <property Name="NeverStack" Value="No stacks for me please." />
     <part Name="Physics" Category="Able To Tinker" />
+    <part Name="UD_VendorKnownRecipe" />
+  </object>
+
+  <object Name="UD_VendorImplantedRecipe" Inherits="UD_VendorKnownRecipe">
+    <part Name="Render" DetailColor="C" TileColor="&amp;Y" Tile="Items/sw_credit_wedge.bmp" />
+    <part Name="UD_VendorKnownRecipe" ImplantedKnowledge="true" />
   </object>
     
   <object Name="BaseByte" Inherits="Scrap">
