@@ -1,10 +1,14 @@
 ﻿using System.Collections.Generic;
-using UD_Modding_Toolbox;
+
+using Qud.UI;
+
 using XRL;
 using XRL.UI;
 using XRL.World;
 using XRL.World.Parts;
 using XRL.World.Tinkering;
+
+using UD_Modding_Toolbox;
 
 namespace UD_Tinkering_Bytes
 {
@@ -37,17 +41,20 @@ namespace UD_Tinkering_Bytes
     // Start-up calls in order that they happen.
 
     [HasModSensitiveStaticCache]
-    public static class UD_Blink_Mutation_ModBasedInitialiser
+    public static class UD_Tinkering_Bytes_ModBasedInitialiser
     {
         [ModSensitiveCacheInit]
         public static void AdditionalSetup()
         {
             // Called at game startup and whenever mod configuration changes
+
+            FilterBarCategoryButton.categoryImageMap.Add("Able To Tinker", "Items/sw_unfurled_scroll1.bmp");
+            FilterBarCategoryButton.categoryImageMap.Add("Bytes", "4_byte_inverted.png");
         }
-    } //!-- public static class UD_Blink_Mutation_ModBasedInitialiser
+    }
 
     [HasGameBasedStaticCache]
-    public static class UD_Blink_Mutation_GameBasedInitialiser
+    public static class UD_Tinkering_Bytes_GameBasedInitialiser
     {
         [GameBasedCacheInit]
         public static void AdditionalSetup()
@@ -56,24 +63,24 @@ namespace UD_Tinkering_Bytes
 
             // The.Game registered events should go here.
         }
-    } //!-- public static class UD_Blink_Mutation_GameBasedInitialiser
+    }
 
     [PlayerMutator]
-    public class UD_Blink_Mutation_OnPlayerLoad : IPlayerMutator
+    public class UD_Tinkering_Bytes_OnPlayerLoad : IPlayerMutator
     {
         public void mutate(GameObject player)
         {
             // Gets called once when the player is first generated
         }
-    } //!-- public class UD_Blink_Mutation_OnPlayerLoad : IPlayerMutator
+    }
 
     [HasCallAfterGameLoaded]
-    public class UD_Blink_Mutation_OnLoadGameHandler
+    public class UD_Tinkering_Bytes_OnLoadGameHandler
     {
         [CallAfterGameLoaded]
         public static void OnLoadGameCallback()
         {
             // Gets called every time the game is loaded but not during generation
         }
-    } //!-- public class UD_Blink_Mutation_OnLoadGameHandler
+    }
 }

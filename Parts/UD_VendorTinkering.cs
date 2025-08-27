@@ -1,6 +1,5 @@
 ﻿using ConsoleLib.Console;
 using System;
-using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +19,6 @@ using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
 using static UD_Modding_Toolbox.Const;
-
 
 using UD_Tinkering_Bytes;
 
@@ -574,6 +572,43 @@ namespace XRL.World.Parts
             return learned;
         }
 
+        public static GameObject GetKnownRecipeDisplayItem(TinkerData KnownRecipe, IEnumerable<TinkerData> InstalledRecipes = null)
+        {
+            string recipeBlueprint = !InstalledRecipes.IsNullOrEmpty() && InstalledRecipes.Contains(KnownRecipe) 
+                ? "UD_VendorImplantedRecipe" 
+                : "UD_VendorKnownRecipe";
+            GameObject knownRecipeObject = GameObject.Create(recipeBlueprint);
+            if (knownRecipeObject != null && knownRecipeObject.TryGetPart(out UD_VendorKnownRecipe knownRecipePart))
+            {
+                knownRecipePart.SetData(KnownRecipe);
+            }
+            return knownRecipeObject;
+        }
+        public GameObject GetKnownRecipeDisplayItem(TinkerData KnownRecipe)
+        {
+            return GetKnownRecipeDisplayItem(KnownRecipe, InstalledRecipes);
+        }
+        public bool ReceiveKnownRecipeDisplayItem(TinkerData KnownRecipe)
+        {
+            return GetKnownRecipeDisplayItem(KnownRecipe, InstalledRecipes) is GameObject knownRecipeDisplayObject
+                && ParentObject.ReceiveObject(knownRecipeDisplayObject);
+        }
+
+        public static void GenerateKnownRecipeDisplayItems(GameObject Vendor, IEnumerable<TinkerData> KnownRecipes, IEnumerable<TinkerData> InstalledRecipes = null)
+        {
+            if (!KnownRecipes.IsNullOrEmpty())
+            {
+                foreach (TinkerData knownRecipe in KnownRecipes)
+                {
+                    Vendor.ReceiveObject(GetKnownRecipeDisplayItem(knownRecipe, InstalledRecipes));
+                }
+            }
+        }
+        public void GenerateKnownRecipeDisplayItems()
+        {
+            GenerateKnownRecipeDisplayItems(ParentObject, GetKnownRecipes(), InstalledRecipes);
+        }
+
         public static bool CanTinkerRecipe(GameObject Vendor, TinkerData Recipe, List<TinkerData> InstalledRecipes = null)
         {
             return Vendor.HasSkill(DataDisk.GetRequiredSkill(Recipe.Tier))
@@ -582,6 +617,35 @@ namespace XRL.World.Parts
         public bool CanTinkerRecipe(TinkerData Recipe)
         {
             return CanTinkerRecipe(ParentObject, Recipe, InstalledRecipes);
+        }
+        public static bool IsModApplicableAndNotAlreadyInDictionary(GameObject Vendor, GameObject ApplicableItem, TinkerData ModData, Dictionary<TinkerData, string> ExistingRecipes, List<TinkerData> InstalledRecipes = null)
+        {
+            return ItemModding.ModAppropriate(ApplicableItem, ModData)
+                && CanTinkerRecipe(Vendor, ModData, InstalledRecipes)
+                && !ExistingRecipes.ContainsKey(ModData);
+        }
+        public bool IsModApplicableAndNotAlreadyInDictionary(GameObject ApplicableItem, TinkerData ModData, Dictionary<TinkerData, string> ExistingRecipes)
+        {
+            return IsModApplicableAndNotAlreadyInDictionary(ParentObject, ApplicableItem, ModData, ExistingRecipes, InstalledRecipes);
+        }
+
+        private static void AddNextHotkey(List<char> Hotkeys)
+        {
+            Hotkeys ??= new();
+            if (Hotkeys.IsNullOrEmpty())
+            {
+                Hotkeys.Add('a');
+            }
+            else
+            if (Hotkeys.Contains(' ') || Hotkeys.Contains('z'))
+            {
+                Hotkeys.Add(' ');
+            }
+            else
+            {
+                Hotkeys.Add(Hotkeys[^0]);
+                Hotkeys[^0]++;
+            }
         }
 
         public static GameObject PickASupplier(GameObject Vendor, GameObject ForObject, string Title, string Message = null, bool CenterIntro = false, BitCost BitCost = null, bool Multiple = false)
@@ -947,6 +1011,7 @@ namespace XRL.World.Parts
                 || ID == ImplantRemovedEvent.ID
                 || ID == GetShortDescriptionEvent.ID
                 || (WantVendorActions && ID == StockedEvent.ID)
+                || (WantVendorActions && ID == StartTradeEvent.ID)
                 || (WantVendorActions && ID == GetVendorActionsEvent.ID)
                 || (WantVendorActions && ID == VendorActionEvent.ID);
         }
@@ -1164,19 +1229,28 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
+        public override bool HandleEvent(StartTradeEvent E)
+        {
+            if (E.Trader == ParentObject && WantVendorActions)
+            {
+                GenerateKnownRecipeDisplayItems();
+            }
+            return base.HandleEvent(E);
+        }
         public virtual bool HandleEvent(GetVendorActionsEvent E)
         {
             if (E.Vendor != null && ParentObject == E.Vendor && WantVendorActions)
             {
                 if (E.Item != null)
                 {
-                    if (E.Item.TryGetPart(out DataDisk dataDisk))
+                    UD_VendorKnownRecipe vendorKnownRecipe = null;
+                    if (E.Item.TryGetPart(out DataDisk dataDisk) || E.Item.TryGetPart(out vendorKnownRecipe))
                     {
-                        if (dataDisk.Data.Type == "Build")
+                        if (dataDisk?.Data?.Type == "Build" || vendorKnownRecipe?.Data?.Type == "Build")
                         {
                             E.AddAction("BuildFromDataDisk", "tinker item", COMMAND_BUILD, "tinker", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                         }
-                        else if (dataDisk.Data.Type == "Mod")
+                        else if (dataDisk?.Data?.Type == "Mod" || vendorKnownRecipe?.Data?.Type == "Mod")
                         {
                             E.AddAction("ModFromDataDisk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                         }
@@ -1208,41 +1282,41 @@ namespace XRL.World.Parts
                         return false;
                     }
                 }
-
+                UD_VendorKnownRecipe knownRecipePart = null;
                 if (E.Command == COMMAND_BUILD
                     && E.Item != null
-                    && E.Item.TryGetPart(out DataDisk dataDisk))
+                    && (E.Item.TryGetPart(out DataDisk dataDisk) || E.Item.TryGetPart(out knownRecipePart)))
                 {
-                    GameObject dataDiskObject = E.Item;
-                    TinkerData buildRecipe = dataDisk.Data;
+                    GameObject recipeObject = E.Item;
+                    TinkerData tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
                     bool vendorsRecipe = E.Item.InInventory != player;
-                    GameObject sampleItem = GameObjectFactory.Factory.CreateSampleObject(buildRecipe.Blueprint);
+                    GameObject sampleItem = GameObjectFactory.Factory.CreateSampleObject(tinkerRecipe.Blueprint);
                     TinkeringHelpers.StripForTinkering(sampleItem);
                     TinkeringHelpers.ForceToBePowered(sampleItem);
 
-                    if (!CanTinkerRecipe(buildRecipe))
+                    if (!CanTinkerRecipe(tinkerRecipe))
                     {
-                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(buildRecipe.Tier)}!");
+                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
                         return false;
                     }
                     try
                     {
-                        if (!PickIngredientSupplier(sampleItem, buildRecipe, out GameObject recipeIngredientSupplier))
+                        if (!PickIngredientSupplier(sampleItem, tinkerRecipe, out GameObject recipeIngredientSupplier))
                         {
                             return false;
                         }
                         bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
 
                         BitCost bitCost = new();
-                        bitCost.Import(TinkerItem.GetBitCostFor(buildRecipe.Blueprint));
+                        bitCost.Import(TinkerItem.GetBitCostFor(tinkerRecipe.Blueprint));
 
-                        if (!PickBitsSupplier(sampleItem, buildRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                        if (!PickBitsSupplier(sampleItem, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
                         {
                             return false;
                         }
                         bool vendorSuppliesBits = recipeBitSupplier == vendor;
 
-                        tinkerInvoice = new(vendor, buildRecipe, bitCost, vendorsRecipe)
+                        tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe)
                         {
                             VendorSuppliesIngredients = vendorSuppliesIngredients,
                             VendorSuppliesBits = vendorSuppliesBits,
@@ -1280,7 +1354,7 @@ namespace XRL.World.Parts
                         {
                             return false;
                         }
-                        if (VendorDoBuild(vendor, dataDisk.Data, recipeIngredientSupplier, vendorHoldsItem))
+                        if (VendorDoBuild(vendor, tinkerRecipe, recipeIngredientSupplier, vendorHoldsItem))
                         {
                             bitSupplierBitLocker.UseBits(bitCost);
 
@@ -1305,14 +1379,18 @@ namespace XRL.World.Parts
                 if (E.Command == COMMAND_MOD)
                 {
                     GameObject selectedObject = null;
-                    TinkerData modRecipe = null;
+                    TinkerData tinkerRecipe = null;
                     string modName = null;
                     bool vendorsRecipe = true;
                     try
                     {
-                        if (!E.Item.TryGetPart(out dataDisk))
+                        if (!E.Item.TryGetPart(out dataDisk) && !E.Item.TryGetPart(out knownRecipePart))
                         {
                             selectedObject = E.Item;
+
+                            List<GameObject> vendorHeldRecipeObjects = vendor?.Inventory?.GetObjectsViaEventList(
+                                GO => GO.TryGetPart(out UD_VendorKnownRecipe VKR)
+                                && VKR.Data.Type == "Mod");
 
                             List<GameObject> vendorHeldDataDiskObjects = vendor?.Inventory?.GetObjectsViaEventList(
                                 GO => GO.TryGetPart(out DataDisk D)
@@ -1322,7 +1400,9 @@ namespace XRL.World.Parts
                                 GO => GO.TryGetPart(out DataDisk D)
                                 && D.Data.Type == "Mod");
 
-                            if (KnownMods.IsNullOrEmpty() && vendorHeldDataDiskObjects.IsNullOrEmpty() && playerHeldDataDiskObjects.IsNullOrEmpty())
+                            if (vendorHeldRecipeObjects.IsNullOrEmpty() 
+                                && vendorHeldDataDiskObjects.IsNullOrEmpty() 
+                                && playerHeldDataDiskObjects.IsNullOrEmpty())
                             {
                                 Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not know any item modifications.");
                                 return false;
@@ -1333,23 +1413,20 @@ namespace XRL.World.Parts
                                 foreach (GameObject playerHeldDataDiskObject in playerHeldDataDiskObjects)
                                 {
                                     if (playerHeldDataDiskObject.TryGetPart(out DataDisk playerHeldDataDisk)
-                                        && ItemModding.ModAppropriate(selectedObject, playerHeldDataDisk.Data)
-                                        && CanTinkerRecipe(playerHeldDataDisk.Data)
-                                        && !applicableRecipes.ContainsKey(playerHeldDataDisk.Data))
+                                        && IsModApplicableAndNotAlreadyInDictionary(selectedObject, playerHeldDataDisk.Data, applicableRecipes))
                                     {
                                         applicableRecipes.Add(playerHeldDataDisk.Data, "your inventory");
                                     }
                                 }
                             }
-                            if (!KnownMods.IsNullOrEmpty())
+                            if (!vendorHeldRecipeObjects.IsNullOrEmpty())
                             {
-                                foreach (TinkerData knownMod in KnownMods)
+                                foreach (GameObject vendorHeldRecipeObject in vendorHeldRecipeObjects)
                                 {
-                                    if (ItemModding.ModAppropriate(selectedObject, knownMod)
-                                        && CanTinkerRecipe(knownMod)
-                                        && !applicableRecipes.ContainsKey(knownMod))
+                                    if (vendorHeldRecipeObject.TryGetPart(out UD_VendorKnownRecipe vendorHeldRecipePart)
+                                        && IsModApplicableAndNotAlreadyInDictionary(selectedObject, vendorHeldRecipePart.Data, applicableRecipes))
                                     {
-                                        applicableRecipes.Add(knownMod, "known by trader");
+                                        applicableRecipes.Add(vendorHeldRecipePart.Data, "known by trader");
                                     }
                                 }
                             }
@@ -1358,9 +1435,7 @@ namespace XRL.World.Parts
                                 foreach (GameObject vendorHeldDataDiskObject in vendorHeldDataDiskObjects)
                                 {
                                     if (vendorHeldDataDiskObject.TryGetPart(out DataDisk vendorHeldDataDisk)
-                                        && ItemModding.ModAppropriate(selectedObject, vendorHeldDataDisk.Data)
-                                        && CanTinkerRecipe(vendorHeldDataDisk.Data)
-                                        && !applicableRecipes.ContainsKey(vendorHeldDataDisk.Data))
+                                        && IsModApplicableAndNotAlreadyInDictionary(selectedObject, vendorHeldDataDisk.Data, applicableRecipes))
                                     {
                                         applicableRecipes.Add(vendorHeldDataDisk.Data, "trader inventory");
                                     }
@@ -1392,7 +1467,6 @@ namespace XRL.World.Parts
 
                                 recipeBitCost.Increment(BitType.TierBits[recipeTier]);
                                 recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
-
                                 if (nextHotkey == ' ' || hotkeys.Contains('z'))
                                 {
                                     nextHotkey = ' ';
@@ -1429,24 +1503,24 @@ namespace XRL.World.Parts
                             {
                                 return false;
                             }
-                            modRecipe = recipes[selectedOption];
-                            modName = $"{modRecipe.DisplayName}";
+                            tinkerRecipe = recipes[selectedOption];
+                            modName = $"{tinkerRecipe.DisplayName}";
                             vendorsRecipe = !lineItems[selectedOption].Contains("your inventory");
                         }
                         else
                         {
                             vendorsRecipe = E.Item.InInventory != player;
-                            modRecipe = dataDisk.Data;
-                            if (!CanTinkerRecipe(modRecipe))
+                            tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
+                            if (!CanTinkerRecipe(tinkerRecipe))
                             {
-                                Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(modRecipe.Tier)}!");
+                                Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
                                 return false;
                             }
-                            modName = $"{modRecipe.DisplayName}";
+                            modName = $"{tinkerRecipe.DisplayName}";
 
                             List<GameObject> applicableObjects = Event.NewGameObjectList(List:
                                 player?.GetInventoryAndEquipment(
-                                    GO => ItemModding.ModAppropriate(GO, modRecipe)
+                                    GO => ItemModding.ModAppropriate(GO, tinkerRecipe)
                                     && GO.Understood())
                                 );
 
@@ -1464,7 +1538,7 @@ namespace XRL.World.Parts
                             foreach (GameObject applicableObject in applicableObjects)
                             {
                                 recipeBitCost = new();
-                                int recipeTier = Tier.Constrain(modRecipe.Tier);
+                                int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
 
                                 int modSlotsUsed = applicableObject.GetModificationSlotsUsed();
                                 int noCostMods = applicableObject.GetIntProperty("NoCostMods");
@@ -1516,23 +1590,23 @@ namespace XRL.World.Parts
                             }
                         }
 
-                        if (selectedObject != null && modRecipe != null)
+                        if (selectedObject != null && tinkerRecipe != null)
                         {
-                            if (!ItemModding.ModificationApplicable(modRecipe.PartName, selectedObject))
+                            if (!ItemModding.ModificationApplicable(tinkerRecipe.PartName, selectedObject))
                             {
                                 Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
                                 return false;
                             }
 
                             bool vendorSuppliesIngredients = false;
-                            if (!PickIngredientSupplier(selectedObject, modRecipe, out GameObject recipeIngredientSupplier))
+                            if (!PickIngredientSupplier(selectedObject, tinkerRecipe, out GameObject recipeIngredientSupplier))
                             {
                                 return false;
                             }
                             vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
 
                             BitCost bitCost = new();
-                            int recipeTier = Tier.Constrain(modRecipe.Tier);
+                            int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
 
                             int modSlotsUsed = selectedObject.GetModificationSlotsUsed();
                             int noCostMods = selectedObject.GetIntProperty("NoCostMods");
@@ -1542,13 +1616,13 @@ namespace XRL.World.Parts
                             bitCost.Increment(BitType.TierBits[recipeTier]);
                             bitCost.Increment(BitType.TierBits[existingModsTier]);
 
-                            if (!PickBitsSupplier(selectedObject, modRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                            if (!PickBitsSupplier(selectedObject, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
                             {
                                 return false;
                             }
                             bool vendorSuppliesBits = recipeBitSupplier == vendor;
 
-                            tinkerInvoice = new(vendor, modRecipe, bitCost, vendorsRecipe, selectedObject)
+                            tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe, selectedObject)
                             {
                                 VendorSuppliesIngredients = vendorSuppliesIngredients,
                                 VendorSuppliesBits = vendorSuppliesBits,
@@ -1567,7 +1641,7 @@ namespace XRL.World.Parts
                                 $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
                                 $"\n\n{tinkerInvoice}") == DialogResult.Yes)
                             {
-                                if (VendorDoMod(vendor, selectedObject, modRecipe, recipeIngredientSupplier))
+                                if (VendorDoMod(vendor, selectedObject, tinkerRecipe, recipeIngredientSupplier))
                                 {
                                     bitSupplierBitLocker.UseBits(bitCost);
 

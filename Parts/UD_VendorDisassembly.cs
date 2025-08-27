@@ -368,6 +368,7 @@ namespace XRL.World.Parts
                                 if (vendorTinkering.LearnRecipe(learnableBuildRecipe, shouldScribeRecipe))
                                 { 
                                     KnownRecipes.Add(learnableBuildRecipe);
+                                    vendorTinkering?.ReceiveKnownRecipeDisplayItem(learnableBuildRecipe);
                                     Debug.CheckYeh(4, $"{learnableBuildRecipe.DisplayName} \"Learned\"", Indent: indent + 2, Toggle: doDebug);
                                 }
                             }
@@ -379,6 +380,7 @@ namespace XRL.World.Parts
                                     if (vendorTinkering.LearnRecipe(learnableMod, shouldScribeRecipe))
                                     {
                                         KnownRecipes.Add(learnableMod);
+                                        vendorTinkering?.ReceiveKnownRecipeDisplayItem(learnableMod);
                                         Debug.CheckYeh(4, $"{learnableMod.DisplayName} \"Learned\"", Indent: indent + 2, Toggle: doDebug);
                                     }
                                 }

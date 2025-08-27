@@ -148,12 +148,22 @@ namespace UD_Tinkering_Bytes
         {
             if (VendorOwnsRecipe && ExpertiseValue == 0)
             {
-                GameObject sampleDataDiskObject = TinkerData.createDataDisk(Recipe);
-                ExpertiseValue = Math.Round(Math.Max(2, TradeUI.GetValue(sampleDataDiskObject, true) / 3), 2);
-
-                if (GameObject.Validate(ref sampleDataDiskObject))
+                string priceOverrideString = SampleItem.GetPropertyOrTag("VenderTinker_ExpertiseValueOverride", "-1");
+                if (int.TryParse(priceOverrideString, out int priceOverride) && priceOverride > -1)
                 {
-                    sampleDataDiskObject.Obliterate();
+                    ExpertiseValue = priceOverride;
+                }
+                else
+                {
+                    GameObject sampleDataDiskObject = TinkerData.createDataDisk(Recipe);
+                    if (sampleDataDiskObject.TryGetPart(out DataDisk dataDisk) && dataDisk.Data == Recipe)
+                    {
+                        ExpertiseValue = Math.Round(Math.Max(2, TradeUI.GetValue(sampleDataDiskObject, true) / 3), 2);
+                    }
+                    if (GameObject.Validate(ref sampleDataDiskObject))
+                    {
+                        sampleDataDiskObject.Obliterate();
+                    }
                 }
             }
             return ExpertiseValue;
@@ -275,13 +285,14 @@ namespace UD_Tinkering_Bytes
 
         public double GetMaterialsValue()
         {
-            return Math.Round(GetExpertiseValue() + GetIngredientsValue() + GetBitsValue(), 2);
+            return Math.Round(GetIngredientsValue() + GetBitsValue(), 2);
         }
 
         public int GetTotalCost()
         {
             if (TotalCost == 0)
             {
+                bool isItemValueIrrelevant = !VendorSuppliesBits || !VendorSuppliesIngredients;
                 if (Recipe.Type == "Mod")
                 {
                     TotalCost = GetMarkUpValue() + GetMaterialsValue();
@@ -289,7 +300,7 @@ namespace UD_Tinkering_Bytes
                 else
                 if (Recipe.Type == "Build")
                 {
-                    TotalCost = GetLabourValue() + (GetItemValue() > GetMaterialsValue() ? GetItemValue() : GetMaterialsValue());
+                    TotalCost = GetLabourValue() + (!isItemValueIrrelevant && GetItemValue() > GetMaterialsValue() ? GetItemValue() : (GetMaterialsValue() + GetExpertiseValue()));
                 }
 
                 if (!VendorSuppliesIngredients)
@@ -332,6 +343,8 @@ namespace UD_Tinkering_Bytes
             GameObject player = The.Player;
             StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
 
+            bool isItemValueIrrelevant = !VendorSuppliesBits || !VendorSuppliesIngredients;
+
             // Description
             if (Recipe.Type == "Build")
             {
@@ -346,15 +359,19 @@ namespace UD_Tinkering_Bytes
             SB.Append(DividerLine().Color("K")).AppendLine();
 
             // Item or Material Cost
-            if (GetItemValue() > GetMaterialsValue())
+            if (!isItemValueIrrelevant && GetItemValue() > GetMaterialsValue() && Recipe.Type == "Build")
             {
                 SB.Append("Item Value: ").AppendColored("C", GetItemValue().Things("dram")).AppendLine();
                 SB.Append("Labour: ").AppendColored("C", GetLabourValue().Things("dram")).AppendLine();
-
+            }
+            else
+            if (VendorOwnsRecipe)
+            {
+                SB.Append("Labour && Expertise: ").AppendColored("C", GetMarkUpValue().Things("dram")).AppendLine();
             }
             else
             {
-                SB.Append("Labour && Expertise: ").AppendColored("C", GetMarkUpValue().Things("dram")).AppendLine();
+                SB.Append("Labour: ").AppendColored("C", GetMarkUpValue().Things("dram")).AppendLine();
             }
 
             // Ingredients

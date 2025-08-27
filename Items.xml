@@ -6,15 +6,20 @@
   </object>
 
   <object Name="UD_VendorKnownRecipe" Inherits="UD_TradeUI_DisplayItem">
-    <part Name="Render" DisplayName="Known Recipe" DetailColor="y" TileColor="&amp;Y" Tile="items/sw_data_disc.bmp" />
-    <property Name="NeverStack" Value="No stacks for me please." />
     <part Name="Physics" Category="Able To Tinker" />
+    <part Name="Render" DisplayName="known recipe" DetailColor="Y" TileColor="&amp;y" Tile="items/sw_data_disc.bmp" />
+    <part Name="Description" Short="&quot;Things&quot; are as leaves on a summer breeze; knowledge lives on in the very being of all who think." />
+    <builder Name="RandomTile" Tiles="Items/sw_unfurled_scroll1.bmp,Items/sw_unfurled_scroll2.bmp" />
+    <property Name="NeverStack" Value="No stacks for me please." />
     <part Name="UD_VendorKnownRecipe" />
   </object>
 
+  <!-- Tile="Items/sw_credit_wedge.bmp" -->
   <object Name="UD_VendorImplantedRecipe" Inherits="UD_VendorKnownRecipe">
-    <part Name="Render" DetailColor="C" TileColor="&amp;Y" Tile="Items/sw_credit_wedge.bmp" />
-    <part Name="UD_VendorKnownRecipe" ImplantedKnowledge="true" />
+    <part Name="Render" DetailColor="Y" TileColor="&amp;c" Tile="items/sw_data_disc.bmp" />
+    <part Name="UD_VendorKnownRecipe" FromImplant="true" />
+    <part Name="Description" Short="Knowledge is simply a tapestry of thought. Who wraps themself in it need not be its progenitor." />
+    <removebuilder Name="RandomTile" />
   </object>
     
   <object Name="BaseByte" Inherits="Scrap">
@@ -26,6 +31,7 @@
     <part Name="UD_TinkeringByte" />
     <tag Name="TinkerCategory" Value="bytes" />
     <tag Name="Tier" Value="0" />
+    <tag Name="VenderTinker_ExpertiseValueOverride" Value="0" />
     <part Name="Commerce" Value="40" />
     <removetag Name="Scrap" />
     <removetag Name="DefaultDisassemble" />

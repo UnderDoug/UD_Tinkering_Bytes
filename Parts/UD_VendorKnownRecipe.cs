@@ -6,6 +6,7 @@ using UD_Modding_Toolbox;
 using UD_Tinkering_Bytes;
 using UD_Vendor_Actions;
 using XRL.Language;
+using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
 using XRL.World.Tinkering;
@@ -14,13 +15,16 @@ using static UD_Modding_Toolbox.Const;
 namespace XRL.World.Parts
 {
     [Serializable]
-    public class UD_VendorKnownRecipe : IScribedPart, IVendorActionEventHandler
+    public class UD_VendorKnownRecipe 
+        : IScribedPart
+        , IVendorActionEventHandler
+        , IModEventHandler<EndTradeEvent>
     {
         private static bool doDebug => false;
 
-        public TinkerData KnownRecipe;
+        public TinkerData Data;
 
-        public bool ImplantedKnowledge;
+        public bool FromImplant;
 
         [NonSerialized]
         public string ObjectName;
@@ -33,8 +37,8 @@ namespace XRL.World.Parts
 
         public UD_VendorKnownRecipe()
         {
-            KnownRecipe = null;
-            ImplantedKnowledge = false;
+            Data = null;
+            FromImplant = false;
         }
 
         public override bool CanGenerateStacked()
@@ -42,59 +46,74 @@ namespace XRL.World.Parts
             return false;
         }
 
-        public TinkerData SetKnownRecipe(TinkerData KnownRecipe)
+        public TinkerData SetData(TinkerData KnownRecipe)
         {
-            return this.KnownRecipe = KnownRecipe;
+            return this.Data = KnownRecipe;
         }
 
         public override bool AllowStaticRegistration()
         {
             return true;
         }
+
+        public override bool WantTurnTick()
+        {
+            return base.WantTurnTick();
+        }
+        public override void TurnTick(long TimeTick, int Amount)
+        {
+            if (GameObject.Validate(ParentObject))
+            {
+                ParentObject.Obliterate();
+            }
+            base.TurnTick(TimeTick, Amount);
+        }
+
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
                 || ID == GetDisplayNameEvent.ID
-                || ID == GetShortDescriptionEvent.ID;
+                || ID == GetShortDescriptionEvent.ID
+                || ID == EndTradeEvent.ID;
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
             SB.Clear();
-            if (KnownRecipe == null)
+            if (Data == null)
             {
                 ObjectName = "invalid blueprint: " + ParentObject.Blueprint;
             }
-            else if (KnownRecipe.Type == "Build")
+            else if (Data.Type == "Build")
             {
                 try
                 {
                     if (ObjectName == null)
                     {
-                        if (KnownRecipe.Blueprint == null)
+                        if (Data.Blueprint == null)
                         {
-                            ObjectName = "invalid blueprint: " + KnownRecipe.Blueprint;
+                            ObjectName = "invalid blueprint: " + Data.Blueprint;
                         }
                         else
                         {
-                            ObjectName = TinkeringHelpers.TinkeredItemShortDisplayName(KnownRecipe.Blueprint);
+                            ObjectName = TinkeringHelpers.TinkeredItemShortDisplayName(Data.Blueprint);
                         }
                     }
                 }
                 catch (Exception)
                 {
-                    ObjectName = "error:" + KnownRecipe.Blueprint;
+                    ObjectName = "error:" + Data.Blueprint;
                 }
                 SB.Append(": ").AppendColored("C", ObjectName).Append(" <");
                 Cost.Clear();
-                Cost.Import(TinkerItem.GetBitCostFor(KnownRecipe.Blueprint));
+                Cost.Import(TinkerItem.GetBitCostFor(Data.Blueprint));
                 ModifyBitCostEvent.Process(ParentObject.InInventory ?? The.Player, Cost, "DataDisk");
                 Cost.ToStringBuilder(SB);
                 SB.Append('>');
             }
-            else if (KnownRecipe.Type == "Mod")
+            else if (Data.Type == "Mod")
             {
                 string itemMod = "Item mod".Color("W");
-                string recipeDisplayName = KnownRecipe.DisplayName.Color("C");
+                string recipeDisplayName = Data.DisplayName.Color("C");
                 ObjectName = $"[{itemMod}] - {recipeDisplayName}";
                 SB.Append(": ").Append(ObjectName);
             }
@@ -106,16 +125,16 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(GetShortDescriptionEvent E)
         {
-            if (KnownRecipe != null)
+            if (Data != null)
             {
-                if (KnownRecipe.Type == "Mod")
+                if (Data.Type == "Mod")
                 {
-                    string modDesc = ItemModding.GetModificationDescription(KnownRecipe.Blueprint, 0);
+                    string modDesc = ItemModding.GetModificationDescription(Data.Blueprint, 0);
                     E.Postfix.AppendLine().Append("Adds item modification: ").Append(modDesc);
                 }
                 else
                 {
-                    GameObject sampleObject = GameObject.CreateSample(KnownRecipe.Blueprint);
+                    GameObject sampleObject = GameObject.CreateSample(Data.Blueprint);
                     if (sampleObject != null)
                     {
                         TinkeringHelpers.StripForTinkering(sampleObject);
@@ -142,11 +161,23 @@ namespace XRL.World.Parts
                         }
                     }
                 }
-                E.Postfix.AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(KnownRecipe.Tier));
-                if (TinkerData.RecipeKnown(KnownRecipe))
+                E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
+                if (FromImplant)
+                {
+                    E.Postfix.Append(" [").AppendColored("c", "implanted recipe").Append("]");
+                }
+                if (TinkerData.RecipeKnown(Data))
                 {
                     E.Postfix.AppendLine().AppendRules("You also know this recipe.");
                 }
+            }
+            return base.HandleEvent(E);
+        }
+        public virtual bool HandleEvent(EndTradeEvent E)
+        {
+            if (GameObject.Validate(ParentObject))
+            {
+                ParentObject.Obliterate();
             }
             return base.HandleEvent(E);
         }
