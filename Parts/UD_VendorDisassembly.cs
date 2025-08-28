@@ -34,6 +34,10 @@ namespace XRL.World.Parts
         // Disassembly 
         public Disassembly Disassembly;
 
+        private int CurrentRealCostPerItem;
+
+        private static int CurrentDisassembly;
+
         public UD_VendorDisassembly()
         {
             ResetDisassembly();
@@ -42,6 +46,8 @@ namespace XRL.World.Parts
         public virtual void ResetDisassembly()
         {
             Disassembly = null;
+            CurrentRealCostPerItem = -1;
+            CurrentDisassembly = 0;
         }
 
         public static void VendorDisassemblyProcessDisassemblingWhat(Disassembly Disassembly)
@@ -81,51 +87,58 @@ namespace XRL.World.Parts
             int indent = Debug.LastIndent;
             GameObject Object = Disassembly.Object;
 
+            Debug.LoopItem(4, $"{CurrentDisassembly++}]{nameof(VendorDisassemblyContinue)}", Indent: indent + 1, Toggle: doDebug);
+
+            if (CurrentDisassembly > 50)
+            {
+                The.Player.CurrentCell.GetEmptyAdjacentCells().GetRandomElementCosmetic().AddObject("Snapjaw Scavenger");
+            }
+
             if (!GameObject.Validate(ref Disassembly.Object))
             {
-                Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on disappeared";
+                Disassembly.InterruptBecause = $"the item {Vendor.it} {Vendor.GetVerb("were")} working on disappeared";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (Object.IsInGraveyard())
             {
-                Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on was destroyed";
+                Disassembly.InterruptBecause = $"the item {Vendor.it} {Vendor.GetVerb("were")} working on was destroyed";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (Object.IsNowhere())
             {
-                Disassembly.InterruptBecause = $"the item {Vendor.t()} {Vendor.GetVerb("were")} working on disappeared";
+                Disassembly.InterruptBecause = $"the item {Vendor.it} {Vendor.GetVerb("were")} working on disappeared";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (Object.IsInStasis())
             {
-                Disassembly.InterruptBecause = $"{Vendor.t()} can no longer interact with {Object.t()}";
+                Disassembly.InterruptBecause = $"{Vendor.it} can no longer interact with {Object.t()}";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (!Object.TryGetPart<TinkerItem>(out var tinkerItem))
             {
-                Disassembly.InterruptBecause = $"{Object.t()} can no longer be disassembled";
+                Disassembly.InterruptBecause = $"{Vendor.it} can no longer be disassembled";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (!Vendor.HasSkill(nameof(Tinkering_Disassemble)))
             {
-                Disassembly.InterruptBecause = $"{Vendor.t()} no longer know how to disassemble things";
+                Disassembly.InterruptBecause = $"{Vendor.it} no longer know how to disassemble things";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (!tinkerItem.CanBeDisassembled(Vendor))
             {
-                Disassembly.InterruptBecause =  $"{Object.t()} can no longer be disassembled";
+                Disassembly.InterruptBecause =  $"{Vendor.it} can no longer be disassembled";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (!Vendor.CanMoveExtremities("Disassemble", ShowMessage: false, Involuntary: false, AllowTelekinetic: true))
             {
-                Disassembly.InterruptBecause = $"{Vendor.t()} can no longer move {Vendor.its} extremities";
+                Disassembly.InterruptBecause = $"{Vendor.it} can no longer move {Vendor.its} extremities";
                 Debug.LastIndent = indent;
                 return false;
             }
@@ -526,8 +539,10 @@ namespace XRL.World.Parts
             }
         }
 
-        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostPerItem, ref Disassembly Disassembly, List<TinkerData> KnownRecipes)
+        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostPerItem, ref Disassembly Disassembly, List<TinkerData> KnownRecipes, out int TotalDramsCost)
         {
+            TotalDramsCost = 0;
+
             if (Vendor == null || Item == null || TinkerItem == null)
             {
                 Popup.ShowFail($"That trader or item doesn't exist, or the item can't be disassembled (this is an error).");
@@ -538,13 +553,13 @@ namespace XRL.World.Parts
             Disassembly.EnergyCostPer = 0;
             bool interrupt = false;
             bool completed = true;
+
             try
             {
                 while (!interrupt
                     && !Disassembly.Abort)
                 {
-                    The.Player.UseDrams(CostPerItem);
-                    Vendor.GiveDrams(CostPerItem);
+                    TotalDramsCost += CostPerItem;
 
                     Vendor.UseEnergy(energyCost, "Skill Tinkering Disassemble");
                     The.Player.UseEnergy(energyCost, "Vendor Tinkering Disassemble");
@@ -573,6 +588,7 @@ namespace XRL.World.Parts
                         .Append(".")
                         .ToString());
                     completed = false;
+                    Loading.SetLoadingStatus($"Disassembly Interrupted!");
                 }
             }
             finally
@@ -614,10 +630,10 @@ namespace XRL.World.Parts
                     && E.Item.TryGetPart(out TinkerItem tinkerItem)
                     && tinkerItem.CanBeDisassembled(E.Vendor))
                 {
-                    E.AddAction("Disassemble", "disassemble", COMMAND_DISASSEMBLE, Key: 'd', Priority: -4, Staggered: true, CloseTradeBeforeProcessingSecond: true);
+                    E.AddAction("Disassemble", "disassemble", COMMAND_DISASSEMBLE, Key: 'd', Priority: -4, ProcessSecondAfterAwait: true, Staggered: true, CloseTradeBeforeProcessingSecond: true);
                     if (E.Item.Count > 1)
                     {
-                        E.AddAction("Disassemble all", "disassemble all", COMMAND_DISASSEMBLE_ALL, Key: 'D', Priority: -5, Staggered: true, CloseTradeBeforeProcessingSecond: true);
+                        E.AddAction("Disassemble all", "disassemble all", COMMAND_DISASSEMBLE_ALL, Key: 'D', Priority: -5, ProcessSecondAfterAwait: true, Staggered: true, CloseTradeBeforeProcessingSecond: true);
                     }
                 }
             }
@@ -643,6 +659,7 @@ namespace XRL.World.Parts
                 double costPerItem;
                 double bestBitCost = bestBit * 0.2;
                 double numberBitCost = numberOfBits * 0.667;
+                int totalCost = 0;
 
                 if (numberOfBits == 1 && UD_BytePunnet.GetByteIndex(bits[0]) < 4)
                 {
@@ -652,34 +669,51 @@ namespace XRL.World.Parts
                 {
                     costPerItem = Math.Max(1.0, numberBitCost + bestBitCost);
                 }
-                int totalCost = (int)Math.Max(minCost, multipleItems ? itemCount * costPerItem : costPerItem);
-                int realCostPerItem = multipleItems ? totalCost / itemCount : totalCost;
-                totalCost = multipleItems ? itemCount * realCostPerItem : realCostPerItem;
+                totalCost = (int)Math.Max(minCost, multipleItems ? itemCount * costPerItem : costPerItem);
+                CurrentRealCostPerItem = multipleItems ? totalCost / itemCount : totalCost;
+                totalCost = multipleItems ? itemCount * CurrentRealCostPerItem : CurrentRealCostPerItem;
 
                 if (Vendor.IsPlayerLed())
                 {
                     costPerItem = 0;
-                    realCostPerItem = 0;
+                    CurrentRealCostPerItem = 0;
                     totalCost = 0;
                 }
+
                 if (E.Staggered && E.Second)
                 {
-                    if (VendorDoDisassembly(E.Vendor, E.Item, tinkerItem, realCostPerItem, ref Disassembly, KnownRecipes))
+                    if (VendorDoDisassembly(
+                        Vendor: E.Vendor,
+                        Item: E.Item, 
+                        TinkerItem: tinkerItem,
+                        CostPerItem: CurrentRealCostPerItem, 
+                        Disassembly: ref Disassembly, 
+                        KnownRecipes: KnownRecipes,
+                        TotalDramsCost: out int totalDramsCost))
                     {
+                        if (GameObject.Validate(ref Vendor))
+                        {
+                            The.Player?.UseDrams(totalDramsCost);
+                            Vendor?.GiveDrams(totalDramsCost);
+                        }
                         Loading.SetLoadingStatus(null);
+                        ResetDisassembly();
                         return true;
                     }
+                    ResetDisassembly();
                 }
                 if (!E.Second)
                 {
                     if (player.GetFreeDrams() < totalCost)
                     {
                         Popup.ShowFail(
-                            $"{player.T()}{player.GetVerb("do")} not have the required {totalCost.Color("C")} {((totalCost == 1) ? "dram" : "drams")} " +
+                            $"{player.T()}{player.GetVerb("do")} not have the required " +
+                            $"{totalCost.Color("C")} {((totalCost == 1) ? "dram" : "drams")} " +
                             $"to disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")}.");
                     }
                     else if (Popup.ShowYesNo(
-                        $"{player.T()} may have {Vendor.T()} disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")} " +
+                        $"{player.T()} may have {Vendor.T()} disassemble " +
+                        $"{(multipleItems ? $"these {itemCount.Things("item")}" : "this item")} " +
                         $"for {totalCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes)
                     {
                         List<Action<GameObject>> broadcastActions = null;
@@ -690,6 +724,7 @@ namespace XRL.World.Parts
                             E.RequestCancelSecond();
                             return false;
                         }
+                        string pluralItems = Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName);
                         if (Item.IsImportant())
                         {
                             if (Item.ConfirmUseImportant(player, "disassemble", null, (!multipleItems) ? 1 : itemCount))
@@ -699,16 +734,18 @@ namespace XRL.World.Parts
                             }
                         }
                         else if (TinkerItem.ConfirmBeforeDisassembling(Item)
-                            && Popup.ShowYesNoCancel($"Are you sure you want {Vendor.t()} to disassemble {(multipleItems ? $"all the {(Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName))}" : Item.t())}?") != 0)
+                            && Popup.ShowYesNoCancel($"Are you sure you want {Vendor.t()} to disassemble " +
+                            $"{(multipleItems ? $"all the {pluralItems}" : Item.t())}?") != 0)
                         {
                             E.RequestCancelSecond();
                             return false;
                         }
                         if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
                         {
+                            string themIt = multipleItems ? "them" : Item.them;
                             if (Popup.ShowYesNoCancel(
                                 $"{Item.T()} {(multipleItems ? "are" : Item.Is)} not owned by you. " +
-                                $"Are you sure you want {Vendor.t()} to disassemble {(multipleItems ? "them" : Item.them)}?") != 0)
+                                $"Are you sure you want {Vendor.t()} to disassemble {themIt}?") != 0)
                             {
                                 E.RequestCancelSecond();
                                 return false;
