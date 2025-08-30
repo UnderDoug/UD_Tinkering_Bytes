@@ -108,21 +108,28 @@ namespace XRL.World.Parts
                 {
                     ObjectName = "error:" + Data.Blueprint;
                 }
+                bool isUnderstood = false;
                 if (GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
                 {
                     TinkeringHelpers.StripForTinkering(sampleObject);
-                    ObjectName = sampleObject.DisplayName;
+                    ObjectName = sampleObject.GetDisplayName(Short: true, Single: true);
+                    isUnderstood = sampleObject.Understood();
+
                     if (GameObject.Validate(ref sampleObject))
                     {
                         sampleObject.Obliterate();
                     }
                 }
-                SB.Append(": ").AppendColored("C", ObjectName).Append(" <");
-                Cost.Clear();
-                Cost.Import(TinkerItem.GetBitCostFor(Data.Blueprint));
-                ModifyBitCostEvent.Process(ParentObject.InInventory ?? The.Player, Cost, "DataDisk");
-                Cost.ToStringBuilder(SB);
-                SB.Append('>');
+                SB.Append(": ").AppendColored("C", ObjectName); 
+                if (isUnderstood)
+                {
+                    SB.Append(" <");
+                    Cost.Clear();
+                    Cost.Import(TinkerItem.GetBitCostFor(Data.Blueprint));
+                    ModifyBitCostEvent.Process(ParentObject.InInventory ?? The.Player, Cost, "DataDisk");
+                    Cost.ToStringBuilder(SB);
+                    SB.Append('>');
+                }
             }
             else if (Data.Type == "Mod")
             {
@@ -151,6 +158,8 @@ namespace XRL.World.Parts
                     GameObject sampleObject = GameObject.CreateSample(Data.Blueprint);
                     if (sampleObject != null)
                     {
+                        bool isUnderstood = sampleObject.Understood();
+                        Examiner sampleExaminer = sampleObject.GetPart<Examiner>();
                         TinkeringHelpers.StripForTinkering(sampleObject);
                         TinkerItem tinkerItem = sampleObject.GetPart<TinkerItem>();
                         Description description = sampleObject.GetPart<Description>();
@@ -167,7 +176,9 @@ namespace XRL.World.Parts
                         E.Postfix.AppendLine();
                         if (description != null)
                         {
-                            E.Postfix.AppendLine().Append(description.GetShortDescription());
+                            E.Postfix.AppendLine().Append(isUnderstood 
+                                ? description._Short 
+                                : sampleExaminer?.GetActiveShortDescription() ?? description._Short);
                         }
                         if (GameObject.Validate(ref sampleObject))
                         {
@@ -196,19 +207,37 @@ namespace XRL.World.Parts
                     E.AddAction("Mod From Recipe", "mod an item with tinkering", UD_VendorTinkering.COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                 }
                 else
-                if (vendorKnownRecipe?.Data?.Type == "Build" && The.Player != null && GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
+                if (vendorKnownRecipe?.Data?.Type == "Build" 
+                    && The.Player != null 
+                    && GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
                 {
                     if (sampleObject.Understood())
                     {
-                        E.AddAction("Build From Recipe", "tinker item", UD_VendorTinkering.COMMAND_BUILD, "tinker", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                        E.AddAction(
+                            Name: "Build From Recipe", 
+                            Display: "tinker item", 
+                            Command: UD_VendorTinkering.COMMAND_BUILD, 
+                            PreferToHighlight: "tinker", 
+                            Key: 'T', 
+                            Priority: -4, 
+                            DramsCost: 100, 
+                            ClearAndSetUpTradeUI: true);
                     }
                     else
+                    if (GetIdentifyLevel(E.Vendor) > 0)
                     {
-                        if (GetIdentifyLevel(E.Vendor) > 0
-                            && !E.Item.Understood())
-                        {
-                            E.AddAction("Identify Recipe", "identify recipe", COMMAND_IDENTIFY_BY_RECIPE, Key: 'I', Priority: 9, ClearAndSetUpTradeUI: true, FireOnItem: true);
-                        }
+                        E.AddAction(
+                            Name: "Identify Recipe",
+                            Display: "identify recipe",
+                            Command: COMMAND_IDENTIFY_BY_RECIPE,
+                            Key: 'I',
+                            Priority: 9,
+                            ClearAndSetUpTradeUI: true,
+                            FireOnItem: true);
+                    }
+                    if (GameObject.Validate(ref sampleObject))
+                    {
+                        sampleObject.Obliterate();
                     }
                 }
             }
