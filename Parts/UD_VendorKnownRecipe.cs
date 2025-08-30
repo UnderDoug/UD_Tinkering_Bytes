@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Security.AccessControl;
 using System.Text;
 using UD_Modding_Toolbox;
 using UD_Tinkering_Bytes;
@@ -9,8 +8,10 @@ using XRL.Language;
 using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
+using XRL.World.Parts.Mutation;
 using XRL.World.Tinkering;
 using static UD_Modding_Toolbox.Const;
+using static XRL.World.Parts.Skill.Tinkering;
 
 namespace XRL.World.Parts
 {
@@ -22,6 +23,8 @@ namespace XRL.World.Parts
     {
         private static bool doDebug => false;
 
+        public const string COMMAND_IDENTIFY_BY_RECIPE = "CmdVendorExamineRecipe";
+
         public TinkerData Data;
 
         public bool FromImplant;
@@ -30,10 +33,10 @@ namespace XRL.World.Parts
         public string ObjectName;
 
         [NonSerialized]
-        private static StringBuilder SB = new StringBuilder();
+        private static StringBuilder SB = new();
 
         [NonSerialized]
-        private static BitCost Cost = new BitCost();
+        private static BitCost Cost = new();
 
         public UD_VendorKnownRecipe()
         {
@@ -74,6 +77,8 @@ namespace XRL.World.Parts
             return base.WantEvent(ID, Cascade)
                 || ID == GetDisplayNameEvent.ID
                 || ID == GetShortDescriptionEvent.ID
+                || ID == GetVendorActionsEvent.ID
+                || ID == VendorActionEvent.ID
                 || ID == EndTradeEvent.ID;
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
@@ -102,6 +107,15 @@ namespace XRL.World.Parts
                 catch (Exception)
                 {
                     ObjectName = "error:" + Data.Blueprint;
+                }
+                if (GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
+                {
+                    TinkeringHelpers.StripForTinkering(sampleObject);
+                    ObjectName = sampleObject.DisplayName;
+                    if (GameObject.Validate(ref sampleObject))
+                    {
+                        sampleObject.Obliterate();
+                    }
                 }
                 SB.Append(": ").AppendColored("C", ObjectName).Append(" <");
                 Cost.Clear();
@@ -144,16 +158,16 @@ namespace XRL.World.Parts
                         if (tinkerItem != null && tinkerItem.NumberMade > 1)
                         {
                             E.Postfix.Append(Grammar.Cardinal(tinkerItem.NumberMade)).Append(' ');
-                            E.Postfix.Append(Grammar.Pluralize(sampleObject.DisplayNameOnlyDirect));
+                            E.Postfix.Append(Grammar.Pluralize(ObjectName ?? sampleObject.DisplayNameOnly));
                         }
                         else
                         {
-                            E.Postfix.Append(sampleObject.DisplayNameOnlyDirect);
+                            E.Postfix.Append(ObjectName ?? sampleObject.DisplayNameOnly);
                         }
                         E.Postfix.AppendLine();
                         if (description != null)
                         {
-                            E.Postfix.AppendLine().Append(description._Short);
+                            E.Postfix.AppendLine().Append(description.GetShortDescription());
                         }
                         if (GameObject.Validate(ref sampleObject))
                         {
@@ -169,6 +183,97 @@ namespace XRL.World.Parts
                 if (TinkerData.RecipeKnown(Data))
                 {
                     E.Postfix.AppendLine().AppendRules("You also know this recipe.");
+                }
+            }
+            return base.HandleEvent(E);
+        }
+        public virtual bool HandleEvent(GetVendorActionsEvent E)
+        {
+            if (E.Item != null && E.Item == ParentObject && E.Item.TryGetPart(out UD_VendorKnownRecipe vendorKnownRecipe))
+            {
+                if (vendorKnownRecipe?.Data?.Type == "Mod")
+                {
+                    E.AddAction("Mod From Recipe", "mod an item with tinkering", UD_VendorTinkering.COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                }
+                else
+                if (vendorKnownRecipe?.Data?.Type == "Build" && The.Player != null && GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
+                {
+                    if (sampleObject.Understood())
+                    {
+                        E.AddAction("Build From Recipe", "tinker item", UD_VendorTinkering.COMMAND_BUILD, "tinker", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                    }
+                    else
+                    {
+                        if (GetIdentifyLevel(E.Vendor) > 0
+                            && !E.Item.Understood())
+                        {
+                            E.AddAction("Identify Recipe", "identify recipe", COMMAND_IDENTIFY_BY_RECIPE, Key: 'I', Priority: 9, ClearAndSetUpTradeUI: true, FireOnItem: true);
+                        }
+                    }
+                }
+            }
+            return base.HandleEvent(E);
+        }
+        public virtual bool HandleEvent(VendorActionEvent E)
+        {
+            if (E.Command == COMMAND_IDENTIFY_BY_RECIPE 
+                && E.Item != null && E.Item == ParentObject 
+                && E.Vendor != null
+                && E.Item.TryGetPart(out UD_VendorKnownRecipe vendorKnownRecipe))
+            {
+                GameObject vendor = E.Vendor;
+                GameObject player = The.Player;
+                int identifyLevel = GetIdentifyLevel(vendor);
+                if (identifyLevel > 0 
+                    && GameObjectFactory.Factory.CreateSampleObject(vendorKnownRecipe.Data.Blueprint) is GameObject item)
+                {
+                    try
+                    {
+                        if (!item.Understood())
+                        {
+                            int complexity = item.GetComplexity();
+                            int examineDifficulty = item.GetExamineDifficulty();
+                            if (player.HasPart<Dystechnia>())
+                            {
+                                Popup.ShowFail($"You can't understand {Grammar.MakePossessive(vendor.t(Stripped: true))} explanation.");
+                                return false;
+                            }
+                            if (identifyLevel < complexity)
+                            {
+                                Popup.ShowFail("This tinker recipe is too complex for " + vendor.t(Stripped: true) + " to explain.");
+                                return false;
+                            }
+                            int dramsCost = (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                            if (player.GetFreeDrams() < dramsCost)
+                            {
+                                Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify this tinker recipe.");
+                            }
+                            else
+                            if (Popup.ShowYesNo($"You may have {vendor.t(Stripped: true)} identify this tinker recipe for {dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes
+                                && The.Player.UseDrams(dramsCost))
+                            {
+                                vendor.GiveDrams(dramsCost);
+                                Popup.Show($"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()} {item.an(AsIfKnown: true)}.");
+                                item.MakeUnderstood();
+                            }
+                        }
+                        else
+                        {
+                            Popup.ShowFail("You already understand what this tinker recipe creates.");
+                        }
+                    }
+                    finally
+                    {
+                        if (GameObject.Validate(ref item))
+                        {
+                            item.Obliterate();
+                        }
+                    }
+                }
+                else
+                {
+                    Popup.Show($"{vendor.Does("don't", Stripped: true)} have the skill to identify tinker recipes.");
+                    return false;
                 }
             }
             return base.HandleEvent(E);

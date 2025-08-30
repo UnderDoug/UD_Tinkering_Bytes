@@ -7,7 +7,7 @@
 
   <object Name="UD_VendorKnownRecipe" Inherits="UD_TradeUI_DisplayItem">
     <part Name="Physics" Category="Able To Tinker" />
-    <part Name="Render" DisplayName="known recipe" DetailColor="Y" TileColor="&amp;y" Tile="items/sw_data_disc.bmp" />
+    <part Name="Render" DisplayName="tinker recipe" DetailColor="Y" TileColor="&amp;y" Tile="items/sw_data_disc.bmp" />
     <part Name="Description" Short="&quot;Things&quot; are as leaves on a summer breeze; knowledge lives on in the very being of all who think." />
     <builder Name="RandomTile" Tiles="Items/sw_unfurled_scroll1.bmp,Items/sw_unfurled_scroll2.bmp" />
     <property Name="NeverStack" Value="No stacks for me please." />
@@ -24,14 +24,15 @@
     
   <object Name="BaseByte" Inherits="Scrap">
     <part Name="Render" DisplayName="[{{y|byte}}]" 
-          DetailColor="y" Tile="0_byte_cleo.png" />
+          DetailColor="y" Tile="0_byte_cleo_v2.png" />
     <part Name="Physics" Weight="1" Category="Bytes" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly *8 bits*." />
     <part Name="TinkerItem" CanBuild="true" BuildTier="0" />
     <part Name="UD_TinkeringByte" />
     <tag Name="TinkerCategory" Value="bytes" />
     <tag Name="Tier" Value="0" />
-    <tag Name="VenderTinker_ExpertiseValueOverride" Value="0" />
+    <tag Name="VendorTinker_ExpertiseValueOverride" Value="0" />
+    <tag Name="VendorTinker_DisassemblyBitCountOverride" Value="2" />
     <part Name="Commerce" Value="40" />
     <removetag Name="Scrap" />
     <removetag Name="DefaultDisassemble" />
@@ -45,31 +46,31 @@
   <object Name="A Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{R|A}} {{y|byte}}"
           TileColor="&amp;R" ColorString="&amp;R"
-          Tile="0_byte_cleo.png" />
+          Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="RRRRRRRR" />
   </object>
   <object Name="B Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{G|B}} {{y|byte}}"
           TileColor="&amp;G" ColorString="&amp;G"
-          Tile="0_byte_cleo.png" />
+          Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="GGGGGGGG" />
   </object>
   <object Name="C Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{B|C}} {{y|byte}}"
           TileColor="&amp;B" ColorString="&amp;B"
-          Tile="0_byte_cleo.png" />
+          Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="BBBBBBBB" />
   </object>
   <object Name="D Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{C|D}} {{y|byte}}"
           TileColor="&amp;C" ColorString="&amp;C"
-          Tile="0_byte_cleo.png" />
+          Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="CCCCCCCC" />
   </object>
   <object Name="1 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{r|1}} {{y|byte}}"
           TileColor="&amp;r" ColorString="&amp;r"
-          Tile="1_byte_cleo.png" />
+          Tile="1_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="11111111" />
     <part Name="Commerce" Value="120" />
   </object>
@@ -83,7 +84,7 @@
   <object Name="3 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{b|3}} {{y|byte}}"
           TileColor="&amp;b" ColorString="&amp;b"
-          Tile="3_byte_cleo.png" />
+          Tile="3_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="33333333" />
     <part Name="Commerce" Value="280" />
   </object>

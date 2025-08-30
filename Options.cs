@@ -28,6 +28,7 @@ namespace UD_Tinkering_Bytes
         [OptionFlag] public static bool DebugBitLockerDebugDescriptions;
         [OptionFlag] public static bool DebugKnownRecipesDebugDescriptions;
         [OptionFlag] public static bool DebugTinkerSkillsDebugDescriptions;
+        [OptionFlag] public static bool DebugSpawnSnapjawWhileVendorDisassembles;
 
         // Checkbox settings
         // [OptionFlag] public static bool ExampleOption;

@@ -40,7 +40,6 @@ namespace XRL.World.Parts
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
 
-        [SerializeField]
         private List<TinkerData> _KnownRecipes;
         public List<TinkerData> KnownRecipes
         {
@@ -48,7 +47,6 @@ namespace XRL.World.Parts
             set => _KnownRecipes = value;
         }
 
-        [SerializeField]
         private List<TinkerData> _InstalledRecipes;
         public List<TinkerData> InstalledRecipes
         {
@@ -533,11 +531,11 @@ namespace XRL.World.Parts
             }
             InstalledRecipes.Clear();
             bool learned = false;
-            List<GameObject> installedCybernetics = Event.NewGameObjectList(Vendor.GetInstalledCybernetics());
+            List<GameObject> installedCybernetics = Event.NewGameObjectList(Vendor?.GetInstalledCybernetics() ?? new());
 
-            Debug.Entry(3, $"Spinning up installed shemasoft for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
             if (!installedCybernetics.IsNullOrEmpty())
             {
+                Debug.Entry(3, $"Spinning up installed shemasoft for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
                 List<CyberneticsSchemasoft> implantedSchemasoftList = new();
                 foreach (GameObject installedCybernetic in installedCybernetics)
                 {
@@ -570,6 +568,11 @@ namespace XRL.World.Parts
                 }
             }
             return learned;
+        }
+
+        public static bool PlayerCanReadDataDisk(GameObject DataDisk)
+        {
+            return DataDisk.Understood() && The.Player != null && (The.Player.HasSkill("Tinkering") || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech));
         }
 
         public static GameObject GetKnownRecipeDisplayItem(TinkerData KnownRecipe, IEnumerable<TinkerData> InstalledRecipes = null)
@@ -878,6 +881,10 @@ namespace XRL.World.Parts
                     }
 
                     inventory.AddObject(tinkeredItem);
+                    if (!VendorKeepsItem)
+                    {
+                        tinkeredItem?.CheckStack();
+                    }
                 }
 
                 string singleShortKnownDisplayName = sampleItem.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
@@ -1239,26 +1246,24 @@ namespace XRL.World.Parts
         }
         public virtual bool HandleEvent(GetVendorActionsEvent E)
         {
-            if (E.Vendor != null && ParentObject == E.Vendor && WantVendorActions)
+            if (E.Vendor != null && ParentObject == E.Vendor && E.Item != null && WantVendorActions)
             {
-                if (E.Item != null)
+                if (E.Item.TryGetPart(out DataDisk dataDisk))
                 {
-                    UD_VendorKnownRecipe vendorKnownRecipe = null;
-                    if (E.Item.TryGetPart(out DataDisk dataDisk) || E.Item.TryGetPart(out vendorKnownRecipe))
+                    if (dataDisk?.Data?.Type == "Mod")
                     {
-                        if (dataDisk?.Data?.Type == "Build" || vendorKnownRecipe?.Data?.Type == "Build")
-                        {
-                            E.AddAction("BuildFromDataDisk", "tinker item", COMMAND_BUILD, "tinker", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
-                        }
-                        else if (dataDisk?.Data?.Type == "Mod" || vendorKnownRecipe?.Data?.Type == "Mod")
-                        {
-                            E.AddAction("ModFromDataDisk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
-                        }
+                        E.AddAction("Mod From Data Disk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                     }
-                    else if (E.Item.InInventory != E.Vendor && !ItemModding.ModKey(E.Item).IsNullOrEmpty() && E.Item.Understood())
+                    else
+                    if (dataDisk?.Data?.Type == "Build")
                     {
-                        E.AddAction("ModFromDataDisk", "mod with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -2, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                        E.AddAction("Build From Data Disk", "tinker item", COMMAND_BUILD, "tinker", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                     }
+                }
+                else
+                if (E.Item.InInventory != E.Vendor && !ItemModding.ModKey(E.Item).IsNullOrEmpty() && E.Item.Understood())
+                {
+                    E.AddAction("Mod This Item", "mod with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -2, DramsCost: 100, ClearAndSetUpTradeUI: true);
                 }
             }
             return base.HandleEvent(E);
@@ -1664,6 +1669,24 @@ namespace XRL.World.Parts
                 }
             }
             return base.HandleEvent(E);
+        }
+
+        public override void Write(GameObject Basis, SerializationWriter Writer)
+        {
+            base.Write(Basis, Writer);
+
+            Writer.Write(KnownRecipes);
+        }
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            base.Read(Basis, Reader);
+
+            KnownRecipes = Reader.ReadList<TinkerData>();
+        }
+        public override void FinalizeRead(SerializationReader Reader)
+        {
+            base.FinalizeRead(Reader);
+            KnowImplantedRecipes(ParentObject, InstalledRecipes);
         }
 
         [WishCommand(Command = "give random bits")]

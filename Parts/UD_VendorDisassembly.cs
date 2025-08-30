@@ -17,6 +17,8 @@ using UD_Vendor_Actions;
 
 using UD_Tinkering_Bytes;
 
+using static UD_Tinkering_Bytes.Options;
+
 namespace XRL.World.Parts
 {
     [Serializable]
@@ -86,10 +88,7 @@ namespace XRL.World.Parts
 
             Debug.LoopItem(4, $"{CurrentDisassembly++}]{nameof(VendorDisassemblyContinue)}", Indent: indent + 1, Toggle: doDebug);
 
-            if (CurrentDisassembly % 50 == 0)
-            {
-                The.Player.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic()?.AddObject("Snapjaw Scavenger");
-            }
+            int currentDisassembly = CurrentDisassembly;
 
             if (!GameObject.Validate(ref Disassembly.Object))
             {
@@ -459,6 +458,12 @@ namespace XRL.World.Parts
                 }
             }
             Debug.Divider(4, Const.HONLY, Indent: indent + 1, Toggle: doDebug);
+
+            if (DebugSpawnSnapjawWhileVendorDisassembles && currentDisassembly % 25 == 0)
+            {
+                (The.Player.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic() ?? Vendor.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic())?.AddObject("Snapjaw Scavenger");
+            }
+
             Debug.LastIndent = indent;
             return true;
         }
@@ -611,20 +616,30 @@ namespace XRL.World.Parts
 
                 string bits = tinkerItem.Bits;
                 int numberOfBits = bits.Length;
-                int bestBit = UD_BytePunnet.GetByteIndex(bits[^1..]);
+                int bestBit = BitType.GetBitTier(BitType.ReverseCharTranslateBit(bits[^1]));
                 double minCost = 1.0;
                 double costPerItem;
-                double bestBitCost = bestBit * 0.2;
+                double bestBitCost = (bestBit + 1) * 0.3;
                 double numberBitCost = numberOfBits * 0.667;
                 int totalCost = 0;
 
-                if (numberOfBits == 1 && UD_BytePunnet.GetByteIndex(bits[0]) < 4)
+                if (E.Item.GetPropertyOrTag("VendorTinker_DisassemblyBitCountOverride", null) is string bitCountOverrideString
+                    && int.TryParse(bitCountOverrideString, out int bitCountOverride))
+                {
+                    numberOfBits = bitCountOverride;
+                }
+                if (numberOfBits == 1 && BitType.GetBitTier(BitType.ReverseCharTranslateBit(bits[0])) == 0)
                 {
                     costPerItem = 1.0;
                 }
                 else
                 {
                     costPerItem = Math.Max(1.0, numberBitCost + bestBitCost);
+                }
+                if (E.Item.GetPropertyOrTag("VendorTinker_DisassemblyValueOverride", null) is string valueOverrideString
+                    && int.TryParse(valueOverrideString, out int valueOverride))
+                {
+                    costPerItem = valueOverride;
                 }
                 totalCost = (int)Math.Max(minCost, multipleItems ? itemCount * costPerItem : costPerItem);
                 int RealCostPerItem = multipleItems ? totalCost / itemCount : totalCost;

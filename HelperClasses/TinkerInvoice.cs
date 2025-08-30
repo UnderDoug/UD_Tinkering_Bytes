@@ -148,7 +148,7 @@ namespace UD_Tinkering_Bytes
         {
             if (VendorOwnsRecipe && ExpertiseValue == 0)
             {
-                string priceOverrideString = SampleItem.GetPropertyOrTag("VenderTinker_ExpertiseValueOverride", "-1");
+                string priceOverrideString = SampleItem.GetPropertyOrTag("VendorTinker_ExpertiseValueOverride", "-1");
                 if (int.TryParse(priceOverrideString, out int priceOverride) && priceOverride > -1)
                 {
                     ExpertiseValue = priceOverride;
