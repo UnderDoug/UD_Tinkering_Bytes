@@ -49,7 +49,7 @@ namespace UD_Tinkering_Bytes
             // Called at game startup and whenever mod configuration changes
 
             FilterBarCategoryButton.categoryImageMap.Add("Able To Tinker", "Items/sw_unfurled_scroll1.bmp");
-            FilterBarCategoryButton.categoryImageMap.Add("Bytes", "4_byte_inverted.png");
+            FilterBarCategoryButton.categoryImageMap.Add("Bytes", "4_byte_cleo_inverted.png");
         }
     }
 
