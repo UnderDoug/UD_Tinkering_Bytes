@@ -276,6 +276,21 @@ namespace UD_Tinkering_Bytes.Harmony
                 MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: (11) {nameof(CodeMatcher.MatchStartForward)} failed to find instruction {OpCodes.Brfalse}");
                 return Instructions;
             }
+            Label oldReturnFalseLocation = (Label)codeMatcher.Instruction.operand;
+
+            foreach (CodeInstruction ci in codeMatcher.Instructions())
+            {
+                if (ci.operand == null || ci.operand.GetType() != typeof(Label))
+                {
+                    continue;
+                }
+                Label ciOperand = (Label)ci.operand;
+                if (ciOperand == oldReturnFalseLocation)
+                {
+                    ci.operand = returnFalseLocation;
+                }
+            }
+
             codeMatcher.Instruction.operand = returnFalseLocation;
             int position = codeMatcher.Pos;
 
