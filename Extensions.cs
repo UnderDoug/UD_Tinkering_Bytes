@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using UD_Modding_Toolbox;
 using XRL.World.Tinkering;
 
 namespace UD_Tinkering_Bytes
@@ -43,6 +44,20 @@ namespace UD_Tinkering_Bytes
         public static StringBuilder AppendLines(this StringBuilder SB, int Lines)
         {
             return SB.AppendLines(null, Lines, null);
+        }
+
+        public static string ToLiteral(this string String, bool Quotes = false)
+        {
+            if (String.IsNullOrEmpty())
+            {
+                return null;
+            }
+            string output = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(String, false);
+            if (Quotes)
+            {
+                output = output.Quote();
+            }
+            return output;
         }
     }
 }
