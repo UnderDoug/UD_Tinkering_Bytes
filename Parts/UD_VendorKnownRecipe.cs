@@ -1,17 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using UD_Modding_Toolbox;
-using UD_Tinkering_Bytes;
-using UD_Vendor_Actions;
+
 using XRL.Language;
 using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
 using XRL.World.Parts.Mutation;
 using XRL.World.Tinkering;
-using static UD_Modding_Toolbox.Const;
+
 using static XRL.World.Parts.Skill.Tinkering;
+
+using UD_Vendor_Actions;
+using UD_Modding_Toolbox;
+using static UD_Modding_Toolbox.Const;
+
+using UD_Tinkering_Bytes;
 
 namespace XRL.World.Parts
 {
@@ -180,20 +184,30 @@ namespace XRL.World.Parts
                                 ? description._Short 
                                 : sampleExaminer?.GetActiveShortDescription() ?? description._Short);
                         }
-                        if (GameObject.Validate(ref sampleObject))
+
+                        E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
+                        if (FromImplant)
                         {
-                            sampleObject.Obliterate();
+                            E.Postfix.Append(" [").AppendColored("c", "implanted recipe").Append("]");
                         }
+                        if (TinkerData.RecipeKnown(Data))
+                        {
+                            E.Postfix.AppendLine().AppendRules("You also know this recipe.");
+                        }
+                        sampleObject.Obliterate();
                     }
                 }
-                E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
-                if (FromImplant)
+                if (Data.Type == "Mod")
                 {
-                    E.Postfix.Append(" [").AppendColored("c", "implanted recipe").Append("]");
-                }
-                if (TinkerData.RecipeKnown(Data))
-                {
-                    E.Postfix.AppendLine().AppendRules("You also know this recipe.");
+                    E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
+                    if (FromImplant)
+                    {
+                        E.Postfix.Append(" [").AppendColored("c", "implanted recipe").Append("]");
+                    }
+                    if (TinkerData.RecipeKnown(Data))
+                    {
+                        E.Postfix.AppendLine().AppendRules("You also know this recipe.");
+                    }
                 }
             }
             return base.HandleEvent(E);
