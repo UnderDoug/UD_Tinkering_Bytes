@@ -4,7 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using UD_Modding_Toolbox;
+using UD_Tinkering_Bytes;
+using UD_Vendor_Actions;
 using XRL.Language;
 using XRL.Rules;
 using XRL.UI;
@@ -12,18 +14,13 @@ using XRL.Wish;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
 using XRL.World.Conversations.Parts;
+using XRL.World.Parts.Mutation;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
-
-using UD_Modding_Toolbox;
-using UD_Vendor_Actions;
-
 using static UD_Modding_Toolbox.Const;
-
-using UD_Tinkering_Bytes;
-
 using static UD_Tinkering_Bytes.Options;
 using static UD_Tinkering_Bytes.Utils;
+using static XRL.World.Parts.Skill.Tinkering;
 using SerializeField = UnityEngine.SerializeField;
 
 namespace XRL.World.Parts
@@ -36,6 +33,7 @@ namespace XRL.World.Parts
 
         public const string COMMAND_BUILD = "CmdVendorBuild";
         public const string COMMAND_MOD = "CmdVendorMod";
+        public const string COMMAND_IDENTIFY_BY_DATADISK = "CmdVendorExamineDataDisk";
         public const string HELD_FOR_PLAYER = "HeldForPlayer";
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
@@ -1255,9 +1253,37 @@ namespace XRL.World.Parts
                         E.AddAction("Mod From Data Disk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                     }
                     else
-                    if (dataDisk?.Data?.Type == "Build")
+                    if (dataDisk?.Data?.Type == "Build"
+                    && The.Player != null
+                    && GameObjectFactory.Factory.CreateSampleObject(dataDisk?.Data.Blueprint) is GameObject sampleObject)
                     {
-                        E.AddAction("Build From Data Disk", "tinker item", COMMAND_BUILD, "tinker", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                        if (sampleObject.Understood())
+                        {
+                            E.AddAction(
+                                Name: "Build From Data Disk",
+                                Display: "tinker item",
+                                Command: COMMAND_BUILD,
+                                PreferToHighlight: "tinker",
+                                Key: 'T',
+                                Priority: -4,
+                                DramsCost: 100,
+                                ClearAndSetUpTradeUI: true);
+                        }
+                        else
+                        if (GetIdentifyLevel(E.Vendor) > 0)
+                        {
+                            E.AddAction(
+                                Name: "Identify From Data Disk",
+                                Display: "identify recipe",
+                                Command: COMMAND_IDENTIFY_BY_DATADISK,
+                                Key: 'i',
+                                Priority: 9,
+                                ClearAndSetUpTradeUI: true);
+                        }
+                        if (GameObject.Validate(ref sampleObject))
+                        {
+                            sampleObject.Obliterate();
+                        }
                     }
                 }
                 else
@@ -1381,6 +1407,7 @@ namespace XRL.World.Parts
                         tinkerInvoice?.Clear();
                     }
                 }
+                else
                 if (E.Command == COMMAND_MOD)
                 {
                     GameObject selectedObject = null;
@@ -1405,8 +1432,8 @@ namespace XRL.World.Parts
                                 GO => GO.TryGetPart(out DataDisk D)
                                 && D.Data.Type == "Mod");
 
-                            if (vendorHeldRecipeObjects.IsNullOrEmpty() 
-                                && vendorHeldDataDiskObjects.IsNullOrEmpty() 
+                            if (vendorHeldRecipeObjects.IsNullOrEmpty()
+                                && vendorHeldDataDiskObjects.IsNullOrEmpty()
                                 && playerHeldDataDiskObjects.IsNullOrEmpty())
                             {
                                 Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not know any item modifications.");
@@ -1666,6 +1693,64 @@ namespace XRL.World.Parts
                         tinkerInvoice?.Clear();
                     }
                     return false;
+                }
+                else
+                if (E.Command == COMMAND_IDENTIFY_BY_DATADISK
+                    && E.Vendor != null && E.Vendor == ParentObject
+                    && E.Item != null && E.Item.TryGetPart(out dataDisk))
+                {
+                    int identifyLevel = GetIdentifyLevel(vendor);
+                    if (identifyLevel > 0
+                        && GameObjectFactory.Factory.CreateSampleObject(dataDisk.Data.Blueprint) is GameObject item)
+                    {
+                        try
+                        {
+                            if (!item.Understood())
+                            {
+                                int complexity = item.GetComplexity();
+                                int examineDifficulty = item.GetExamineDifficulty();
+                                if (player.HasPart<Dystechnia>())
+                                {
+                                    Popup.ShowFail($"You can't understand {Grammar.MakePossessive(vendor.t(Stripped: true))} explanation.");
+                                    return false;
+                                }
+                                if (identifyLevel < complexity)
+                                {
+                                    Popup.ShowFail("The tinker recipe on this data disk is too complex for " + vendor.t(Stripped: true) + " to explain.");
+                                    return false;
+                                }
+                                int dramsCost = (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                                if (player.GetFreeDrams() < dramsCost)
+                                {
+                                    Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk.");
+                                }
+                                else
+                                if (Popup.ShowYesNo($"You may have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk for {dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes
+                                    && The.Player.UseDrams(dramsCost))
+                                {
+                                    vendor.GiveDrams(dramsCost);
+                                    Popup.Show($"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()} {item.an(AsIfKnown: true)}.");
+                                    item.MakeUnderstood();
+                                }
+                            }
+                            else
+                            {
+                                Popup.ShowFail("You already understand what the tinker recipe on this data disk creates.");
+                            }
+                        }
+                        finally
+                        {
+                            if (GameObject.Validate(ref item))
+                            {
+                                item.Obliterate();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Popup.Show($"{vendor.Does("don't", Stripped: true)} have the skill to identify tinker recipes on data disks.");
+                        return false;
+                    }
                 }
             }
             return base.HandleEvent(E);

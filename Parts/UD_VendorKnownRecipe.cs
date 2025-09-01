@@ -152,6 +152,7 @@ namespace XRL.World.Parts
         {
             if (Data != null)
             {
+                bool isUnderstood = false;
                 if (Data.Type == "Mod")
                 {
                     string modDesc = ItemModding.GetModificationDescription(Data.Blueprint, 0);
@@ -160,10 +161,9 @@ namespace XRL.World.Parts
                 else
                 {
                     GameObject sampleObject = GameObject.CreateSample(Data.Blueprint);
-                    if (sampleObject != null)
+                    if (sampleObject != null && sampleObject.Understood())
                     {
-                        bool isUnderstood = sampleObject.Understood();
-                        Examiner sampleExaminer = sampleObject.GetPart<Examiner>();
+                        isUnderstood = true;
                         TinkeringHelpers.StripForTinkering(sampleObject);
                         TinkerItem tinkerItem = sampleObject.GetPart<TinkerItem>();
                         Description description = sampleObject.GetPart<Description>();
@@ -180,24 +180,12 @@ namespace XRL.World.Parts
                         E.Postfix.AppendLine();
                         if (description != null)
                         {
-                            E.Postfix.AppendLine().Append(isUnderstood 
-                                ? description._Short 
-                                : sampleExaminer?.GetActiveShortDescription() ?? description._Short);
-                        }
-
-                        E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
-                        if (FromImplant)
-                        {
-                            E.Postfix.Append(" [").AppendColored("c", "implanted recipe").Append("]");
-                        }
-                        if (TinkerData.RecipeKnown(Data))
-                        {
-                            E.Postfix.AppendLine().AppendRules("You also know this recipe.");
+                            E.Postfix.AppendLine().Append(description._Short);
                         }
                         sampleObject.Obliterate();
                     }
                 }
-                if (Data.Type == "Mod")
+                if (Data.Type == "Mod" || isUnderstood)
                 {
                     E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
                     if (FromImplant)
@@ -244,7 +232,7 @@ namespace XRL.World.Parts
                             Name: "Identify Recipe",
                             Display: "identify recipe",
                             Command: COMMAND_IDENTIFY_BY_RECIPE,
-                            Key: 'I',
+                            Key: 'i',
                             Priority: 9,
                             ClearAndSetUpTradeUI: true,
                             FireOnItem: true);

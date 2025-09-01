@@ -61,7 +61,7 @@ namespace UD_Tinkering_Bytes.Harmony
             argumentTypes: new Type[] { typeof(GetShortDescriptionEvent) },
             argumentVariations: new ArgumentType[] { ArgumentType.Normal })]
         [HarmonyTranspiler]
-        public static IEnumerable<CodeInstruction> HandleEvent_MoveRequiresAlreadyKnown_Transpile(IEnumerable<CodeInstruction> Instructions, ILGenerator Generator)
+        public static IEnumerable<CodeInstruction> HandleEvent_ObfuscateUnknown_Transpile(IEnumerable<CodeInstruction> Instructions, ILGenerator Generator)
         {
             bool doVomit = true;
             string patchMethodName = $"{nameof(DataDisk_Patches)}.{nameof(DataDisk.HandleEvent)}({nameof(GetShortDescriptionEvent)})";
@@ -394,6 +394,76 @@ namespace UD_Tinkering_Bytes.Harmony
             }
             metricsCheckSteps++;
             codeMatcher.Instruction.operand = label_RequiresSkill_PostFixAppend_BeforeObliterate;
+
+            MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
+            return codeMatcher.Vomit(doVomit).InstructionEnumeration();
+        }
+
+        [HarmonyPatch(
+            declaringType: typeof(DataDisk),
+            methodName: nameof(DataDisk.HandleEvent),
+            argumentTypes: new Type[] { typeof(GetDisplayNameEvent) },
+            argumentVariations: new ArgumentType[] { ArgumentType.Normal })]
+        [HarmonyTranspiler]
+        public static IEnumerable<CodeInstruction> HandleEvent_ShowMods_Transpile(IEnumerable<CodeInstruction> Instructions, ILGenerator Generator)
+        {
+            bool doVomit = true;
+            string patchMethodName = $"{nameof(DataDisk_Patches)}.{nameof(DataDisk.HandleEvent)}({nameof(GetDisplayNameEvent)})";
+            int metricsCheckSteps = 0;
+
+            CodeMatcher codeMatcher = new(Instructions, Generator);
+
+            // if (E.AsIfKnown
+            //     || (E.Understood()
+            //         && The.Player != null
+            //         && (The.Player.HasSkill("Tinkering") || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))))
+            CodeMatch[] match_If_KnownUnderstoodSkilledScanning = new CodeMatch[]
+            {
+                // E.AsIfKnown
+                new(OpCodes.Ldarg_1),
+                new(ins => ins.LoadsField(AccessTools.Field(typeof(GetDisplayNameEvent), nameof(GetDisplayNameEvent.AsIfKnown)))),
+                new(OpCodes.Brtrue_S),
+
+                // E.Understood
+                new(OpCodes.Ldarg_1),
+                new(ins => ins.Calls(AccessTools.Method(typeof(GetDisplayNameEvent), nameof(GetDisplayNameEvent.Understood)))),
+                new(OpCodes.Brfalse_S),
+
+                // The.Player != null
+                new(ins => ins.Calls(AccessTools.Method(typeof(The), $"get_{nameof(The.Player)}"))),
+                new(OpCodes.Brfalse_S),
+
+                // The.Player.HasSkill("Tinkering")
+                new(ins => ins.Calls(AccessTools.Method(typeof(The), $"get_{nameof(The.Player)}"))),
+                new(OpCodes.Ldstr, "Tinkering"),
+                new(ins => ins.Calls(AccessTools.Method(typeof(GameObject), nameof(GameObject.HasSkill), new Type[] { typeof(string) }))),
+                new(OpCodes.Brtrue_S),
+
+                // Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech)
+                new(ins => ins.Calls(AccessTools.Method(typeof(The), $"get_{nameof(The.Player)}"))),
+                new(OpCodes.Ldc_I4_1),
+                new(ins => ins.Calls(AccessTools.Method(typeof(Scanning), nameof(Scanning.HasScanningFor), new Type[] { typeof(GameObject), typeof(Scanning.Scan) }))),
+                new(OpCodes.Brfalse_S),
+            };
+
+            // find start of:
+            // if (E.AsIfKnown
+            //     || (E.Understood()
+            //         && The.Player != null
+            //         && (The.Player.HasSkill("Tinkering") || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))))
+            // from the end
+            if (codeMatcher.End().MatchStartBackwards(match_If_KnownUnderstoodSkilledScanning).IsInvalid)
+            {
+                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find instructions {nameof(match_If_KnownUnderstoodSkilledScanning)}");
+                foreach (CodeMatch match in match_If_KnownUnderstoodSkilledScanning)
+                {
+                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                }
+                codeMatcher.Vomit(doVomit);
+                return Instructions;
+            }
+            metricsCheckSteps++;
+            codeMatcher.RemoveInstructions(match_If_KnownUnderstoodSkilledScanning.Length);
 
             MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
             return codeMatcher.Vomit(doVomit).InstructionEnumeration();
