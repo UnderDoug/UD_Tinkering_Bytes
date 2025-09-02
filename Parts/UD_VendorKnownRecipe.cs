@@ -1,21 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-
+using UD_Modding_Toolbox;
+using UD_Tinkering_Bytes;
+using UD_Vendor_Actions;
 using XRL.Language;
 using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
 using XRL.World.Parts.Mutation;
 using XRL.World.Tinkering;
-
-using static XRL.World.Parts.Skill.Tinkering;
-
-using UD_Vendor_Actions;
-using UD_Modding_Toolbox;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 using static UD_Modding_Toolbox.Const;
-
-using UD_Tinkering_Bytes;
+using static XRL.World.Parts.Skill.Tinkering;
 
 namespace XRL.World.Parts
 {
@@ -55,6 +52,19 @@ namespace XRL.World.Parts
 
         public TinkerData SetData(TinkerData KnownRecipe)
         {
+            if (KnownRecipe.Type == "Build"
+                && GameObjectFactory.Factory.CreateSampleObject(KnownRecipe.Blueprint) is GameObject sampleObject
+                && ParentObject.TryGetPart(out Physics recipePhysics)
+                && sampleObject.TryGetPart(out Physics samplePhysics))
+            {
+                recipePhysics.Category = samplePhysics.Category;
+            }
+            else
+            if (KnownRecipe.Type == "Mod"
+                && ParentObject.TryGetPart(out recipePhysics))
+            {
+                recipePhysics.Category = "Data Disks";
+            }
             return this.Data = KnownRecipe;
         }
 

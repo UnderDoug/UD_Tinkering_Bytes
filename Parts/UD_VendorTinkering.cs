@@ -271,7 +271,7 @@ namespace XRL.World.Parts
                         $"{nameof(bitIndex)}: {bitIndex}, " +
                         $"{nameof(bitTier)}: {bitTier}, " +
                         $"Skill: {DataDisk.GetRequiredSkillHumanReadable((int)Math.Max(0, i + 1.0 - 4.0))}",
-                        Indent: indent + 4, Toggle: doDebug);
+                        Indent: indent + 3, Toggle: doDebug);
 
                     if (hasDisassemble || hasReverseEngineer)
                     {
@@ -290,7 +290,7 @@ namespace XRL.World.Parts
                             currentRange.high += 1;
                         }
                         Debug.CheckYeh(4, $"Have Ancillary Skill, {nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 5, Toggle: doDebug);
+                            Indent: indent + 4, Toggle: doDebug);
                     }
                     if (hasScavenger && hasDisassemble)
                     {
@@ -305,7 +305,7 @@ namespace XRL.World.Parts
                             currentRange.high += 4;
                         }
                         Debug.CheckYeh(4, $"Have Scavenger, {nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 5, Toggle: doDebug);
+                            Indent: indent + 4, Toggle: doDebug);
                     }
                     if (hasReverseEngineer)
                     {
@@ -314,7 +314,7 @@ namespace XRL.World.Parts
                             currentRange.high += 1;
                         }
                         Debug.CheckYeh(4, $"Have Reverse Engineering, {nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 5, Toggle: doDebug);
+                            Indent: indent + 4, Toggle: doDebug);
                     }
                     if (bitTier < tinkeringSkill)
                     {
@@ -323,7 +323,7 @@ namespace XRL.World.Parts
                         Debug.CheckYeh(4, 
                             $"{nameof(bitTier)} < {nameof(tinkeringSkill)}, " +
                             $"{nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 5, Toggle: doDebug);
+                            Indent: indent + 4, Toggle: doDebug);
                     }
                     if (bitTier == tinkeringSkill)
                     {
@@ -347,13 +347,13 @@ namespace XRL.World.Parts
                         Debug.CheckYeh(4,
                             $"{nameof(bitTier)} == {nameof(tinkeringSkill)}, " +
                             $"{nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 5, Toggle: doDebug);
+                            Indent: indent + 4, Toggle: doDebug);
                     }
 
                     bitRanges[bitIndex] = currentRange;
 
                     Debug.Entry(4, $"{nameof(bitRanges)}[{nameof(bitIndex)}]: {bitRanges[bitIndex]}",
-                        Indent: indent + 4, Toggle: doDebug);
+                        Indent: indent + 3, Toggle: doDebug);
                 }
                 Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
 
@@ -371,9 +371,9 @@ namespace XRL.World.Parts
                         bitLocker.AddBits(bits);
                     }
                     Debug.LoopItem(4, $"{BitType.CharTranslateBit(bit)}] " +
-                        $"({low,2}) - " +
-                        $"({high,3}) | " +
-                        $"Rolled: {amountToAdd}", Indent: indent + 4, Toggle: doDebug);
+                        $"{nameof(low)}: {low,2}, " +
+                        $"{nameof(high)}: {high,3} | " +
+                        $"Rolled: {amountToAdd,4}", Indent: indent + 4, Toggle: doDebug);
                 }
                 Debug.Entry(4, $"Scrap found, disassembled, and stored...", Indent: indent + 2, Toggle: doDebug);
             }

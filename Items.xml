@@ -6,7 +6,7 @@
   </object>
 
   <object Name="UD_VendorKnownRecipe" Inherits="UD_TradeUI_DisplayItem">
-    <part Name="Physics" Category="Able To Tinker" />
+    <!--part Name="Physics" Category="Able To Tinker" /-->
     <part Name="Render" DisplayName="tinker recipe" DetailColor="Y" TileColor="&amp;y" Tile="items/sw_data_disc.bmp" />
     <part Name="Description" Short="&quot;Things&quot; are as leaves on a summer breeze; knowledge lives on in the very being of all who think." />
     <builder Name="RandomTile" Tiles="Items/sw_unfurled_scroll1.bmp,Items/sw_unfurled_scroll2.bmp" />
