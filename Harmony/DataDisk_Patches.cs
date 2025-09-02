@@ -1,18 +1,21 @@
 ﻿using HarmonyLib;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
-using System.Text.RegularExpressions;
-using UD_Modding_Toolbox;
+
 using XRL;
 using XRL.World;
 using XRL.World.Capabilities;
 using XRL.World.Parts;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
+
+using UD_Modding_Toolbox;
+
 using static UD_Tinkering_Bytes.Options;
 using static UD_Tinkering_Bytes.Utils;
 
@@ -63,7 +66,7 @@ namespace UD_Tinkering_Bytes.Harmony
         [HarmonyTranspiler]
         public static IEnumerable<CodeInstruction> HandleEvent_ObfuscateUnknown_Transpile(IEnumerable<CodeInstruction> Instructions, ILGenerator Generator)
         {
-            bool doVomit = true;
+            bool doVomit = false;
             string patchMethodName = $"{nameof(DataDisk_Patches)}.{nameof(DataDisk.HandleEvent)}({nameof(GetShortDescriptionEvent)})";
             int metricsCheckSteps = 0;
 
@@ -185,28 +188,39 @@ namespace UD_Tinkering_Bytes.Harmony
                 codeMatcher.Vomit(doVomit);
                 return Instructions;
             }
-            if (codeMatcher.Instruction.operand is Label label_If_GameObjectNull && label_If_GameObjectNull == label_If_DataTypeMod)
-            {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{nameof(label_If_GameObjectNull)} is {nameof(label_RequiresSkill_PostfixAppend)}");
-            }
-            else
-            {
-                codeMatcher.Instruction.operand = label_If_DataTypeMod;
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{nameof(label_If_GameObjectNull)} not {nameof(label_RequiresSkill_PostfixAppend)}");
-            }
 
             // create label afterwards
             codeMatcher
                 .Advance(1)
                 .CreateLabel(out Label label_TinkeringHelpers_StripForTinkering);
 
+
+            MethodInfo gameObject_Understood = null;
+            foreach (MethodInfo methodInfo in typeof(GameObject).GetMethods())
+            {
+                if (methodInfo.Name == nameof(GameObject.Understood) && methodInfo.GetParameters().Length == 0)
+                {
+                    gameObject_Understood = methodInfo;
+                    break;
+                }
+            }
+            if (gameObject_Understood is null)
+            {
+                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(MethodInfo)} {nameof(gameObject_Understood)}");
+                codeMatcher.Vomit(doVomit);
+                return Instructions;
+            }
+            metricsCheckSteps++;
             CodeInstruction[] instr_If_Understood_PlayerNotNull_HasSkillOrScanning = new CodeInstruction[]
             {
                 // if (
-                //     gameObject.Understood()
-                new(OpCodes.Ldloc_0),
-                CodeInstruction.Call(typeof(GameObject), nameof(GameObject.Understood)),
-                new(OpCodes.Brfalse, label_If_DataTypeMod), // label_RequiresSkill_PostfixAppend
+                //     Examiner.GetBlueprintEpistemicStatus(Data.Blueprint) == 2
+                new(OpCodes.Ldarg_0),
+                new(OpCodes.Ldfld, AccessTools.Field(typeof(DataDisk), nameof(DataDisk.Data))),
+                new(OpCodes.Ldfld, AccessTools.Field(typeof(TinkerData), nameof(TinkerData.Blueprint))),
+                new(OpCodes.Call, AccessTools.Method(typeof(Examiner), nameof(Examiner.GetBlueprintEpistemicStatus), new Type[] { typeof(string) })),
+                new(OpCodes.Ldc_I4_2),
+                new(OpCodes.Beq, label_TinkeringHelpers_StripForTinkering),
 
                 //     && The.Player != null
                 CodeInstruction.Call(typeof(The), $"get_{nameof(The.Player)}"),
@@ -215,7 +229,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 //     && (
                 //         The.Player.HasSkill("Tinkering")
                 CodeInstruction.Call(typeof(The), $"get_{nameof(The.Player)}"),
-                new(OpCodes.Ldstr, "Tinkering"),
+                new(OpCodes.Ldstr, nameof(Tinkering)),
                 CodeInstruction.Call(typeof(GameObject), nameof(GameObject.HasSkill)),
                 new(OpCodes.Brtrue_S, label_TinkeringHelpers_StripForTinkering),
 
@@ -407,7 +421,7 @@ namespace UD_Tinkering_Bytes.Harmony
         [HarmonyTranspiler]
         public static IEnumerable<CodeInstruction> HandleEvent_ShowMods_Transpile(IEnumerable<CodeInstruction> Instructions, ILGenerator Generator)
         {
-            bool doVomit = true;
+            bool doVomit = false;
             string patchMethodName = $"{nameof(DataDisk_Patches)}.{nameof(DataDisk.HandleEvent)}({nameof(GetDisplayNameEvent)})";
             int metricsCheckSteps = 0;
 
@@ -435,7 +449,7 @@ namespace UD_Tinkering_Bytes.Harmony
 
                 // The.Player.HasSkill("Tinkering")
                 new(ins => ins.Calls(AccessTools.Method(typeof(The), $"get_{nameof(The.Player)}"))),
-                new(OpCodes.Ldstr, "Tinkering"),
+                new(OpCodes.Ldstr, nameof(Tinkering)),
                 new(ins => ins.Calls(AccessTools.Method(typeof(GameObject), nameof(GameObject.HasSkill), new Type[] { typeof(string) }))),
                 new(OpCodes.Brtrue_S),
 
@@ -444,6 +458,15 @@ namespace UD_Tinkering_Bytes.Harmony
                 new(OpCodes.Ldc_I4_1),
                 new(ins => ins.Calls(AccessTools.Method(typeof(Scanning), nameof(Scanning.HasScanningFor), new Type[] { typeof(GameObject), typeof(Scanning.Scan) }))),
                 new(OpCodes.Brfalse_S),
+            };
+
+            // if (E.Understood())
+            CodeMatch[] match_If_Understood = new CodeMatch[]
+            {
+                // E.Understood
+                new(OpCodes.Ldarg_1),
+                new(ins => ins.Calls(AccessTools.Method(typeof(GetDisplayNameEvent), nameof(GetDisplayNameEvent.Understood)))),
+                new(OpCodes.Brfalse),
             };
 
             // find start of:
@@ -465,113 +488,52 @@ namespace UD_Tinkering_Bytes.Harmony
             metricsCheckSteps++;
             codeMatcher.RemoveInstructions(match_If_KnownUnderstoodSkilledScanning.Length);
 
+            // find start of:
+            // if (E.Understood())
+            // from the start
+            if (codeMatcher.Start().MatchStartForward(match_If_Understood).IsInvalid)
+            {
+                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find instructions {nameof(match_If_Understood)}");
+                foreach (CodeMatch match in match_If_Understood)
+                {
+                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                }
+                codeMatcher.Vomit(doVomit);
+                return Instructions;
+            }
+            metricsCheckSteps++;
+
+            codeMatcher.Advance(-1);
+            if (codeMatcher.Instruction.operand is not Label label_If_KnownUnderstoodSkilledScanning_True)
+            {
+                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(Label)} {nameof(label_If_KnownUnderstoodSkilledScanning_True)}");
+                foreach (CodeMatch match in match_If_Understood)
+                {
+                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                }
+                codeMatcher.Vomit(doVomit);
+                return Instructions;
+            }
+            metricsCheckSteps++;
+
+            codeMatcher.Advance(1)
+                .RemoveInstructions(match_If_Understood.Length)
+                .Insert(
+                    new CodeInstruction[]
+                    {
+                        // if (Examiner.GetBlueprintEpistemicStatus(Data.Blueprint) == 2)
+                        new(OpCodes.Ldarg_0),
+                        new(OpCodes.Ldfld, AccessTools.Field(typeof(DataDisk), nameof(DataDisk.Data))),
+                        new(OpCodes.Ldfld, AccessTools.Field(typeof(TinkerData), nameof(TinkerData.Blueprint))),
+                        new(OpCodes.Call, AccessTools.Method(typeof(Examiner), nameof(Examiner.GetBlueprintEpistemicStatus), new Type[] { typeof(string) })),
+                        new(OpCodes.Ldc_I4, Examiner.EPISTEMIC_STATUS_KNOWN),
+                        new(OpCodes.Beq, label_If_KnownUnderstoodSkilledScanning_True),
+                    }
+                );
+                
+
             MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
             return codeMatcher.Vomit(doVomit).InstructionEnumeration();
-        }
-
-        public static IEnumerable<CodeInstruction> Vomit(this IEnumerable<CodeInstruction> Instructions, bool Do = false)
-        {
-            if (Do)
-            {
-                int counter = 0;
-                int counterPadding = Math.Max(4, (Instructions.Count() + 1).ToString().Length);
-                foreach (CodeInstruction ci in Instructions)
-                {
-                    string ciOperand = ci?.operand?.ToString();
-                    if (ci?.operand?.GetType() == typeof(string))
-                    {
-                        ciOperand = ci.operand?.ToString()?.ToLiteral(Quotes: true);
-                    }
-                    UnityEngine.Debug.Log($"[{counter.ToString().PadLeft(counterPadding, '0')}] {ci.opcode,-10} {ciOperand}");
-                    counter++;
-
-                    string ciOpcode = ci.opcode.ToString();
-                    if (ciOpcode.StartsWith("pop")
-                        || ciOpcode.StartsWith("br")
-                        || ciOpcode.StartsWith("bl")
-                        || ciOpcode.StartsWith("ret")
-                        || ciOpcode.StartsWith("stloc"))
-                    {
-                        UnityEngine.Debug.Log("");
-                    }
-                }
-            }
-            return Instructions;
-        }
-        public static CodeMatcher Vomit(this CodeMatcher CodeMatcher, bool Do = false)
-        {
-            if (Do)
-            {
-                Dictionary<Label, int> labelInstructions = new();
-                CodeMatcher.Start();
-                while (CodeMatcher.Advance(1).IsValid)
-                {
-                    CodeInstruction ci = CodeMatcher.Instruction;
-                    if (ci.labels.IsNullOrEmpty())
-                    {
-                        continue;
-                    }
-                    foreach(Label label in ci.labels)
-                    {
-                        if (!labelInstructions.ContainsKey(label))
-                        {
-                            labelInstructions.Add(label, CodeMatcher.Pos);
-                        }
-                        else
-                        {
-                            labelInstructions[label] = CodeMatcher.Pos;
-                        }
-                    }
-                }
-                int counter = 0;
-                int counterPadding = Math.Max(4, (CodeMatcher.Instructions().Count + 1).ToString().Length);
-
-                foreach (CodeInstruction ci in CodeMatcher.InstructionEnumeration())
-                {
-                    string ciOperand = ci?.operand?.ToString();
-                    if (ci?.operand?.GetType() == typeof(string))
-                    {
-                        ciOperand = ci.operand?.ToString()?.ToLiteral(Quotes: true);
-                    }
-                    else
-                    if (ci.operand is Label ciLabel)
-                    {
-                        string ciLabelString = "????";
-                        if (labelInstructions.ContainsKey(ciLabel))
-                        {
-                            ciLabelString = labelInstructions[ciLabel].ToString().PadLeft(counterPadding, '0');
-                        }
-                        ciOperand = $"[{ciLabelString}]";
-                    }
-                    UnityEngine.Debug.Log($"[{counter.ToString().PadLeft(counterPadding, '0')}] {ci.opcode,-10} {ciOperand}");
-                    counter++;
-
-                    string ciOpcode = ci.opcode.ToString();
-                    if (ciOpcode.StartsWith("pop")
-                        || ciOpcode.StartsWith("br")
-                        || ciOpcode.StartsWith("bl")
-                        || ciOpcode.StartsWith("ret")
-                        || ciOpcode.StartsWith("stloc"))
-                    {
-                        UnityEngine.Debug.Log("");
-                    }
-                }
-            }
-            return CodeMatcher;
-        }
-        public static CodeMatcher VomitInstruction(this CodeMatcher CodeMatcher, string Context = null)
-        {
-            int counter = CodeMatcher.Pos;
-            int counterPadding = Math.Max(4, (CodeMatcher.Length + 1).ToString().Length);
-
-            CodeInstruction ci = CodeMatcher.Instruction;
-            string ciOperand = ci?.operand?.ToString();
-            if (ci?.operand?.GetType() == typeof(string))
-            {
-                ciOperand = ci.operand?.ToString()?.ToLiteral(Quotes: true);
-            }
-            UnityEngine.Debug.Log($"[{counter.ToString().PadLeft(counterPadding, '0')}] {ci.opcode,-10} {ciOperand} {Context}");
-            return CodeMatcher;
         }
     }
 }

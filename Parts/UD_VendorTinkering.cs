@@ -256,7 +256,7 @@ namespace XRL.World.Parts
                     char bitIndex = bitList[i];
                     (int low, int high) currentRange = bitRanges[bitIndex];
 
-                    int bitTier = DataDisk.GetRequiredSkill((int)Math.Max(0, i - 4.0)) switch
+                    int bitTier = DataDisk.GetRequiredSkill((int)Math.Max(0, i + 1.0 - 4.0)) switch
                     {
                         nameof(Tinkering_Tinker1) => 1,
                         nameof(Tinkering_Tinker2) => 2,
@@ -269,20 +269,21 @@ namespace XRL.World.Parts
                     Debug.LoopItem(4, 
                         $"{iterationLabel}] " +
                         $"{nameof(bitIndex)}: {bitIndex}, " +
-                        $"{nameof(bitTier)}: {bitTier}",
+                        $"{nameof(bitTier)}: {bitTier}, " +
+                        $"Skill: {DataDisk.GetRequiredSkillHumanReadable((int)Math.Max(0, i + 1.0 - 4.0))}",
                         Indent: indent + 4, Toggle: doDebug);
 
                     if (hasDisassemble || hasReverseEngineer)
                     {
                         if (i < firstBreakPoint)
                         {
-                            currentRange.low += 5;
-                            currentRange.high += 10;
+                            currentRange.low += 4;
+                            currentRange.high += 8;
                         }
                         if (i < secondBreakPoint)
                         {
                             currentRange.low += 2;
-                            currentRange.high += 5;
+                            currentRange.high += 4;
                         }
                         if (i == upperLimit && !Math.Max(0, i - 4).ChanceIn(upperLimit - 3))
                         {
@@ -295,13 +296,13 @@ namespace XRL.World.Parts
                     {
                         if (i < firstBreakPoint)
                         {
-                            currentRange.low += 5;
-                            currentRange.high += 10;
+                            currentRange.low += 4;
+                            currentRange.high += 8;
                         }
                         if (i < secondBreakPoint)
                         {
                             currentRange.low += 2;
-                            currentRange.high += 5;
+                            currentRange.high += 4;
                         }
                         Debug.CheckYeh(4, $"Have Scavenger, {nameof(currentRange)}: {currentRange}",
                             Indent: indent + 5, Toggle: doDebug);
@@ -317,8 +318,8 @@ namespace XRL.World.Parts
                     }
                     if (bitTier < tinkeringSkill)
                     {
-                        currentRange.low += 10;
-                        currentRange.high += 20;
+                        currentRange.low += 8;
+                        currentRange.high += 16;
                         Debug.CheckYeh(4, 
                             $"{nameof(bitTier)} < {nameof(tinkeringSkill)}, " +
                             $"{nameof(currentRange)}: {currentRange}",
@@ -329,7 +330,7 @@ namespace XRL.World.Parts
                         if (i < secondBreakPoint)
                         {
                             currentRange.low += 2;
-                            currentRange.high += 7;
+                            currentRange.high += 4;
                         }
                         else if (i < upperLimit)
                         {
@@ -338,7 +339,10 @@ namespace XRL.World.Parts
                         }
                         else
                         {
-                            currentRange.high += 1;
+                            if (3.in10())
+                            {
+                                currentRange.high += 1;
+                            }
                         }
                         Debug.CheckYeh(4,
                             $"{nameof(bitTier)} == {nameof(tinkeringSkill)}, " +
@@ -353,8 +357,7 @@ namespace XRL.World.Parts
                 }
                 Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
 
-                Debug.Entry(4, $"Disassembling bits...", Indent: indent + 3, Toggle: doDebug);
-                List<string> bitsToAdd = new();
+                Debug.Entry(4, $"Disassembling bits and throwing in Locker...", Indent: indent + 3, Toggle: doDebug);
                 foreach ((char bit, (int low, int high)) in bitRanges)
                 {
                     string bits = "";
@@ -365,22 +368,12 @@ namespace XRL.World.Parts
                     }
                     if (!bits.IsNullOrEmpty())
                     {
-                        bitsToAdd.Add(bits);
-                    }
-                    Debug.LoopItem(4, $"{bit}]" +
-                        $"{nameof(low)}: {low}, " +
-                        $"{nameof(high)}: {high}, " +
-                        $"{nameof(amountToAdd)}: {amountToAdd}", Indent: indent + 4, Toggle: doDebug);
-                }
-
-                Debug.Entry(4, $"Throwing bits in Locker...", Indent: indent + 3, Toggle: doDebug);
-                if (!bitsToAdd.IsNullOrEmpty())
-                {
-                    foreach (string bits in bitsToAdd)
-                    {
-                        Debug.LoopItem(4, $"{nameof(bits)}: {bits[0]} x {bits.Length}", Indent: indent + 4, Toggle: doDebug);
                         bitLocker.AddBits(bits);
                     }
+                    Debug.LoopItem(4, $"{BitType.CharTranslateBit(bit)}] " +
+                        $"({low,2}) - " +
+                        $"({high,3}) | " +
+                        $"Rolled: {amountToAdd}", Indent: indent + 4, Toggle: doDebug);
                 }
                 Debug.Entry(4, $"Scrap found, disassembled, and stored...", Indent: indent + 2, Toggle: doDebug);
             }
@@ -1254,10 +1247,10 @@ namespace XRL.World.Parts
                     }
                     else
                     if (dataDisk?.Data?.Type == "Build"
-                    && The.Player != null
-                    && GameObjectFactory.Factory.CreateSampleObject(dataDisk?.Data.Blueprint) is GameObject sampleObject)
+                        && The.Player != null
+                        && GameObjectFactory.Factory.CreateSampleObject(dataDisk?.Data.Blueprint) is GameObject sampleObject)
                     {
-                        if (sampleObject.Understood())
+                        if (sampleObject.Understood() || The.Player.HasSkill(nameof(Skill.Tinkering)) || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))
                         {
                             E.AddAction(
                                 Name: "Build From Data Disk",
@@ -1277,7 +1270,7 @@ namespace XRL.World.Parts
                                 Display: "identify recipe",
                                 Command: COMMAND_IDENTIFY_BY_DATADISK,
                                 Key: 'i',
-                                Priority: 9,
+                                Priority: 8,
                                 ClearAndSetUpTradeUI: true);
                         }
                         if (GameObject.Validate(ref sampleObject))

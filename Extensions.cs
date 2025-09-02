@@ -45,19 +45,5 @@ namespace UD_Tinkering_Bytes
         {
             return SB.AppendLines(null, Lines, null);
         }
-
-        public static string ToLiteral(this string String, bool Quotes = false)
-        {
-            if (String.IsNullOrEmpty())
-            {
-                return null;
-            }
-            string output = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(String, false);
-            if (Quotes)
-            {
-                output = output.Quote();
-            }
-            return output;
-        }
     }
 }

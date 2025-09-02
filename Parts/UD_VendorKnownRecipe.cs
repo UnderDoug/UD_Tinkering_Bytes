@@ -213,7 +213,7 @@ namespace XRL.World.Parts
                     && The.Player != null 
                     && GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
                 {
-                    if (sampleObject.Understood())
+                    if (sampleObject.Understood() || The.Player.HasSkill(nameof(Skill.Tinkering)))
                     {
                         E.AddAction(
                             Name: "Build From Recipe", 
@@ -233,7 +233,7 @@ namespace XRL.World.Parts
                             Display: "identify recipe",
                             Command: COMMAND_IDENTIFY_BY_RECIPE,
                             Key: 'i',
-                            Priority: 9,
+                            Priority: 8,
                             ClearAndSetUpTradeUI: true,
                             FireOnItem: true);
                     }
