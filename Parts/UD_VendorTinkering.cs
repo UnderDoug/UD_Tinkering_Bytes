@@ -36,6 +36,7 @@ namespace XRL.World.Parts
         public const string COMMAND_MOD = "CmdVendorMod";
         public const string COMMAND_IDENTIFY_BY_DATADISK = "CmdVendorExamineDataDisk";
         public const string COMMAND_IDENTIFY_SCALING = "CmdVendorExamineScaling";
+        public const string COMMAND_RECHARGE_SCALING = "CmdVendorRechargeScaling";
         public const string HELD_FOR_PLAYER = "HeldForPlayer";
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
@@ -693,7 +694,7 @@ namespace XRL.World.Parts
             return PickASupplier(ParentObject, ForObject, Title, Message, CenterIntro, BitCost, Multiple);
         }
 
-        public static bool PickIngredientSupplier(GameObject Vendor, GameObject ForObject, TinkerData TinkerData, out GameObject RecipeIngredientSupplier)
+        public static bool PickRecipeIngredientSupplier(GameObject Vendor, GameObject ForObject, TinkerData TinkerData, out GameObject RecipeIngredientSupplier)
         {
             RecipeIngredientSupplier = Vendor;
 
@@ -773,12 +774,12 @@ namespace XRL.World.Parts
             }
             return true;
         }
-        public bool PickIngredientSupplier(GameObject ForObject, TinkerData TinkerData, out GameObject RecipeBitSupplier)
+        public bool PickRecipeIngredientSupplier(GameObject ForObject, TinkerData TinkerData, out GameObject RecipeBitSupplier)
         {
-            return PickIngredientSupplier(ParentObject, ForObject, TinkerData, out RecipeBitSupplier);
+            return PickRecipeIngredientSupplier(ParentObject, ForObject, TinkerData, out RecipeBitSupplier);
         }
 
-        public static bool PickBitsSupplier(GameObject Vendor, GameObject ForObject, TinkerData TinkerData, BitCost BitCost, out GameObject RecipeBitSupplier, out BitLocker BitSupplierBitLocker)
+        public static bool PickRecipeBitsSupplier(GameObject Vendor, GameObject ForObject, TinkerData TinkerData, BitCost BitCost, out GameObject RecipeBitSupplier, out BitLocker BitSupplierBitLocker)
         {
             BitSupplierBitLocker = null;
 
@@ -823,9 +824,9 @@ namespace XRL.World.Parts
 
             return true;
         }
-        public bool PickBitsSupplier(GameObject ForObject, TinkerData TinkerData, BitCost BitCost, out GameObject RecipeBitSupplier, out BitLocker BitSupplierBitLocker)
+        public bool PickRecipeBitsSupplier(GameObject ForObject, TinkerData TinkerData, BitCost BitCost, out GameObject RecipeBitSupplier, out BitLocker BitSupplierBitLocker)
         {
-            return PickBitsSupplier(ParentObject, ForObject, TinkerData, BitCost, out RecipeBitSupplier, out BitSupplierBitLocker);
+            return PickRecipeBitsSupplier(ParentObject, ForObject, TinkerData, BitCost, out RecipeBitSupplier, out BitSupplierBitLocker);
         }
 
         public static bool TryGetApplicableRecipes(GameObject Vendor, GameObject ApplicableItem, List<TinkerData> InstalledRecipes, out List<string> LineItems, out List<char> Hotkeys, out List<RenderEvent> LineIcons, out List<TinkerData> Recipes)
@@ -1105,6 +1106,152 @@ namespace XRL.World.Parts
                 }
             }
             return didMod;
+        }
+        public static bool VendorDoRecharge(GameObject Vendor, GameObject Item)
+        {
+            if (Vendor == null || Item == null)
+            {
+                Popup.ShowFail($"That trader or item doesn't exist (this is an error).");
+                return false;
+            }
+            GameObject player = The.Player;
+            bool AnyParts = false;
+            bool AnyRechargeable = false;
+            bool AnyRecharged = false;
+            Predicate<IRechargeable> proc = delegate (IRechargeable rcg)
+            {
+                GameObject item = rcg.ParentObject;
+
+                AnyParts = true;
+                if (!rcg.CanBeRecharged())
+                {
+                    return true;
+                }
+
+                AnyRechargeable = true;
+                int rechargeAmount = rcg.GetRechargeAmount();
+                if (rechargeAmount <= 0)
+                {
+                    return true;
+                }
+
+                char rechargeBit = rcg.GetRechargeBit();
+                int rechargeValue = rcg.GetRechargeValue();
+                string bits = rechargeBit.GetString();
+
+                int bitsToRechargeFully = rechargeAmount / rechargeValue;
+                if (bitsToRechargeFully < 1)
+                {
+                    bitsToRechargeFully = 1;
+                }
+
+                BitCost bitCost = new(bits);
+
+                GameObject rechargeBitSupplier = PickASupplier(
+                Vendor: Vendor,
+                ForObject: item,
+                Title: $"Recharge {item.t(Single: true)}" + "\n"
+                + $"| Bit Cost |".Color("y") + "\n"
+                + $"<{bitCost}>" + "\n",
+                CenterIntro: true,
+                BitCost: bitCost);
+
+                if (rechargeBitSupplier == null)
+                {
+                    return false;
+                }
+                bool vendorSuppliesBits = rechargeBitSupplier == Vendor;
+
+                BitLocker bitSupplierBitLocker = rechargeBitSupplier.RequirePart<BitLocker>();
+
+                int bitCount = BitLocker.GetBitCount(rechargeBitSupplier, rechargeBit);
+
+                if (bitCount == 0)
+                {
+                    string noBitsMessage = GameText.VariableReplace(
+                        $"{rechargeBitSupplier.T()}{rechargeBitSupplier.GetVerb("do")} not have any {BitType.GetString(bits)} bits," +
+                        $" which are required for recharging. " +
+                        $"{rechargeBitSupplier.It} =verb:have:afterpronoun=:\n\n " +
+                        $"{bitSupplierBitLocker.GetBitsString()}", rechargeBitSupplier);
+                    Popup.ShowFail(Message: noBitsMessage);
+                    return false;
+                }
+
+                int availableBitsToRecharge = Math.Min(bitCount, bitsToRechargeFully);
+                string howManyBitsMessage = GameText.VariableReplace(
+                    $"It would take {bitsToRechargeFully.Things($"{BitType.GetString(bits)} bit").Color("C")} " +
+                    $"to fully recharge {Item.t(Single: true)}. " +
+                    $"{rechargeBitSupplier.T()} =verb:have:afterpronoun= {bitCount.Color("C")}. " +
+                    $"How many do you want to use?", rechargeBitSupplier);
+                int chosenBitsToUse = Popup.AskNumber(Message: howManyBitsMessage, "Sounds/UI/ui_notification", "", availableBitsToRecharge, 0, availableBitsToRecharge).GetValueOrDefault();
+
+                if (chosenBitsToUse < 1)
+                {
+                    return false;
+                }
+
+                bitCost.Clear();
+                bitCost.Add(rechargeBit, chosenBitsToUse);
+
+                TinkerInvoice tinkerInvoice = new(Vendor, TinkerInvoice.RECHARGE, bitCost, item)
+                {
+                    VendorSuppliesBits = vendorSuppliesBits,
+                };
+                int totalDramsCost = tinkerInvoice.GetTotalCost();
+
+
+                if (player.GetFreeDrams() < totalDramsCost)
+                {
+                    Popup.ShowFail(
+                        $"You do not have the required {totalDramsCost.Things("dram").Color("C")} " +
+                        $"to have {Vendor.t()} recharge this item.");
+                    Popup.Show(tinkerInvoice, "Invoice");
+                    return false;
+                }
+                if (Popup.ShowYesNo($"{Vendor.T()} will recharge this item for " +
+                    $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
+                    $"\n\n{tinkerInvoice}") == DialogResult.Yes)
+                {
+                    bitSupplierBitLocker.UseBits(bitCost);
+
+                    player.UseDrams(totalDramsCost);
+                    Vendor.GiveDrams(totalDramsCost);
+
+                    Item.SplitFromStack();
+
+                    rcg.AddCharge((chosenBitsToUse < bitsToRechargeFully) ? (chosenBitsToUse * rechargeValue) : rechargeAmount);
+
+                    PlayUISound("Sounds/Abilities/sfx_ability_energyCell_recharge");
+
+                    string partially = ((chosenBitsToUse < bitsToRechargeFully) ? "partially " : "");
+                    string rechargedMessage = GameText.VariableReplace($"{Vendor.T()} =verb:have:afterpronoun= {partially}recharged {item.t(Single: true)}.", Vendor);
+
+                    Popup.Show(rechargedMessage);
+                    Item.CheckStack();
+
+                    AnyRecharged = true;
+
+                    return true;
+                }
+                return false;
+            };
+            if (Item.ForeachPartDescendedFrom(proc))
+            {
+                if (!AnyParts)
+                {
+                    Popup.ShowFail("That isn't an energy cell and does not have a rechargeable capacitor.");
+                }
+                else if (!AnyRechargeable)
+                {
+                    Popup.ShowFail($"{Item.T()} can't be recharged that way.");
+                }
+                if (AnyRecharged)
+                {
+                    player.UseEnergy(1000, "Trade Tinkering Mod");
+                    Vendor.UseEnergy(1000, "Skill Tinkering Mod");
+                }
+            }
+            return AnyRecharged;
         }
 
         public override void Register(GameObject Object, IEventRegistrar Registrar)
@@ -1413,6 +1560,20 @@ namespace XRL.World.Parts
                             Override: true,
                             ClearAndSetUpTradeUI: true);
                     }
+                    if (E.Item.InInventory != E.Vendor 
+                        && E.Vendor.HasSkill(nameof(Tinkering_Tinker1))
+                        && (itemUnderstood || vendorIdentifyLevel > E.Item.GetComplexity()) 
+                        && E.Item.NeedsRecharge())
+                    {
+                        E.AddAction(
+                            Name: "Recharge",
+                            Display: "recharge",
+                            Command: COMMAND_RECHARGE_SCALING,
+                            Key: 'c',
+                            Priority: 7,
+                            Override: true,
+                            ClearAndSetUpTradeUI: true);
+                    }
                 }
             }
             return base.HandleEvent(E);
@@ -1455,7 +1616,7 @@ namespace XRL.World.Parts
                         }
                         try
                         {
-                            if (!PickIngredientSupplier(sampleItem, tinkerRecipe, out GameObject recipeIngredientSupplier))
+                            if (!PickRecipeIngredientSupplier(sampleItem, tinkerRecipe, out GameObject recipeIngredientSupplier))
                             {
                                 return false;
                             }
@@ -1464,7 +1625,7 @@ namespace XRL.World.Parts
                             BitCost bitCost = new();
                             bitCost.Import(TinkerItem.GetBitCostFor(tinkerRecipe.Blueprint));
 
-                            if (!PickBitsSupplier(sampleItem, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                            if (!PickRecipeBitsSupplier(sampleItem, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
                             {
                                 return false;
                             }
@@ -1484,7 +1645,10 @@ namespace XRL.World.Parts
 
                             if (player.GetFreeDrams() < totalDramsCost && (depositDramCost == 0 || player.GetFreeDrams() < depositDramCost))
                             {
-                                Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have the required {totalDramsCost.Things("dram").Color("C")} to have {vendor.t()} tinker this item.");
+                                Popup.ShowFail(
+                                    $"{player.T()}{player.GetVerb("do")} not have the required " +
+                                    $"{totalDramsCost.Things("dram").Color("C")} to have " +
+                                    $"{vendor.t()} tinker this item.");
                                 Popup.Show(tinkerInvoice, "Invoice");
                                 return false;
                             }
@@ -1662,7 +1826,7 @@ namespace XRL.World.Parts
                                 }
 
                                 bool vendorSuppliesIngredients = false;
-                                if (!PickIngredientSupplier(selectedObject, tinkerRecipe, out GameObject recipeIngredientSupplier))
+                                if (!PickRecipeIngredientSupplier(selectedObject, tinkerRecipe, out GameObject recipeIngredientSupplier))
                                 {
                                     return false;
                                 }
@@ -1679,7 +1843,7 @@ namespace XRL.World.Parts
                                 bitCost.Increment(BitType.TierBits[recipeTier]);
                                 bitCost.Increment(BitType.TierBits[existingModsTier]);
 
-                                if (!PickBitsSupplier(selectedObject, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                                if (!PickRecipeBitsSupplier(selectedObject, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
                                 {
                                     return false;
                                 }
@@ -1695,7 +1859,9 @@ namespace XRL.World.Parts
 
                                 if (player.GetFreeDrams() < totalDramsCost)
                                 {
-                                    Popup.ShowFail($"You do not have the required {totalDramsCost.Things("dram").Color("C")} to mod this item.");
+                                    Popup.ShowFail(
+                                        $"You do not have the required {totalDramsCost.Things("dram").Color("C")} " +
+                                        $"to have {vendor.t()} mod this item.");
                                     Popup.Show(tinkerInvoice, "Invoice");
                                     return false;
                                 }
@@ -1732,8 +1898,7 @@ namespace XRL.World.Parts
                     && E.Item != null && E.Item.TryGetPart(out DataDisk dataDisk))
                 {
                     int identifyLevel = GetIdentifyLevel(vendor);
-                    if (identifyLevel > 0
-                        && GameObjectFactory.Factory.CreateSampleObject(dataDisk.Data.Blueprint) is GameObject item)
+                    if (identifyLevel > 0 && GameObjectFactory.Factory.CreateSampleObject(dataDisk.Data.Blueprint) is GameObject item)
                     {
                         try
                         {
@@ -1748,26 +1913,34 @@ namespace XRL.World.Parts
                                 }
                                 if (identifyLevel < complexity)
                                 {
-                                    Popup.ShowFail("The tinker recipe on this data disk is too complex for " + vendor.t(Stripped: true) + " to explain.");
+                                    Popup.ShowFail($"The tinker recipe on this data disk is too complex for {vendor.t(Stripped: true)} to explain.");
                                     return false;
                                 }
                                 int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
-                                if (player.GetFreeDrams() < dramsCost)
+                                if (dramsCost > 0 && player.GetFreeDrams() < dramsCost)
                                 {
-                                    Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk.");
+                                    Popup.ShowFail(
+                                        $"You do not have the required {dramsCost.Things("dram").Color("C")} " +
+                                        $"to have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk.");
                                 }
                                 else
-                                if (Popup.ShowYesNo($"You may have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk for {dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes
-                                    && The.Player.UseDrams(dramsCost))
+                                if (Popup.ShowYesNo(
+                                    $"You may have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk for " +
+                                    $"{dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes)
                                 {
+                                    player.UseDrams(dramsCost);
                                     vendor.GiveDrams(dramsCost);
-                                    Popup.Show($"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()} {item.an(AsIfKnown: true)}.");
+                                    Popup.Show(
+                                        $"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()}" +
+                                        $" as {item.an(AsIfKnown: true)}.");
                                     item.MakeUnderstood();
+                                    return true;
                                 }
                             }
                             else
                             {
                                 Popup.ShowFail("You already understand what the tinker recipe on this data disk creates.");
+                                return false;
                             }
                         }
                         finally
@@ -1787,15 +1960,15 @@ namespace XRL.World.Parts
                 else
                 if (E.Command == COMMAND_IDENTIFY_SCALING
                     && E.Vendor != null && E.Vendor == ParentObject
-                    && E.Item is GameObject item)
+                    && E.Item is GameObject unknownItem)
                 {
                     int identifyLevel = GetIdentifyLevel(vendor);
                     if (identifyLevel > 0)
                     {
-                        if (!item.Understood())
+                        if (!unknownItem.Understood())
                         {
-                            int complexity = item.GetComplexity();
-                            int examineDifficulty = item.GetExamineDifficulty();
+                            int complexity = unknownItem.GetComplexity();
+                            int examineDifficulty = unknownItem.GetExamineDifficulty();
                             if (player.HasPart<Dystechnia>())
                             {
                                 Popup.ShowFail($"You can't understand {Grammar.MakePossessive(vendor.t(Stripped: true))} explanation.");
@@ -1803,26 +1976,32 @@ namespace XRL.World.Parts
                             }
                             if (identifyLevel < complexity)
                             {
-                                Popup.ShowFail("This item is too complex for " + vendor.t(Stripped: true) + " to identify.");
+                                Popup.ShowFail($"This item is too complex for {vendor.t(Stripped: true)} to identify.");
                                 return false;
                             }
-                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(unknownItem, GetTradePerformanceEvent.GetFor(player, vendor));
                             if (player.GetFreeDrams() < dramsCost)
                             {
-                                Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify this item.");
+                                Popup.ShowFail(
+                                    $"You do not have the required {dramsCost.Things("dram").Color("C")} " +
+                                    $"to have {vendor.t(Stripped: true)} identify this item.");
                             }
                             else
-                            if (Popup.ShowYesNo($"You may have {vendor.t(Stripped: true)} identify this for {dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes
-                                && The.Player.UseDrams(dramsCost))
+                            if (Popup.ShowYesNo(
+                                $"You may have {vendor.t(Stripped: true)} identify this for " +
+                                $"{dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes)
                             {
+                                player.UseDrams(dramsCost);
                                 vendor.GiveDrams(dramsCost);
-                                Popup.Show($"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()} {item.an(AsIfKnown: true)}.");
-                                item.MakeUnderstood();
+                                Popup.Show($"{vendor.does("identify", Stripped: true)} {unknownItem.the} {unknownItem.GetDisplayName()} {unknownItem.an(AsIfKnown: true)}.");
+                                unknownItem.MakeUnderstood();
+                                return true;
                             }
                         }
                         else
                         {
                             Popup.ShowFail("You already understand this item.");
+                            return false;
                         }
                     }
                     else
@@ -1830,6 +2009,21 @@ namespace XRL.World.Parts
                         Popup.Show($"{vendor.Does("don't", Stripped: true)} have the skill to identify tinker recipes on data disks.");
                         return false;
                     }
+                }
+                else
+                if (E.Command == COMMAND_RECHARGE_SCALING
+                    && E.Vendor != null && E.Vendor == ParentObject
+                    && E.Item is GameObject rechargeableItem)
+                {
+                    if (!vendor.CanMoveExtremities("Recharge", ShowMessage: true))
+                    {
+                        return false;
+                    }
+                    if (VendorDoRecharge(vendor, rechargeableItem))
+                    {
+                        return true;
+                    }
+                    return false;
                 }
             }
             return base.HandleEvent(E);

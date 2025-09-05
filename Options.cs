@@ -31,7 +31,7 @@ namespace UD_Tinkering_Bytes
         [OptionFlag] public static bool DebugSpawnSnapjawWhileVendorDisassembles;
 
         // Checkbox settings
-        // [OptionFlag] public static bool ExampleOption;
+        [OptionFlag] public static bool EnableKnownRecipeCategoryMirroring;
 
     } //!-- public static class Options
 }

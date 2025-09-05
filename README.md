@@ -2,4 +2,4 @@ Adds a new set of tinkering bit items that are analogous with scrap but for 8 of
 
 With the addition of filled out `BitLocker`s for NPCs comes the natural progression to the idea that they should be able to perform tinkering actions for the player as part of a trade (beyond just repair and identify), which this mod also adds!
 
-This mod depends on UnderDoug's [Vendor Actions](https://github.com/UnderDoug/UD_Vendor_Actions) mod to function.
+This mod depends on UnderDoug's [Vendor Actions](https://github.com/UnderDoug/UD_Vendor_Actions) mod and UnderDoug's [Modding Toolbox](https://github.com/UnderDoug/UD_Modding_Toolbox/) to function.

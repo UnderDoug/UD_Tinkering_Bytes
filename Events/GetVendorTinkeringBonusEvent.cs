@@ -87,5 +87,4 @@ namespace UD_Tinkering_Bytes
             return GetFor(Vendor, Item, Type, BaseRating, Bonus, ref SecondaryBonus, ref Interrupt, Interruptable);
         }
     }
-
 }

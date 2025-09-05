@@ -74,19 +74,25 @@
   <!-- 
   Mod Options
   -->
-  <!--option
-        ID="Option_UD_Tinkering_Bytes_ExampleOption"
-        DisplayText="Enable an example Option."
+  <option
+        ID="Option_UD_Tinkering_Bytes_EnableKnownRecipeCategoryMirroring"
+        DisplayText="Enable category mirroring for recipes tinker traders know."
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="Yes"
     >
     <helptext>
-      When enabled, this option is true.
+      When {{W|enabled}}, the recipes that tinker traders know will be categorized in the trade UI according to the category of the item they produce.
+      
+      &quot;Build&quot; recipes will be &quot;artifacts&quot; while the player doesn't understand the item.
 
-      The default is {{w|Enabled}}.
+      &quot;Mod&quot; recipes will be &quot;data disks&quot;.
+      
+      When {{w|disabled}}, all the recipes that tinker traders know will be categorized into a single category, &quot;Tinker Recipes&quot;.
+
+      The default is {{W|Enabled}}.
     </helptext>
-  </option-->
+  </option>
 
   <!-- End of Mod Options -->
   

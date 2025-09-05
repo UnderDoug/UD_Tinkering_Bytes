@@ -1,18 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using UD_Modding_Toolbox;
-using UD_Tinkering_Bytes;
-using UD_Vendor_Actions;
 using XRL.Language;
 using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
 using XRL.World.Parts.Mutation;
 using XRL.World.Tinkering;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
-using static UD_Modding_Toolbox.Const;
+
 using static XRL.World.Parts.Skill.Tinkering;
+
+
+using UD_Vendor_Actions;
+using UD_Modding_Toolbox;
+
+using static UD_Modding_Toolbox.Const;
+
+using UD_Tinkering_Bytes;
+using static UD_Tinkering_Bytes.Options;
 
 namespace XRL.World.Parts
 {
@@ -52,20 +57,23 @@ namespace XRL.World.Parts
 
         public TinkerData SetData(TinkerData KnownRecipe)
         {
-            if (KnownRecipe.Type == "Build"
-                && GameObjectFactory.Factory.CreateSampleObject(KnownRecipe.Blueprint) is GameObject sampleObject
-                && ParentObject.TryGetPart(out Physics recipePhysics)
-                && sampleObject.TryGetPart(out Physics samplePhysics))
+            if (EnableKnownRecipeCategoryMirroring)
             {
-                recipePhysics.Category = samplePhysics.Category;
+                if (KnownRecipe.Type == "Build"
+                    && GameObjectFactory.Factory.CreateSampleObject(KnownRecipe.Blueprint) is GameObject sampleObject
+                    && ParentObject.TryGetPart(out Physics recipePhysics)
+                    && sampleObject.TryGetPart(out Physics samplePhysics))
+                {
+                    recipePhysics.Category = samplePhysics?.Category ?? "Able To Tinker";
+                }
+                else
+                if (KnownRecipe.Type == "Mod"
+                    && ParentObject.TryGetPart(out recipePhysics))
+                {
+                    recipePhysics.Category = "Data Disks";
+                }
             }
-            else
-            if (KnownRecipe.Type == "Mod"
-                && ParentObject.TryGetPart(out recipePhysics))
-            {
-                recipePhysics.Category = "Data Disks";
-            }
-            return this.Data = KnownRecipe;
+            return Data = KnownRecipe;
         }
 
         public override bool AllowStaticRegistration()
@@ -91,6 +99,7 @@ namespace XRL.World.Parts
             return base.WantEvent(ID, Cascade)
                 || ID == GetDisplayNameEvent.ID
                 || ID == GetShortDescriptionEvent.ID
+                || ID == GetInventoryCategoryEvent.ID
                 || ID == GetVendorActionsEvent.ID
                 || ID == VendorActionEvent.ID
                 || ID == EndTradeEvent.ID;
@@ -210,6 +219,17 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
+        public override bool HandleEvent(GetInventoryCategoryEvent E)
+        {
+            if (EnableKnownRecipeCategoryMirroring
+                && GameObjectFactory.Factory.CreateSampleObject(Data?.Blueprint) is GameObject sampleObject
+                && sampleObject.TryGetPart(out Examiner sampleExaminer)
+                && !sampleObject.Understood(sampleExaminer) && !E.AsIfKnown)
+            {
+                E.Category = "Artifacts";
+            }
+            return base.HandleEvent(E);
+        }
         public virtual bool HandleEvent(GetVendorActionsEvent E)
         {
             if (E.Item != null && E.Item == ParentObject && E.Item.TryGetPart(out UD_VendorKnownRecipe vendorKnownRecipe))
@@ -265,8 +285,7 @@ namespace XRL.World.Parts
                 GameObject vendor = E.Vendor;
                 GameObject player = The.Player;
                 int identifyLevel = GetIdentifyLevel(vendor);
-                if (identifyLevel > 0 
-                    && GameObjectFactory.Factory.CreateSampleObject(vendorKnownRecipe.Data.Blueprint) is GameObject item)
+                if (identifyLevel > 0 && GameObjectFactory.Factory.CreateSampleObject(vendorKnownRecipe.Data.Blueprint) is GameObject item)
                 {
                     try
                     {
@@ -281,26 +300,34 @@ namespace XRL.World.Parts
                             }
                             if (identifyLevel < complexity)
                             {
-                                Popup.ShowFail("This tinker recipe is too complex for " + vendor.t(Stripped: true) + " to explain.");
+                                Popup.ShowFail($"This tinker recipe is too complex for {vendor.t(Stripped: true)} to explain.");
                                 return false;
                             }
-                            int dramsCost = (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
-                            if (player.GetFreeDrams() < dramsCost)
+                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                            if (dramsCost > 0 && player.GetFreeDrams() < dramsCost)
                             {
-                                Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify this tinker recipe.");
+                                Popup.ShowFail(
+                                    $"You do not have the required {dramsCost.Things("dram").Color("C")} " +
+                                    $"to have {vendor.t(Stripped: true)} identify this tinker recipe.");
                             }
                             else
-                            if (Popup.ShowYesNo($"You may have {vendor.t(Stripped: true)} identify this tinker recipe for {dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes
-                                && The.Player.UseDrams(dramsCost))
+                            if (Popup.ShowYesNo(
+                                $"You may have {vendor.t(Stripped: true)} identify this tinker recipe for " +
+                                $"{dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes)
                             {
+                                player.UseDrams(dramsCost);
                                 vendor.GiveDrams(dramsCost);
-                                Popup.Show($"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()} {item.an(AsIfKnown: true)}.");
+                                Popup.Show(
+                                    $"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()}" +
+                                    $" as {item.an(AsIfKnown: true)}.");
                                 item.MakeUnderstood();
+                                return true;
                             }
                         }
                         else
                         {
                             Popup.ShowFail("You already understand what this tinker recipe creates.");
+                            return false;
                         }
                     }
                     finally
