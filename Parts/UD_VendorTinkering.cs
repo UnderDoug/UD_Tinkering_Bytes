@@ -10,6 +10,7 @@ using UD_Vendor_Actions;
 using XRL.Language;
 using XRL.Rules;
 using XRL.UI;
+using XRL.UI.ObjectFinderClassifiers;
 using XRL.Wish;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
@@ -34,6 +35,7 @@ namespace XRL.World.Parts
         public const string COMMAND_BUILD = "CmdVendorBuild";
         public const string COMMAND_MOD = "CmdVendorMod";
         public const string COMMAND_IDENTIFY_BY_DATADISK = "CmdVendorExamineDataDisk";
+        public const string COMMAND_IDENTIFY_SCALING = "CmdVendorExamineScaling";
         public const string HELD_FOR_PLAYER = "HeldForPlayer";
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
@@ -826,6 +828,116 @@ namespace XRL.World.Parts
             return PickBitsSupplier(ParentObject, ForObject, TinkerData, BitCost, out RecipeBitSupplier, out BitSupplierBitLocker);
         }
 
+        public static bool TryGetApplicableRecipes(GameObject Vendor, GameObject ApplicableItem, List<TinkerData> InstalledRecipes, out List<string> LineItems, out List<char> Hotkeys, out List<RenderEvent> LineIcons, out List<TinkerData> Recipes)
+        {
+            LineItems = new();
+            Hotkeys = new();
+            LineIcons = new();
+            Recipes = new();
+            GameObject player = The.Player;
+            List<GameObject> vendorHeldRecipeObjects = Vendor?.Inventory?.GetObjectsViaEventList(
+                GO => GO.TryGetPart(out UD_VendorKnownRecipe VKR)
+                && VKR.Data.Type == "Mod");
+
+            List<GameObject> vendorHeldDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(
+                GO => GO.TryGetPart(out DataDisk D)
+                && D.Data.Type == "Mod");
+
+            List<GameObject> playerHeldDataDiskObjects = player?.Inventory?.GetObjectsViaEventList(
+                GO => GO.TryGetPart(out DataDisk D)
+                && D.Data.Type == "Mod");
+
+            if (vendorHeldRecipeObjects.IsNullOrEmpty()
+                && vendorHeldDataDiskObjects.IsNullOrEmpty()
+                && playerHeldDataDiskObjects.IsNullOrEmpty())
+            {
+                Popup.ShowFail($"{Vendor.T()}{Vendor.GetVerb("do")} not know any item modifications.");
+                return false;
+            }
+            Dictionary<TinkerData, string> applicableRecipes = new();
+            if (!playerHeldDataDiskObjects.IsNullOrEmpty())
+            {
+                foreach (GameObject playerHeldDataDiskObject in playerHeldDataDiskObjects)
+                {
+                    if (playerHeldDataDiskObject.TryGetPart(out DataDisk playerHeldDataDisk)
+                        && IsModApplicableAndNotAlreadyInDictionary(Vendor, ApplicableItem, playerHeldDataDisk.Data, applicableRecipes, InstalledRecipes))
+                    {
+                        applicableRecipes.Add(playerHeldDataDisk.Data, "your inventory");
+                    }
+                }
+            }
+            if (!vendorHeldRecipeObjects.IsNullOrEmpty())
+            {
+                foreach (GameObject vendorHeldRecipeObject in vendorHeldRecipeObjects)
+                {
+                    if (vendorHeldRecipeObject.TryGetPart(out UD_VendorKnownRecipe vendorHeldRecipePart)
+                        && IsModApplicableAndNotAlreadyInDictionary(Vendor, ApplicableItem, vendorHeldRecipePart.Data, applicableRecipes, InstalledRecipes))
+                    {
+                        applicableRecipes.Add(vendorHeldRecipePart.Data, "known by trader");
+                    }
+                }
+            }
+            if (!vendorHeldDataDiskObjects.IsNullOrEmpty())
+            {
+                foreach (GameObject vendorHeldDataDiskObject in vendorHeldDataDiskObjects)
+                {
+                    if (vendorHeldDataDiskObject.TryGetPart(out DataDisk vendorHeldDataDisk)
+                        && IsModApplicableAndNotAlreadyInDictionary(Vendor, ApplicableItem, vendorHeldDataDisk.Data, applicableRecipes, InstalledRecipes))
+                    {
+                        applicableRecipes.Add(vendorHeldDataDisk.Data, "trader inventory");
+                    }
+                }
+            }
+            if (applicableRecipes.IsNullOrEmpty())
+            {
+                Popup.ShowFail(
+                    $"{Vendor.T()}{Vendor.GetVerb("do")} not know any item modifications " +
+                    $"for {ApplicableItem.t(Single: true)}.");
+                return false;
+            }
+            char nextHotkey = 'a';
+            BitCost recipeBitCost = new();
+            GameObject sampleDiskObject = null;
+            foreach ((TinkerData applicableRecipe, string context) in applicableRecipes)
+            {
+                recipeBitCost = new();
+                int recipeTier = Tier.Constrain(applicableRecipe.Tier);
+
+                int modSlotsUsed = ApplicableItem.GetModificationSlotsUsed();
+                int noCostMods = ApplicableItem.GetIntProperty("NoCostMods");
+
+                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + ApplicableItem.GetTechTier());
+
+                recipeBitCost.Increment(BitType.TierBits[recipeTier]);
+                recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
+                if (nextHotkey == ' ' || Hotkeys.Contains('z'))
+                {
+                    nextHotkey = ' ';
+                    Hotkeys.Add(nextHotkey);
+                }
+                else
+                {
+                    Hotkeys.Add(nextHotkey++);
+                }
+                string lineItem = $"{applicableRecipe.DisplayName} <{recipeBitCost}> [{context.Color("K")}]";
+                LineItems.Add(lineItem);
+                Recipes.Add(applicableRecipe);
+
+                sampleDiskObject = TinkerData.createDataDisk(applicableRecipe);
+
+                LineIcons.Add(sampleDiskObject.RenderForUI());
+            }
+            if (GameObject.Validate(ref sampleDiskObject))
+            {
+                sampleDiskObject.Obliterate();
+            }
+            return true;
+        }
+        public bool TryGetApplicableRecipes(GameObject ApplicableItem, out List<string> LineItems, out List<char> Hotkeys, out List<RenderEvent> LineIcons, out List<TinkerData> Recipes)
+        {
+            return TryGetApplicableRecipes(ParentObject, ApplicableItem, InstalledRecipes, out LineItems, out Hotkeys, out LineIcons, out Recipes);
+        }
+
         public static bool VendorDoBuild(GameObject Vendor, TinkerData TinkerData, GameObject RecipeIngredientSupplier, bool VendorKeepsItem)
         {
             if (Vendor == null || TinkerData == null)
@@ -1239,11 +1351,16 @@ namespace XRL.World.Parts
         {
             if (E.Vendor != null && ParentObject == E.Vendor && E.Item != null && WantVendorActions)
             {
+                int vendorIdentifyLevel = GetIdentifyLevel(E.Vendor);
+                bool itemUnderstood = E.Item.Understood();
+
+                Tinkering_Repair vendorRepairSkill = E.Vendor.GetPart<Tinkering_Repair>();
+
                 if (E.Item.TryGetPart(out DataDisk dataDisk))
                 {
                     if (dataDisk?.Data?.Type == "Mod")
                     {
-                        E.AddAction("Mod From Data Disk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                        E.AddAction("Mod From Data Disk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, ClearAndSetUpTradeUI: true);
                     }
                     else
                     if (dataDisk?.Data?.Type == "Build"
@@ -1263,7 +1380,7 @@ namespace XRL.World.Parts
                                 ClearAndSetUpTradeUI: true);
                         }
                         else
-                        if (GetIdentifyLevel(E.Vendor) > 0)
+                        if (vendorIdentifyLevel > 0)
                         {
                             E.AddAction(
                                 Name: "Identify From Data Disk",
@@ -1280,9 +1397,22 @@ namespace XRL.World.Parts
                     }
                 }
                 else
-                if (E.Item.InInventory != E.Vendor && !ItemModding.ModKey(E.Item).IsNullOrEmpty() && E.Item.Understood())
                 {
-                    E.AddAction("Mod This Item", "mod with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -2, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                    if (E.Item.InInventory != E.Vendor && !ItemModding.ModKey(E.Item).IsNullOrEmpty() && itemUnderstood)
+                    {
+                        E.AddAction("Mod This Item", "mod with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -2, ClearAndSetUpTradeUI: true);
+                    }
+                    if (vendorIdentifyLevel > 0 && !itemUnderstood)
+                    {
+                        E.AddAction(
+                            Name: "Identify",
+                            Display: "identify",
+                            Command: COMMAND_IDENTIFY_SCALING,
+                            Key: 'i',
+                            Priority: 8,
+                            Override: true,
+                            ClearAndSetUpTradeUI: true);
+                    }
                 }
             }
             return base.HandleEvent(E);
@@ -1305,392 +1435,301 @@ namespace XRL.World.Parts
                     {
                         return false;
                     }
-                }
-                UD_VendorKnownRecipe knownRecipePart = null;
-                if (E.Command == COMMAND_BUILD
-                    && E.Item != null
-                    && (E.Item.TryGetPart(out DataDisk dataDisk) || E.Item.TryGetPart(out knownRecipePart)))
-                {
-                    GameObject recipeObject = E.Item;
-                    TinkerData tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
-                    bool vendorsRecipe = E.Item.InInventory != player;
-                    GameObject sampleItem = GameObjectFactory.Factory.CreateSampleObject(tinkerRecipe.Blueprint);
-                    TinkeringHelpers.StripForTinkering(sampleItem);
-                    TinkeringHelpers.ForceToBePowered(sampleItem);
 
-                    if (!CanTinkerRecipe(tinkerRecipe))
+                    UD_VendorKnownRecipe knownRecipePart = null;
+                    if (E.Command == COMMAND_BUILD
+                        && E.Item != null
+                        && (E.Item.TryGetPart(out DataDisk dataDisk) || E.Item.TryGetPart(out knownRecipePart)))
                     {
-                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
-                        return false;
-                    }
-                    try
-                    {
-                        if (!PickIngredientSupplier(sampleItem, tinkerRecipe, out GameObject recipeIngredientSupplier))
+                        GameObject recipeObject = E.Item;
+                        TinkerData tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
+                        bool vendorsRecipe = E.Item.InInventory != player;
+                        GameObject sampleItem = GameObjectFactory.Factory.CreateSampleObject(tinkerRecipe.Blueprint);
+                        TinkeringHelpers.StripForTinkering(sampleItem);
+                        TinkeringHelpers.ForceToBePowered(sampleItem);
+
+                        if (!CanTinkerRecipe(tinkerRecipe))
                         {
+                            Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
                             return false;
                         }
-                        bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
-
-                        BitCost bitCost = new();
-                        bitCost.Import(TinkerItem.GetBitCostFor(tinkerRecipe.Blueprint));
-
-                        if (!PickBitsSupplier(sampleItem, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                        try
                         {
-                            return false;
-                        }
-                        bool vendorSuppliesBits = recipeBitSupplier == vendor;
-
-                        tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe)
-                        {
-                            VendorSuppliesIngredients = vendorSuppliesIngredients,
-                            VendorSuppliesBits = vendorSuppliesBits,
-                        };
-
-                        int totalDramsCost = tinkerInvoice.GetTotalCost();
-                        int depositDramCost = tinkerInvoice.GetDepositCost();
-                        double itemDramValue = tinkerInvoice.GetItemValue();
-
-                        bool vendorHoldsItem = false;
-
-                        if (player.GetFreeDrams() < totalDramsCost && (depositDramCost == 0 || player.GetFreeDrams() < depositDramCost))
-                        {
-                            Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have the required {totalDramsCost.Things("dram").Color("C")} to have {vendor.t()} tinker this item.");
-                            Popup.Show(tinkerInvoice, "Invoice");
-                            return false;
-                        }
-                        if (player.GetFreeDrams() < totalDramsCost
-                            && (depositDramCost > 0 && player.GetFreeDrams() > depositDramCost))
-                        {
-                            DialogResult takeDeposit = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage());
-                            if (takeDeposit == DialogResult.Yes)
-                            {
-                                vendorHoldsItem = true;
-                            }
-                            else
+                            if (!PickIngredientSupplier(sampleItem, tinkerRecipe, out GameObject recipeIngredientSupplier))
                             {
                                 return false;
                             }
-                        }                        
-                        if (!vendorHoldsItem
-                            && Popup.ShowYesNo($"{vendor.T()} will tinker this item for " +
-                                $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
-                                $"\n\n{tinkerInvoice}") != DialogResult.Yes)
-                        {
-                            return false;
-                        }
-                        if (VendorDoBuild(vendor, tinkerRecipe, recipeIngredientSupplier, vendorHoldsItem))
-                        {
-                            bitSupplierBitLocker.UseBits(bitCost);
-
-                            player.UseDrams(vendorHoldsItem ? depositDramCost : totalDramsCost);
-                            vendor.GiveDrams(vendorHoldsItem ? depositDramCost : totalDramsCost);
-
-                            player.UseEnergy(1000, "Trade Tinkering Build");
-                            vendor.UseEnergy(1000, "Skill Tinkering Build");
-
-                            return true;
-                        }
-                    }
-                    finally
-                    {
-                        if (GameObject.Validate(ref sampleItem))
-                        {
-                            sampleItem.Obliterate();
-                        }
-                        tinkerInvoice?.Clear();
-                    }
-                }
-                else
-                if (E.Command == COMMAND_MOD)
-                {
-                    GameObject selectedObject = null;
-                    TinkerData tinkerRecipe = null;
-                    string modName = null;
-                    bool vendorsRecipe = true;
-                    try
-                    {
-                        if (!E.Item.TryGetPart(out dataDisk) && !E.Item.TryGetPart(out knownRecipePart))
-                        {
-                            selectedObject = E.Item;
-
-                            List<GameObject> vendorHeldRecipeObjects = vendor?.Inventory?.GetObjectsViaEventList(
-                                GO => GO.TryGetPart(out UD_VendorKnownRecipe VKR)
-                                && VKR.Data.Type == "Mod");
-
-                            List<GameObject> vendorHeldDataDiskObjects = vendor?.Inventory?.GetObjectsViaEventList(
-                                GO => GO.TryGetPart(out DataDisk D)
-                                && D.Data.Type == "Mod");
-
-                            List<GameObject> playerHeldDataDiskObjects = player?.Inventory?.GetObjectsViaEventList(
-                                GO => GO.TryGetPart(out DataDisk D)
-                                && D.Data.Type == "Mod");
-
-                            if (vendorHeldRecipeObjects.IsNullOrEmpty()
-                                && vendorHeldDataDiskObjects.IsNullOrEmpty()
-                                && playerHeldDataDiskObjects.IsNullOrEmpty())
-                            {
-                                Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not know any item modifications.");
-                                return false;
-                            }
-                            Dictionary<TinkerData, string> applicableRecipes = new();
-                            if (!playerHeldDataDiskObjects.IsNullOrEmpty())
-                            {
-                                foreach (GameObject playerHeldDataDiskObject in playerHeldDataDiskObjects)
-                                {
-                                    if (playerHeldDataDiskObject.TryGetPart(out DataDisk playerHeldDataDisk)
-                                        && IsModApplicableAndNotAlreadyInDictionary(selectedObject, playerHeldDataDisk.Data, applicableRecipes))
-                                    {
-                                        applicableRecipes.Add(playerHeldDataDisk.Data, "your inventory");
-                                    }
-                                }
-                            }
-                            if (!vendorHeldRecipeObjects.IsNullOrEmpty())
-                            {
-                                foreach (GameObject vendorHeldRecipeObject in vendorHeldRecipeObjects)
-                                {
-                                    if (vendorHeldRecipeObject.TryGetPart(out UD_VendorKnownRecipe vendorHeldRecipePart)
-                                        && IsModApplicableAndNotAlreadyInDictionary(selectedObject, vendorHeldRecipePart.Data, applicableRecipes))
-                                    {
-                                        applicableRecipes.Add(vendorHeldRecipePart.Data, "known by trader");
-                                    }
-                                }
-                            }
-                            if (!vendorHeldDataDiskObjects.IsNullOrEmpty())
-                            {
-                                foreach (GameObject vendorHeldDataDiskObject in vendorHeldDataDiskObjects)
-                                {
-                                    if (vendorHeldDataDiskObject.TryGetPart(out DataDisk vendorHeldDataDisk)
-                                        && IsModApplicableAndNotAlreadyInDictionary(selectedObject, vendorHeldDataDisk.Data, applicableRecipes))
-                                    {
-                                        applicableRecipes.Add(vendorHeldDataDisk.Data, "trader inventory");
-                                    }
-                                }
-                            }
-                            if (applicableRecipes.IsNullOrEmpty())
-                            {
-                                Popup.ShowFail(
-                                    $"{vendor.T()}{vendor.GetVerb("do")} not know any item modifications " +
-                                    $"for {selectedObject.t(Single: true)}.");
-                                return false;
-                            }
-                            List<char> hotkeys = new();
-                            List<string> lineItems = new();
-                            List<RenderEvent> lineIcons = new();
-                            List<TinkerData> recipes = new();
-                            char nextHotkey = 'a';
-                            BitCost recipeBitCost = new();
-                            GameObject sampleDiskObject = null;
-                            foreach ((TinkerData applicableRecipe, string context) in applicableRecipes)
-                            {
-                                recipeBitCost = new();
-                                int recipeTier = Tier.Constrain(applicableRecipe.Tier);
-
-                                int modSlotsUsed = selectedObject.GetModificationSlotsUsed();
-                                int noCostMods = selectedObject.GetIntProperty("NoCostMods");
-
-                                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + selectedObject.GetTechTier());
-
-                                recipeBitCost.Increment(BitType.TierBits[recipeTier]);
-                                recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
-                                if (nextHotkey == ' ' || hotkeys.Contains('z'))
-                                {
-                                    nextHotkey = ' ';
-                                    hotkeys.Add(nextHotkey);
-                                }
-                                else
-                                {
-                                    hotkeys.Add(nextHotkey++);
-                                }
-                                string lineItem = $"{applicableRecipe.DisplayName} <{recipeBitCost}> [{context.Color("K")}]";
-                                lineItems.Add(lineItem);
-                                recipes.Add(applicableRecipe);
-
-                                sampleDiskObject = TinkerData.createDataDisk(applicableRecipe);
-
-                                lineIcons.Add(sampleDiskObject.RenderForUI());
-                            }
-                            if (GameObject.Validate(ref sampleDiskObject))
-                            {
-                                sampleDiskObject.Obliterate();
-                            }
-
-                            int selectedOption = Popup.PickOption(
-                                Title: $"select which item mod to apply",
-                                Sound: "Sounds/UI/ui_notification",
-                                Options: lineItems.ToArray(),
-                                Hotkeys: hotkeys.ToArray(),
-                                Icons: lineIcons,
-                                Context: selectedObject,
-                                IntroIcon: selectedObject.RenderForUI(),
-                                AllowEscape: true,
-                                PopupID: "VendorTinkeringApplyModMenu:" + (selectedObject?.IDIfAssigned ?? "(noid)"));
-                            if (selectedOption < 0)
-                            {
-                                return false;
-                            }
-                            tinkerRecipe = recipes[selectedOption];
-                            modName = $"{tinkerRecipe.DisplayName}";
-                            vendorsRecipe = !lineItems[selectedOption].Contains("your inventory");
-                        }
-                        else
-                        {
-                            vendorsRecipe = E.Item.InInventory != player;
-                            tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
-                            if (!CanTinkerRecipe(tinkerRecipe))
-                            {
-                                Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
-                                return false;
-                            }
-                            modName = $"{tinkerRecipe.DisplayName}";
-
-                            List<GameObject> applicableObjects = Event.NewGameObjectList(List:
-                                player?.GetInventoryAndEquipment(
-                                    GO => ItemModding.ModAppropriate(GO, tinkerRecipe)
-                                    && GO.Understood())
-                                );
-
-                            if (applicableObjects.IsNullOrEmpty())
-                            {
-                                Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have any items that can be modified with {modName}.");
-                                return false;
-                            }
-
-                            List<char> hotkeys = new();
-                            List<string> lineItems = new();
-                            List<RenderEvent> lineIcons = new();
-                            char nextHotkey = 'a';
-                            BitCost recipeBitCost = new();
-                            foreach (GameObject applicableObject in applicableObjects)
-                            {
-                                recipeBitCost = new();
-                                int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
-
-                                int modSlotsUsed = applicableObject.GetModificationSlotsUsed();
-                                int noCostMods = applicableObject.GetIntProperty("NoCostMods");
-
-                                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + applicableObject.GetTechTier());
-
-                                recipeBitCost.Increment(BitType.TierBits[recipeTier]);
-                                recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
-
-                                if (nextHotkey == ' ' || hotkeys.Contains('z'))
-                                {
-                                    nextHotkey = ' ';
-                                    hotkeys.Add(nextHotkey);
-                                }
-                                else
-                                {
-                                    hotkeys.Add(nextHotkey++);
-                                }
-                                string context = "";
-                                if (applicableObject.Equipped == player)
-                                {
-                                    context = $" [{"Equipped".Color("K")}]";
-                                }
-                                string singleShortDisplayName = applicableObject.GetDisplayName(Single: true, Short: true);
-                                string lineItem = $"<{recipeBitCost}> {singleShortDisplayName}{context}";
-                                lineItems.Add(lineItem);
-
-                                lineIcons.Add(applicableObject.RenderForUI());
-                            }
-                            int selectedOption = Popup.PickOption(
-                                Title: $"select an item to apply {modName} to",
-                                Sound: "Sounds/UI/ui_notification",
-                                Options: lineItems.ToArray(),
-                                Hotkeys: hotkeys.ToArray(),
-                                Icons: lineIcons,
-                                Context: E.Item,
-                                IntroIcon: E.Item.RenderForUI(),
-                                AllowEscape: true,
-                                PopupID: "VendorTinkeringApplyModMenu:" + (E.Item?.IDIfAssigned ?? "(noid)"));
-                            if (selectedOption < 0)
-                            {
-                                return false;
-                            }
-                            selectedObject = applicableObjects[selectedOption];
-
-                            if (selectedObject == null)
-                            {
-                                return false;
-                            }
-                        }
-
-                        if (selectedObject != null && tinkerRecipe != null)
-                        {
-                            if (!ItemModding.ModificationApplicable(tinkerRecipe.PartName, selectedObject))
-                            {
-                                Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
-                                return false;
-                            }
-
-                            bool vendorSuppliesIngredients = false;
-                            if (!PickIngredientSupplier(selectedObject, tinkerRecipe, out GameObject recipeIngredientSupplier))
-                            {
-                                return false;
-                            }
-                            vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
+                            bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
 
                             BitCost bitCost = new();
-                            int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
+                            bitCost.Import(TinkerItem.GetBitCostFor(tinkerRecipe.Blueprint));
 
-                            int modSlotsUsed = selectedObject.GetModificationSlotsUsed();
-                            int noCostMods = selectedObject.GetIntProperty("NoCostMods");
-
-                            int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + selectedObject.GetTechTier());
-
-                            bitCost.Increment(BitType.TierBits[recipeTier]);
-                            bitCost.Increment(BitType.TierBits[existingModsTier]);
-
-                            if (!PickBitsSupplier(selectedObject, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                            if (!PickBitsSupplier(sampleItem, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
                             {
                                 return false;
                             }
                             bool vendorSuppliesBits = recipeBitSupplier == vendor;
 
-                            tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe, selectedObject)
+                            tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe)
                             {
                                 VendorSuppliesIngredients = vendorSuppliesIngredients,
                                 VendorSuppliesBits = vendorSuppliesBits,
                             };
 
                             int totalDramsCost = tinkerInvoice.GetTotalCost();
+                            int depositDramCost = tinkerInvoice.GetDepositCost();
+                            double itemDramValue = tinkerInvoice.GetItemValue();
 
-                            if (player.GetFreeDrams() < totalDramsCost)
+                            bool vendorHoldsItem = false;
+
+                            if (player.GetFreeDrams() < totalDramsCost && (depositDramCost == 0 || player.GetFreeDrams() < depositDramCost))
                             {
-                                Popup.ShowFail($"You do not have the required {totalDramsCost.Things("dram").Color("C")} to mod this item.");
+                                Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have the required {totalDramsCost.Things("dram").Color("C")} to have {vendor.t()} tinker this item.");
                                 Popup.Show(tinkerInvoice, "Invoice");
                                 return false;
                             }
-
-                            if (Popup.ShowYesNo($"{vendor.T()} will mod this item for " +
-                                $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
-                                $"\n\n{tinkerInvoice}") == DialogResult.Yes)
+                            if (player.GetFreeDrams() < totalDramsCost
+                                && (depositDramCost > 0 && player.GetFreeDrams() > depositDramCost))
                             {
-                                if (VendorDoMod(vendor, selectedObject, tinkerRecipe, recipeIngredientSupplier))
+                                DialogResult takeDeposit = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage());
+                                if (takeDeposit == DialogResult.Yes)
                                 {
-                                    bitSupplierBitLocker.UseBits(bitCost);
+                                    vendorHoldsItem = true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                            if (!vendorHoldsItem
+                                && Popup.ShowYesNo($"{vendor.T()} will tinker this item for " +
+                                    $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
+                                    $"\n\n{tinkerInvoice}") != DialogResult.Yes)
+                            {
+                                return false;
+                            }
+                            if (VendorDoBuild(vendor, tinkerRecipe, recipeIngredientSupplier, vendorHoldsItem))
+                            {
+                                bitSupplierBitLocker.UseBits(bitCost);
 
-                                    player.UseDrams(totalDramsCost);
-                                    vendor.GiveDrams(totalDramsCost);
+                                player.UseDrams(vendorHoldsItem ? depositDramCost : totalDramsCost);
+                                vendor.GiveDrams(vendorHoldsItem ? depositDramCost : totalDramsCost);
 
-                                    player.UseEnergy(1000, "Trade Tinkering Mod");
-                                    vendor.UseEnergy(1000, "Skill Tinkering Mod");
+                                player.UseEnergy(1000, "Trade Tinkering Build");
+                                vendor.UseEnergy(1000, "Skill Tinkering Build");
 
-                                    return true;
+                                return true;
+                            }
+                        }
+                        finally
+                        {
+                            if (GameObject.Validate(ref sampleItem))
+                            {
+                                sampleItem.Obliterate();
+                            }
+                            tinkerInvoice?.Clear();
+                        }
+                    }
+                    else
+                    if (E.Command == COMMAND_MOD)
+                    {
+                        GameObject selectedObject = null;
+                        TinkerData tinkerRecipe = null;
+                        string modName = null;
+                        bool vendorsRecipe = true;
+                        try
+                        {
+                            if (!E.Item.TryGetPart(out dataDisk) && !E.Item.TryGetPart(out knownRecipePart))
+                            {
+                                selectedObject = E.Item;
+
+                                if (!TryGetApplicableRecipes(selectedObject, 
+                                    out List<string> lineItems, 
+                                    out List<char> hotkeys, 
+                                    out List<RenderEvent> lineIcons, 
+                                    out List<TinkerData> recipes))
+                                {
+                                    return false;
+                                }
+
+                                int selectedOption = Popup.PickOption(
+                                    Title: $"select which item mod to apply",
+                                    Sound: "Sounds/UI/ui_notification",
+                                    Options: lineItems.ToArray(),
+                                    Hotkeys: hotkeys.ToArray(),
+                                    Icons: lineIcons,
+                                    Context: selectedObject,
+                                    IntroIcon: selectedObject.RenderForUI(),
+                                    AllowEscape: true,
+                                    PopupID: "VendorTinkeringApplyModMenu:" + (selectedObject?.IDIfAssigned ?? "(noid)"));
+                                if (selectedOption < 0)
+                                {
+                                    return false;
+                                }
+                                tinkerRecipe = recipes[selectedOption];
+                                modName = $"{tinkerRecipe.DisplayName}";
+                                vendorsRecipe = !lineItems[selectedOption].Contains("your inventory");
+                            }
+                            else
+                            {
+                                vendorsRecipe = E.Item.InInventory != player;
+                                tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
+                                if (!CanTinkerRecipe(tinkerRecipe))
+                                {
+                                    Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
+                                    return false;
+                                }
+                                modName = $"{tinkerRecipe.DisplayName}";
+
+                                List<GameObject> applicableObjects = Event.NewGameObjectList(List:
+                                    player?.GetInventoryAndEquipment(
+                                        GO => ItemModding.ModAppropriate(GO, tinkerRecipe)
+                                        && GO.Understood())
+                                    );
+
+                                if (applicableObjects.IsNullOrEmpty())
+                                {
+                                    Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have any items that can be modified with {modName}.");
+                                    return false;
+                                }
+
+                                List<char> hotkeys = new();
+                                List<string> lineItems = new();
+                                List<RenderEvent> lineIcons = new();
+                                char nextHotkey = 'a';
+                                BitCost recipeBitCost = new();
+                                foreach (GameObject applicableObject in applicableObjects)
+                                {
+                                    recipeBitCost = new();
+                                    int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
+
+                                    int modSlotsUsed = applicableObject.GetModificationSlotsUsed();
+                                    int noCostMods = applicableObject.GetIntProperty("NoCostMods");
+
+                                    int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + applicableObject.GetTechTier());
+
+                                    recipeBitCost.Increment(BitType.TierBits[recipeTier]);
+                                    recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
+
+                                    if (nextHotkey == ' ' || hotkeys.Contains('z'))
+                                    {
+                                        nextHotkey = ' ';
+                                        hotkeys.Add(nextHotkey);
+                                    }
+                                    else
+                                    {
+                                        hotkeys.Add(nextHotkey++);
+                                    }
+                                    string context = "";
+                                    if (applicableObject.Equipped == player)
+                                    {
+                                        context = $" [{"Equipped".Color("K")}]";
+                                    }
+                                    string singleShortDisplayName = applicableObject.GetDisplayName(Single: true, Short: true);
+                                    string lineItem = $"<{recipeBitCost}> {singleShortDisplayName}{context}";
+                                    lineItems.Add(lineItem);
+
+                                    lineIcons.Add(applicableObject.RenderForUI());
+                                }
+                                int selectedOption = Popup.PickOption(
+                                    Title: $"select an item to apply {modName} to",
+                                    Sound: "Sounds/UI/ui_notification",
+                                    Options: lineItems.ToArray(),
+                                    Hotkeys: hotkeys.ToArray(),
+                                    Icons: lineIcons,
+                                    Context: E.Item,
+                                    IntroIcon: E.Item.RenderForUI(),
+                                    AllowEscape: true,
+                                    PopupID: "VendorTinkeringApplyModMenu:" + (E.Item?.IDIfAssigned ?? "(noid)"));
+                                if (selectedOption < 0)
+                                {
+                                    return false;
+                                }
+                                selectedObject = applicableObjects[selectedOption];
+
+                                if (selectedObject == null)
+                                {
+                                    return false;
+                                }
+                            }
+
+                            if (selectedObject != null && tinkerRecipe != null)
+                            {
+                                if (!ItemModding.ModificationApplicable(tinkerRecipe.PartName, selectedObject))
+                                {
+                                    Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
+                                    return false;
+                                }
+
+                                bool vendorSuppliesIngredients = false;
+                                if (!PickIngredientSupplier(selectedObject, tinkerRecipe, out GameObject recipeIngredientSupplier))
+                                {
+                                    return false;
+                                }
+                                vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
+
+                                BitCost bitCost = new();
+                                int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
+
+                                int modSlotsUsed = selectedObject.GetModificationSlotsUsed();
+                                int noCostMods = selectedObject.GetIntProperty("NoCostMods");
+
+                                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + selectedObject.GetTechTier());
+
+                                bitCost.Increment(BitType.TierBits[recipeTier]);
+                                bitCost.Increment(BitType.TierBits[existingModsTier]);
+
+                                if (!PickBitsSupplier(selectedObject, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                                {
+                                    return false;
+                                }
+                                bool vendorSuppliesBits = recipeBitSupplier == vendor;
+
+                                tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe, selectedObject)
+                                {
+                                    VendorSuppliesIngredients = vendorSuppliesIngredients,
+                                    VendorSuppliesBits = vendorSuppliesBits,
+                                };
+
+                                int totalDramsCost = tinkerInvoice.GetTotalCost();
+
+                                if (player.GetFreeDrams() < totalDramsCost)
+                                {
+                                    Popup.ShowFail($"You do not have the required {totalDramsCost.Things("dram").Color("C")} to mod this item.");
+                                    Popup.Show(tinkerInvoice, "Invoice");
+                                    return false;
+                                }
+
+                                if (Popup.ShowYesNo($"{vendor.T()} will mod this item for " +
+                                    $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
+                                    $"\n\n{tinkerInvoice}") == DialogResult.Yes)
+                                {
+                                    if (VendorDoMod(vendor, selectedObject, tinkerRecipe, recipeIngredientSupplier))
+                                    {
+                                        bitSupplierBitLocker.UseBits(bitCost);
+
+                                        player.UseDrams(totalDramsCost);
+                                        vendor.GiveDrams(totalDramsCost);
+
+                                        player.UseEnergy(1000, "Trade Tinkering Mod");
+                                        vendor.UseEnergy(1000, "Skill Tinkering Mod");
+
+                                        return true;
+                                    }
                                 }
                             }
                         }
+                        finally
+                        {
+                            tinkerInvoice?.Clear();
+                        }
+                        return false;
                     }
-                    finally
-                    {
-                        tinkerInvoice?.Clear();
-                    }
-                    return false;
                 }
                 else
                 if (E.Command == COMMAND_IDENTIFY_BY_DATADISK
                     && E.Vendor != null && E.Vendor == ParentObject
-                    && E.Item != null && E.Item.TryGetPart(out dataDisk))
+                    && E.Item != null && E.Item.TryGetPart(out DataDisk dataDisk))
                 {
                     int identifyLevel = GetIdentifyLevel(vendor);
                     if (identifyLevel > 0
@@ -1712,7 +1751,7 @@ namespace XRL.World.Parts
                                     Popup.ShowFail("The tinker recipe on this data disk is too complex for " + vendor.t(Stripped: true) + " to explain.");
                                     return false;
                                 }
-                                int dramsCost = (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                                int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
                                 if (player.GetFreeDrams() < dramsCost)
                                 {
                                     Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify the tinker recipe on this data disk.");
@@ -1737,6 +1776,53 @@ namespace XRL.World.Parts
                             {
                                 item.Obliterate();
                             }
+                        }
+                    }
+                    else
+                    {
+                        Popup.Show($"{vendor.Does("don't", Stripped: true)} have the skill to identify tinker recipes on data disks.");
+                        return false;
+                    }
+                }
+                else
+                if (E.Command == COMMAND_IDENTIFY_SCALING
+                    && E.Vendor != null && E.Vendor == ParentObject
+                    && E.Item is GameObject item)
+                {
+                    int identifyLevel = GetIdentifyLevel(vendor);
+                    if (identifyLevel > 0)
+                    {
+                        if (!item.Understood())
+                        {
+                            int complexity = item.GetComplexity();
+                            int examineDifficulty = item.GetExamineDifficulty();
+                            if (player.HasPart<Dystechnia>())
+                            {
+                                Popup.ShowFail($"You can't understand {Grammar.MakePossessive(vendor.t(Stripped: true))} explanation.");
+                                return false;
+                            }
+                            if (identifyLevel < complexity)
+                            {
+                                Popup.ShowFail("This item is too complex for " + vendor.t(Stripped: true) + " to identify.");
+                                return false;
+                            }
+                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                            if (player.GetFreeDrams() < dramsCost)
+                            {
+                                Popup.ShowFail($"You do not have the required {dramsCost.Things("dram").Color("C")} to have {vendor.t(Stripped: true)} identify this item.");
+                            }
+                            else
+                            if (Popup.ShowYesNo($"You may have {vendor.t(Stripped: true)} identify this for {dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes
+                                && The.Player.UseDrams(dramsCost))
+                            {
+                                vendor.GiveDrams(dramsCost);
+                                Popup.Show($"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()} {item.an(AsIfKnown: true)}.");
+                                item.MakeUnderstood();
+                            }
+                        }
+                        else
+                        {
+                            Popup.ShowFail("You already understand this item.");
                         }
                     }
                     else
