@@ -60,7 +60,7 @@ namespace XRL.World.Parts
             if (EnableKnownRecipeCategoryMirroring)
             {
                 if (KnownRecipe.Type == "Build"
-                    && GameObjectFactory.Factory.CreateSampleObject(KnownRecipe.Blueprint) is GameObject sampleObject
+                    && GameObject.CreateSample(KnownRecipe.Blueprint) is GameObject sampleObject
                     && ParentObject.TryGetPart(out Physics recipePhysics)
                     && sampleObject.TryGetPart(out Physics samplePhysics))
                 {
@@ -111,7 +111,8 @@ namespace XRL.World.Parts
             {
                 ObjectName = "invalid blueprint: " + ParentObject.Blueprint;
             }
-            else if (Data.Type == "Build")
+            else
+            if (Data.Type == "Build")
             {
                 try
                 {
@@ -132,7 +133,7 @@ namespace XRL.World.Parts
                     ObjectName = "error:" + Data.Blueprint;
                 }
                 bool isUnderstood = false;
-                if (GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
+                if (GameObject.CreateSample(Data.Blueprint) is GameObject sampleObject)
                 {
                     TinkeringHelpers.StripForTinkering(sampleObject);
                     ObjectName = sampleObject.GetDisplayName(Short: true, Single: true);
@@ -154,7 +155,8 @@ namespace XRL.World.Parts
                     SB.Append('>');
                 }
             }
-            else if (Data.Type == "Mod")
+            else
+            if (Data.Type == "Mod")
             {
                 string itemMod = "Item mod".Color("W");
                 string recipeDisplayName = Data.DisplayName.Color("C");
@@ -222,7 +224,8 @@ namespace XRL.World.Parts
         public override bool HandleEvent(GetInventoryCategoryEvent E)
         {
             if (EnableKnownRecipeCategoryMirroring
-                && GameObjectFactory.Factory.CreateSampleObject(Data?.Blueprint) is GameObject sampleObject
+                && Data.Type == "Build"
+                && GameObject.CreateSample(Data?.Blueprint) is GameObject sampleObject
                 && sampleObject.TryGetPart(out Examiner sampleExaminer)
                 && !sampleObject.Understood(sampleExaminer) && !E.AsIfKnown)
             {
@@ -232,18 +235,17 @@ namespace XRL.World.Parts
         }
         public virtual bool HandleEvent(GetVendorActionsEvent E)
         {
-            if (E.Item != null && E.Item == ParentObject && E.Item.TryGetPart(out UD_VendorKnownRecipe vendorKnownRecipe))
+            if (E.Item != null && E.Item == ParentObject)
             {
-                if (vendorKnownRecipe?.Data?.Type == "Mod")
+                if (Data?.Type == "Mod")
                 {
                     E.AddAction("Mod From Recipe", "mod an item with tinkering", UD_VendorTinkering.COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
                 }
                 else
-                if (vendorKnownRecipe?.Data?.Type == "Build" 
-                    && The.Player != null 
-                    && GameObjectFactory.Factory.CreateSampleObject(Data.Blueprint) is GameObject sampleObject)
+                if (Data?.Type == "Build" 
+                    && GameObject.CreateSample(Data.Blueprint) is GameObject sampleObject)
                 {
-                    if (sampleObject.Understood() || The.Player.HasSkill(nameof(Skill.Tinkering)))
+                    if (sampleObject.Understood() || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
                     {
                         E.AddAction(
                             Name: "Build From Recipe", 
@@ -279,13 +281,14 @@ namespace XRL.World.Parts
         {
             if (E.Command == COMMAND_IDENTIFY_BY_RECIPE 
                 && E.Item != null && E.Item == ParentObject 
-                && E.Vendor != null
-                && E.Item.TryGetPart(out UD_VendorKnownRecipe vendorKnownRecipe))
+                && E.Vendor != null)
             {
                 GameObject vendor = E.Vendor;
                 GameObject player = The.Player;
                 int identifyLevel = GetIdentifyLevel(vendor);
-                if (identifyLevel > 0 && GameObjectFactory.Factory.CreateSampleObject(vendorKnownRecipe.Data.Blueprint) is GameObject item)
+                if (identifyLevel > 0 
+                    && Data.Type == "Build"
+                    && GameObject.CreateSample(Data.Blueprint) is GameObject item)
                 {
                     try
                     {

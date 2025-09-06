@@ -37,6 +37,7 @@ namespace XRL.World.Parts
         public const string COMMAND_IDENTIFY_BY_DATADISK = "CmdVendorExamineDataDisk";
         public const string COMMAND_IDENTIFY_SCALING = "CmdVendorExamineScaling";
         public const string COMMAND_RECHARGE_SCALING = "CmdVendorRechargeScaling";
+        public const string COMMAND_REPAIR_SCALING = "CmdVendorRepairScaling";
         public const string HELD_FOR_PLAYER = "HeldForPlayer";
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
@@ -1180,7 +1181,7 @@ namespace XRL.World.Parts
                 int availableBitsToRecharge = Math.Min(bitCount, bitsToRechargeFully);
                 string howManyBitsMessage = GameText.VariableReplace(
                     $"It would take {bitsToRechargeFully.Things($"{BitType.GetString(bits)} bit").Color("C")} " +
-                    $"to fully recharge {Item.t(Single: true)}. " +
+                    $"to fully recharge {item.t(Single: true)}. " +
                     $"{rechargeBitSupplier.T()} =verb:have:afterpronoun= {bitCount.Color("C")}. " +
                     $"How many do you want to use?", rechargeBitSupplier);
                 int chosenBitsToUse = Popup.AskNumber(Message: howManyBitsMessage, "Sounds/UI/ui_notification", "", availableBitsToRecharge, 0, availableBitsToRecharge).GetValueOrDefault();
@@ -1224,7 +1225,7 @@ namespace XRL.World.Parts
                     PlayUISound("Sounds/Abilities/sfx_ability_energyCell_recharge");
 
                     string partially = ((chosenBitsToUse < bitsToRechargeFully) ? "partially " : "");
-                    string rechargedMessage = GameText.VariableReplace($"{Vendor.T()} =verb:have:afterpronoun= {partially}recharged {item.t(Single: true)}.", Vendor);
+                    string rechargedMessage = GameText.VariableReplace($"{Vendor.T()} {partially}recharged {item.t(Single: true)}.", Vendor);
 
                     Popup.Show(rechargedMessage);
                     Item.CheckStack();
@@ -1247,8 +1248,8 @@ namespace XRL.World.Parts
                 }
                 if (AnyRecharged)
                 {
-                    player.UseEnergy(1000, "Trade Tinkering Mod");
-                    Vendor.UseEnergy(1000, "Skill Tinkering Mod");
+                    player.UseEnergy(1000, "Trade Tinkering Recharge");
+                    Vendor.UseEnergy(1000, "Skill Tinkering Recharge");
                 }
             }
             return AnyRecharged;
@@ -1512,7 +1513,7 @@ namespace XRL.World.Parts
                     else
                     if (dataDisk?.Data?.Type == "Build"
                         && The.Player != null
-                        && GameObjectFactory.Factory.CreateSampleObject(dataDisk?.Data.Blueprint) is GameObject sampleObject)
+                        && GameObject.CreateSample(dataDisk?.Data.Blueprint) is GameObject sampleObject)
                     {
                         if (sampleObject.Understood() || The.Player.HasSkill(nameof(Skill.Tinkering)) || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))
                         {
@@ -1561,6 +1562,18 @@ namespace XRL.World.Parts
                             ClearAndSetUpTradeUI: true);
                     }
                     if (E.Item.InInventory != E.Vendor 
+                        && vendorRepairSkill != null
+                        && IsRepairableEvent.Check(E.Vendor, E.Item, null, vendorRepairSkill, null))
+                    {
+                        E.AddAction(
+                            Name: "Scaling Repair", // Repair
+                            Display: "scaling repair", // repair
+                            Command: COMMAND_REPAIR_SCALING,
+                            Key: 'R', // r
+                            Priority: 7,
+                            Override: false); // true
+                    }
+                    if (E.Item.InInventory != E.Vendor 
                         && E.Vendor.HasSkill(nameof(Tinkering_Tinker1))
                         && (itemUnderstood || vendorIdentifyLevel > E.Item.GetComplexity()) 
                         && E.Item.NeedsRecharge())
@@ -1570,7 +1583,7 @@ namespace XRL.World.Parts
                             Display: "recharge",
                             Command: COMMAND_RECHARGE_SCALING,
                             Key: 'c',
-                            Priority: 7,
+                            Priority: 6,
                             Override: true,
                             ClearAndSetUpTradeUI: true);
                     }
@@ -1605,7 +1618,7 @@ namespace XRL.World.Parts
                         GameObject recipeObject = E.Item;
                         TinkerData tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
                         bool vendorsRecipe = E.Item.InInventory != player;
-                        GameObject sampleItem = GameObjectFactory.Factory.CreateSampleObject(tinkerRecipe.Blueprint);
+                        GameObject sampleItem = GameObject.CreateSample(tinkerRecipe.Blueprint);
                         TinkeringHelpers.StripForTinkering(sampleItem);
                         TinkeringHelpers.ForceToBePowered(sampleItem);
 
@@ -1706,6 +1719,12 @@ namespace XRL.World.Parts
                             if (!E.Item.TryGetPart(out dataDisk) && !E.Item.TryGetPart(out knownRecipePart))
                             {
                                 selectedObject = E.Item;
+
+                                if (vendor.CurrentCell != null && !vendor.PhaseMatches(selectedObject))
+                                {
+                                    vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {selectedObject.t()} and cannot repair {selectedObject.themIt()}.");
+                                    return false;
+                                }
 
                                 if (!TryGetApplicableRecipes(selectedObject, 
                                     out List<string> lineItems, 
@@ -1819,6 +1838,11 @@ namespace XRL.World.Parts
 
                             if (selectedObject != null && tinkerRecipe != null)
                             {
+                                if (vendor.CurrentCell != null && !vendor.PhaseMatches(selectedObject))
+                                {
+                                    vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {selectedObject.t()} and cannot repair {selectedObject.themIt()}.");
+                                    return false;
+                                }
                                 if (!ItemModding.ModificationApplicable(tinkerRecipe.PartName, selectedObject))
                                 {
                                     Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
@@ -1898,7 +1922,10 @@ namespace XRL.World.Parts
                     && E.Item != null && E.Item.TryGetPart(out DataDisk dataDisk))
                 {
                     int identifyLevel = GetIdentifyLevel(vendor);
-                    if (identifyLevel > 0 && GameObjectFactory.Factory.CreateSampleObject(dataDisk.Data.Blueprint) is GameObject item)
+                    bool diskIsBuild = dataDisk.Data.Type == "Build";
+                    if (identifyLevel > 0 
+                        && diskIsBuild
+                        && GameObject.CreateSample(dataDisk.Data.Blueprint) is GameObject item)
                     {
                         try
                         {
@@ -2011,10 +2038,122 @@ namespace XRL.World.Parts
                     }
                 }
                 else
+                if (E.Command == COMMAND_REPAIR_SCALING
+                    && E.Vendor != null && E.Vendor == ParentObject
+                    && E.Vendor.TryGetPart(out Tinkering_Repair vendorRepairSkill)
+                    && E.Item is GameObject repairableItem)
+                {
+                    if (!IsRepairableEvent.Check(vendor, repairableItem, null, vendorRepairSkill, null))
+                    {
+                        Popup.Show($"{repairableItem.T(Single: true)}{repairableItem.GetVerb("are")} not broken!");
+                        return false;
+                    }
+                    if (vendor.GetTotalConfusion() > 0)
+                    {
+                        vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("'re")} too confused to repair {repairableItem.t(Single: true)}.");
+                        return false;
+                    }
+                    if (vendor.CurrentCell != null && !vendor.PhaseMatches(repairableItem))
+                    {
+                        vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {repairableItem.t()} and cannot repair {repairableItem.themIt()}.");
+                        return false;
+                    }
+                    if (vendor.AreHostilesNearby() && vendor.FireEvent("CombatPreventsRepair"))
+                    {
+                        Popup.ShowFail($"{vendor.T()} cannot repair {repairableItem.t()} with hostiles nearby.");
+                        return false;
+                    }
+
+                    BitCost bitCost = new(Tinkering_Repair.GetRepairCost(repairableItem));
+
+                    if (!Tinkering_Repair.IsRepairableBy(repairableItem, vendor, bitCost, vendorRepairSkill, null))
+                    {
+                        Popup.ShowFail($"{repairableItem.T(Single: true)}{repairableItem.GetVerb("are")} too complex for {vendor.t(Stripped: true)} to repair.");
+                        vendor.FireEvent(Event.New("UnableToRepair", "Object", repairableItem));
+                        return false;
+                    }
+                    if (vendor.HasTagOrProperty("NoRepair"))
+                    {
+                        Popup.ShowFail($"{repairableItem.T(Single: true)} cannot be repaired.");
+                        return false;
+                    }
+
+                    GameObject repairBitSupplier = PickASupplier(
+                        Vendor: vendor,
+                        ForObject: repairableItem,
+                        Title: $"Repair {repairableItem.t()}" + "\n"
+                        + $"| Bit Cost |".Color("y") + "\n"
+                        + $"<{bitCost}>" + "\n",
+                        CenterIntro: true,
+                        BitCost: bitCost);
+
+                    if (repairBitSupplier == null)
+                    {
+                        return false;
+                    }
+                    bool vendorSuppliesBits = repairBitSupplier == vendor;
+
+                    BitLocker bitSupplierBitLocker = repairBitSupplier.RequirePart<BitLocker>();
+
+                    ModifyBitCostEvent.Process(vendor, bitCost, "Repair");
+
+                    if (!bitSupplierBitLocker.HasBits(bitCost))
+                    {
+                        string message = GameText.VariableReplace(
+                            $"{repairBitSupplier.T()}{repairBitSupplier.GetVerb("do")} not have the required <{bitCost}> bits! " +
+                            $"{repairBitSupplier.It} =verb:have:afterpronoun=:\n\n " +
+                            $"{bitSupplierBitLocker.GetBitsString()}", repairBitSupplier);
+                        Popup.ShowFail(Message: message);
+                        return false;
+                    }
+
+                    tinkerInvoice = new(vendor, TinkerInvoice.REPAIR, bitCost, repairableItem)
+                    {
+                        VendorSuppliesBits = vendorSuppliesBits,
+                    };
+                    int totalDramsCost = tinkerInvoice.GetTotalCost();
+
+                    if (player.GetFreeDrams() < totalDramsCost)
+                    {
+                        Popup.ShowFail(
+                            $"You do not have the required {totalDramsCost.Things("dram").Color("C")} " +
+                            $"to have {vendor.t()} repair this item.");
+                        Popup.Show(tinkerInvoice, "Invoice");
+                        return false;
+                    }
+                    if (Popup.ShowYesNo($"{vendor.T()} will repair this item for " +
+                        $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
+                        $"\n\n{tinkerInvoice}") == DialogResult.Yes)
+                    {
+                        bitSupplierBitLocker.UseBits(bitCost);
+
+                        player.UseDrams(totalDramsCost);
+                        vendor.GiveDrams(totalDramsCost);
+
+                        vendor.PlayWorldOrUISound("Sounds/Misc/sfx_interact_artifact_repair");
+
+                        RepairedEvent.Send(vendor, repairableItem, null, vendorRepairSkill);
+
+                        string repairedMessage = GameText.VariableReplace($"{vendor.T()} repaired {repairableItem.t()}.", vendor);
+                        Popup.Show(repairedMessage);
+
+                        player.UseEnergy(1000, "Trade Tinkering Repair", null, null);
+                        vendor.UseEnergy(1000, "Skill Tinkering Repair", null, null);
+
+                        return true;
+                    }
+                    return false;
+                }
+                else
                 if (E.Command == COMMAND_RECHARGE_SCALING
                     && E.Vendor != null && E.Vendor == ParentObject
                     && E.Item is GameObject rechargeableItem)
                 {
+                    if (vendor.CurrentCell != null && !vendor.PhaseMatches(rechargeableItem))
+                    {
+                        vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {rechargeableItem.t()} and cannot repair {rechargeableItem.themIt()}.");
+                        return false;
+                    }
                     if (!vendor.CanMoveExtremities("Recharge", ShowMessage: true))
                     {
                         return false;

@@ -1,15 +1,19 @@
-﻿using System;
+﻿using Qud.API;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Windows.Forms;
 using UD_Modding_Toolbox;
 using XRL;
 using XRL.Language;
+using XRL.Rules;
 using XRL.UI;
 using XRL.Wish;
 using XRL.World;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
 using XRL.World.Parts;
+using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
 using static UD_Modding_Toolbox.Const;
 using static UD_Tinkering_Bytes.Utils;
@@ -69,7 +73,6 @@ namespace UD_Tinkering_Bytes
 
             this.BitCost = BitCost;
             this.Item = Item;
-            ItemName = this.Item?.GetDisplayName(AsIfKnown: true, Single: true, Short: true)?.Color("y");
         }
 
         public TinkerInvoice(GameObject Vendor, TinkerData Recipe, BitCost BitCost, bool VendorOwnsRecipe = true, GameObject ApplyModTo = null)
@@ -80,21 +83,18 @@ namespace UD_Tinkering_Bytes
 
             if (Service == BUILD)
             {
-                Item = GameObjectFactory.Factory.CreateSampleObject(Recipe.Blueprint);
+                Item = GameObject.CreateSample(Recipe.Blueprint);
                 IsItemSample = true;
                 TinkeringHelpers.StripForTinkering(Item);
                 if (Item.TryGetPart(out TinkerItem tinkerItem) && tinkerItem.NumberMade != 1)
                 {
                     NumberMade = tinkerItem.NumberMade;
-                    ItemName = Grammar.Pluralize(ItemName);
                 }
-                ItemValue = Math.Round(TradeUI.GetValue(Item, true), 2) * NumberMade;
             }
             else
             if (Service == MOD)
             {
                 Item = ApplyModTo;
-                ItemName = Item?.t(AsIfKnown: true, Single: true);
             }
         }
 
@@ -106,6 +106,24 @@ namespace UD_Tinkering_Bytes
             }
             Vendor = null;
             Recipe = null;
+        }
+
+        public string GetItemName()
+        {
+            if (ItemName.IsNullOrEmpty() && Item != null)
+            {
+                ItemName = Item.GetDisplayName(Single: true, Short: true)?.Color("y");
+                if (Service == BUILD && NumberMade != 1)
+                {
+                    ItemName = Grammar.Pluralize(ItemName);
+                }
+                else
+                if (Service == MOD)
+                {
+                    ItemName = Item.t(Single:true, Short:true);
+                }
+            }
+            return ItemName;
         }
 
         public double GetPerformance()
@@ -122,7 +140,7 @@ namespace UD_Tinkering_Bytes
         {
             if (Recipe != null && Service == BUILD && ItemValue == 0)
             {
-                Item ??= GameObjectFactory.Factory.CreateSampleObject(Recipe.Blueprint);
+                Item ??= GameObject.CreateSample(Recipe.Blueprint);
                 TinkeringHelpers.StripForTinkering(Item);
                 ItemValue = Math.Round(Item.ValueEach / GetPerformance(), 2);
                 return ItemValue;
@@ -151,9 +169,8 @@ namespace UD_Tinkering_Bytes
         }
         public static double GetExamineCost(string Item, double Performance = 1.0)
         {
-            double value = 0;
-            GameObject sampleObject = GameObjectFactory.Factory.CreateSampleObject(Item);
-            value = GetExamineCost(sampleObject, Performance);
+            GameObject sampleObject = GameObject.CreateSample(Item);
+            double value = GetExamineCost(sampleObject, Performance);
             if (GameObject.Validate(ref sampleObject))
             {
                 sampleObject.Obliterate();
@@ -190,12 +207,13 @@ namespace UD_Tinkering_Bytes
         {
             if (LabourValue == 0)
             {
+                double minCost = 2;
                 double examineCost = GetExamineCost(Item, Performance);
-                if (Service == RECHARGE || Service == REPAIR)
+                if (Service == REPAIR || Service == RECHARGE)
                 {
-                    examineCost *= 0.5;
+                    examineCost *= 0.3;
                 }
-                LabourValue = Math.Round(Math.Max(2.0, examineCost), 2);
+                LabourValue = Math.Round(Math.Max(minCost, examineCost), 2);
             }
             return LabourValue;
         }
@@ -219,17 +237,15 @@ namespace UD_Tinkering_Bytes
             double combinedIngredientValue = 0;
             if (!Ingredients.IsNullOrEmpty())
             {
-                GameObject ingredientObject = null;
                 foreach (string ingredient in Ingredients)
                 {
-                    ingredientObject = GameObjectFactory.Factory.CreateSampleObject(ingredient);
-                    if (ingredientObject != null)
+                    if (GameObject.CreateSample(ingredient) is GameObject ingredientObject)
                     {
-                        combinedIngredientValue += TradeUI.GetValue(ingredientObject, Vendor != null ? true : null);
-                    }
-                    if (GameObject.Validate(ref ingredientObject))
-                    {
-                        ingredientObject?.Obliterate();
+                        combinedIngredientValue += TradeUI.GetValue(ingredientObject, Vendor != null);
+                        if (GameObject.Validate(ref ingredientObject))
+                        {
+                            ingredientObject?.Obliterate();
+                        }
                     }
                 }
             }
@@ -258,7 +274,7 @@ namespace UD_Tinkering_Bytes
                 string scrapBlueprint = GetScrapBlueprintFromBit(bit);
                 if (!scrapBlueprint.IsNullOrEmpty())
                 {
-                    scrapItem = GameObjectFactory.Factory.CreateSampleObject(scrapBlueprint);
+                    scrapItem = GameObject.CreateSample(scrapBlueprint);
                 }
             }
             return scrapItem;
@@ -378,23 +394,23 @@ namespace UD_Tinkering_Bytes
             // Description
             if (Service == BUILD)
             {
-                SB.Append("Description: Tinker ").Append($"{NumberMade}x ").Append(ItemName).AppendLine();
+                SB.Append("Description: Tinker ").Append($"{NumberMade}x ").Append(GetItemName()).AppendLine();
             }
             else
             if (Service == MOD)
             {
                 SB.Append("Description: Apply ").Append(Recipe.DisplayName.Color("y"));
-                SB.Append(" to ").Append(ItemName).AppendLine();
+                SB.Append(" to ").Append(GetItemName()).AppendLine();
             }
             else
             if (Service == RECHARGE)
             {
-                SB.Append("Description: Recharge ").Append(ItemName).AppendLine();
+                SB.Append("Description: Recharge ").Append(GetItemName()).AppendLine();
             }
             else
             if (Service == REPAIR)
             {
-                SB.Append("Description: Repair ").Append(ItemName).AppendLine();
+                SB.Append("Description: Repair ").Append($"{Item?.Count}x ").Append(GetItemName()).AppendLine();
             }
             SB.Append(DividerLine().Color("K")).AppendLine();
 
@@ -495,8 +511,8 @@ namespace UD_Tinkering_Bytes
 
             // Deposit
             if (!Besties
-                && GetDepositCost() > 0 
-                && GetDepositCost() < GetTotalCost() 
+                && GetDepositCost() > 0
+                && GetDepositCost() < GetTotalCost()
                 && player.GetFreeDrams() < GetTotalCost())
             {
                 SB.Append(DividerLine().Color("K")).AppendLine();
@@ -575,7 +591,7 @@ namespace UD_Tinkering_Bytes
             {
                 Item.SetStringProperty("DisplayArmorStatsOnlyWhenEquipped", "Don't want to see it!");
             }
-            string itemName = Item?.GetDisplayName(AsIfKnown: true, Short: true);
+            string itemName = GetItemName();
             if (!armorStatsOnlyWhenEquipped)
             {
                 Item.SetStringProperty("DisplayArmorStatsOnlyWhenEquipped", null, true);
@@ -586,9 +602,20 @@ namespace UD_Tinkering_Bytes
             }
             itemName = itemName.Strip();
 
+            int tier = 0;
+            if (Recipe != null)
+            {
+                tier = Recipe.Tier;
+            }
+            else
+            if (Item != null)
+            {
+                tier = Item.GetTier();
+            }
+
             SB.Append(Recipe?.Blueprint?.Strip() ?? Recipe?.PartName?.Strip() ?? NULL).Append(",");
             SB.Append(Recipe?.Type ?? NULL).Append(",");
-            SB.Append(Recipe?.Tier).Append(",");
+            SB.Append(tier).Append(",");
             SB.Append(VendorOwnsRecipe).Append(",");
             SB.Append(GetPerformance()).Append(",");
             SB.Append(itemName).Append(",");
@@ -613,36 +640,273 @@ namespace UD_Tinkering_Bytes
             return TinkerInvoice.ToString();
         }
 
-        [WishCommand(Command = "all build invoices")]
-        public static void AllBuildRecipesWish()
+        [WishCommand(Command = "all invoices")]
+        public static void AllInvoices_WishHandler(string Service)
         {
-            GameObject sampleBep = GameObjectFactory.Factory.CreateSampleObject("Bep");
+            if (Service == null)
+            {
+                Popup.Show($"please specify a {nameof(Service)}: {BUILD.Quote()}, {MOD.Quote()}, {REPAIR.Quote()}, or {RECHARGE.Quote()}");
+                return;
+            }
+            GameObject sampleBep = GameObject.CreateSample("Bep");
+            GameObject sampleItem = null;
 
             Debug.Entry(4, DebugString(), Indent: 0, Toggle: true);
             TinkerInvoice tinkerInvoice = null;
             BitCost bitCost;
             try
             {
-                int recipeCount = TinkerData.TinkerRecipes.Count;
-                int currentRecipe = 0;
-                foreach (TinkerData buildRecipe in TinkerData.TinkerRecipes)
+                if (Service.ToLower() == BUILD.ToLower())
                 {
-                    currentRecipe++;
-                    Loading.SetLoadingStatus(
-                        $"{currentRecipe} of {recipeCount} | " +
-                        $"{buildRecipe?.Blueprint ?? buildRecipe?.PartName ?? NULL}...");
-                    if (buildRecipe.Type != "Build")
+                    int recipeCount = TinkerData.TinkerRecipes.Count;
+                    int currentRecipe = 0;
+                    foreach (TinkerData buildRecipe in TinkerData.TinkerRecipes)
                     {
-                        continue;
+                        currentRecipe++;
+                        Loading.SetLoadingStatus(
+                            $"{currentRecipe} of {recipeCount} | " +
+                            $"{buildRecipe?.Blueprint ?? buildRecipe?.PartName ?? NULL}...");
+                        if (buildRecipe.Type != "Build")
+                        {
+                            continue;
+                        }
+
+                        bitCost = new();
+                        bitCost.Import(TinkerItem.GetBitCostFor(buildRecipe.Blueprint));
+
+                        tinkerInvoice = new(sampleBep, buildRecipe, bitCost, true);
+
+                        Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
+                        tinkerInvoice?.Clear();
+                    }
+                }
+                else
+                if (Service.ToLower() == MOD.ToLower())
+                {
+                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("Item");
+                    if (blueprintList.IsNullOrEmpty())
+                    {
+                        Popup.Show($"There are some how no blueprints that inherit from \"Item\"");
+                        return;
                     }
 
-                    bitCost = new();
-                    bitCost.Import(TinkerItem.GetBitCostFor(buildRecipe.Blueprint));
+                    int blueprintCount = blueprintList.Count;
+                    int recipeCount = TinkerData.TinkerRecipes.Count;
+                    int totalProgress = blueprintCount * recipeCount;
+                    int currentBlueprint = 0;
+                    int currentRecipe = 0;
+                    int progress = 0;
+                    foreach (GameObjectBlueprint gameObjectBlueprint in blueprintList)
+                    {
+                        currentBlueprint++;
+                        if (!gameObjectBlueprint.HasTagOrProperty("Mods")
+                            || gameObjectBlueprint.HasTagOrProperty("BaseObject")
+                            || gameObjectBlueprint.HasTagOrProperty("ExcludeFromDynamicEncounters"))
+                        {
+                            currentRecipe += recipeCount;
+                            progress = currentBlueprint + currentRecipe;
+                            Loading.SetLoadingStatus(
+                                $"{progress} of {totalProgress} | " +
+                                $"{gameObjectBlueprint?.DisplayName()?.Strip()} has No Mods...");
+                            continue;
+                        }
+                        sampleItem = GameObject.CreateSample(gameObjectBlueprint.Name);
+                        TinkeringHelpers.StripForTinkering(sampleItem);
+                        string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Short: true, Stripped: true) ?? NULL;
+                        try
+                        {
+                            foreach (TinkerData modRecipe in TinkerData.TinkerRecipes)
+                            {
+                                currentRecipe++;
+                                progress = currentBlueprint + currentRecipe;
+                                if (modRecipe.Type != "Mod" || !ItemModding.ModAppropriate(sampleItem, modRecipe))
+                                {
+                                    Loading.SetLoadingStatus(
+                                        $"{progress} of {totalProgress} | " +
+                                        $"{sampleItemDisplayName} skipping Build Recipe or Unapplicable Mod...");
+                                    continue;
+                                }
+                                Loading.SetLoadingStatus(
+                                    $"{progress} of {totalProgress} | " +
+                                    $"{sampleItemDisplayName} and {modRecipe?.PartName}...");
+                                bitCost = new();
+                                int recipeTier = Tier.Constrain(modRecipe.Tier);
 
-                    tinkerInvoice = new(sampleBep, buildRecipe, bitCost, true);
+                                int modSlotsUsed = sampleItem.GetModificationSlotsUsed();
+                                int noCostMods = sampleItem.GetIntProperty("NoCostMods");
 
-                    Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
-                    tinkerInvoice?.Clear();
+                                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + sampleItem.GetTechTier());
+
+                                bitCost.Increment(BitType.TierBits[recipeTier]);
+                                bitCost.Increment(BitType.TierBits[existingModsTier]);
+
+                                tinkerInvoice = new(sampleBep, modRecipe, bitCost, true, sampleItem);
+
+                                Debug.Entry(4, tinkerInvoice.DebugString(), Indent: 0, Toggle: true);
+                                tinkerInvoice?.Clear();
+                            }
+                        }
+                        finally
+                        {
+                            if (GameObject.Validate(ref sampleItem))
+                            {
+                                sampleItem.Obliterate();
+                            }
+                        }
+                    }
+                }
+                else
+                if (Service.ToLower() == REPAIR.ToLower())
+                {
+                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("Item");
+                    if (blueprintList.IsNullOrEmpty())
+                    {
+                        Popup.Show($"There are some how no blueprints that inherit from \"Item\"");
+                        return;
+                    }
+
+                    int blueprintCount = blueprintList.Count;
+                    int totalProgress = blueprintCount;
+                    int currentBlueprint = 0;
+                    int progress = 0;
+                    foreach (GameObjectBlueprint gameObjectBlueprint in blueprintList)
+                    {
+                        currentBlueprint++;
+                        progress = currentBlueprint;
+                        if (gameObjectBlueprint.HasTagOrProperty("NoRepair")
+                            || (gameObjectBlueprint.HasTagOrProperty("NoEffects") && !gameObjectBlueprint.HasStat("Hitpoints"))
+                            || gameObjectBlueprint.HasTagOrProperty("BaseObject")
+                            || gameObjectBlueprint.HasTagOrProperty("ExcludeFromDynamicEncounters")
+                            || gameObjectBlueprint.IsNatural())
+                        {
+                            Loading.SetLoadingStatus(
+                                $"{progress} of {totalProgress} | " +
+                                $"{gameObjectBlueprint?.DisplayName()?.Strip()} is irreparable...");
+                            continue;
+                        }
+                        sampleItem = GameObject.CreateSample(gameObjectBlueprint.Name);
+                        TinkeringHelpers.StripForTinkering(sampleItem);
+                        string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Short: true, Stripped: true) ?? NULL;
+                        try
+                        {
+                            Loading.SetLoadingStatus(
+                                $"{progress} of {totalProgress} | " +
+                                $"{sampleItemDisplayName}...");
+
+                            bool lowHP = false;
+                            if (sampleItem.GetStat("Hitpoints") is Statistic hitpoints)
+                            {
+                                hitpoints.Penalty = hitpoints.BaseValue - 1;
+                                lowHP = true;
+                            }
+                            if (!sampleItem.IsBroken())
+                            {
+                                sampleItem.ForceApplyEffect(new Broken());
+                            }
+                            if (!lowHP && !sampleItem.IsBroken())
+                            {
+                                continue;
+                            }
+
+                            bitCost = new(Tinkering_Repair.GetRepairCost(sampleItem));
+
+                            tinkerInvoice = new(sampleBep, REPAIR, bitCost, sampleItem)
+                            {
+                                VendorSuppliesBits = true,
+                            };
+
+                            Debug.Entry(4, tinkerInvoice.DebugString(), Indent: 0, Toggle: true);
+                            tinkerInvoice?.Clear();
+                        }
+                        finally
+                        {
+                            if (GameObject.Validate(ref sampleItem))
+                            {
+                                sampleItem.Obliterate();
+                            }
+                        }
+                    }
+                }
+                else
+                if (Service.ToLower() == RECHARGE.ToLower())
+                {
+                    if (Service.ToLower() == RECHARGE.ToLower())
+                    {
+                        Popup.Show($"{RECHARGE.Quote()} debug not implemented yet");
+                        return;
+                    }
+
+                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("Item");
+                    if (blueprintList.IsNullOrEmpty())
+                    {
+                        Popup.Show($"There are some how no blueprints that inherit from \"Item\"");
+                        return;
+                    }
+
+                    int blueprintCount = blueprintList.Count;
+                    int totalProgress = blueprintCount;
+                    int currentBlueprint = 0;
+                    int progress = 0;
+                    foreach (GameObjectBlueprint gameObjectBlueprint in blueprintList)
+                    {
+                        currentBlueprint++;
+                        progress = currentBlueprint;
+                        if (!gameObjectBlueprint.HasTagOrProperty("NoRepair")
+                            || (gameObjectBlueprint.HasTagOrProperty("NoEffects") && !gameObjectBlueprint.HasStat("Hitpoints"))
+                            || gameObjectBlueprint.HasTagOrProperty("BaseObject")
+                            || gameObjectBlueprint.HasTagOrProperty("ExcludeFromDynamicEncounters"))
+                        {
+                            Loading.SetLoadingStatus(
+                                $"{progress} of {totalProgress} | " +
+                                $"{gameObjectBlueprint?.DisplayName()?.Strip()} is irreparable...");
+                            continue;
+                        }
+                        sampleItem = GameObject.CreateSample(gameObjectBlueprint.Name);
+                        TinkeringHelpers.StripForTinkering(sampleItem);
+                        string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Short: true, Stripped: true) ?? NULL;
+                        try
+                        {
+                            Loading.SetLoadingStatus(
+                                $"{progress} of {totalProgress} | " +
+                                $"{sampleItemDisplayName}...");
+
+                            bool lowHP = false;
+                            if (sampleItem.GetStat("Hitpoints") is Statistic hitpoints)
+                            {
+                                hitpoints.Penalty = hitpoints.BaseValue - 1;
+                                lowHP = true;
+                            }
+                            if (!sampleItem.IsBroken())
+                            {
+                                sampleItem.ForceApplyEffect(new Broken());
+                            }
+                            if (!lowHP && !sampleItem.IsBroken())
+                            {
+                                continue;
+                            }
+
+                            bitCost = new(Tinkering_Repair.GetRepairCost(sampleItem));
+
+                            tinkerInvoice = new(sampleBep, REPAIR, bitCost, sampleItem)
+                            {
+                                VendorSuppliesBits = true,
+                            };
+
+                            Debug.Entry(4, tinkerInvoice.DebugString(), Indent: 0, Toggle: true);
+                            tinkerInvoice?.Clear();
+                        }
+                        finally
+                        {
+                            if (GameObject.Validate(ref sampleItem))
+                            {
+                                sampleItem.Obliterate();
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Popup.Show($"{nameof(Service)} {Service} is not valid. {nameof(Service)}s are: {BUILD.Quote()}, {MOD.Quote()}, {REPAIR.Quote()}, or {RECHARGE.Quote()}");
                 }
             }
             finally
@@ -652,95 +916,90 @@ namespace UD_Tinkering_Bytes
                 {
                     sampleBep?.Obliterate();
                 }
+                if (GameObject.Validate(ref sampleItem))
+                {
+                    sampleItem?.Obliterate();
+                }
                 tinkerInvoice?.Clear();
             }
         }
 
-        [WishCommand(Command = "all mod invoices")]
-        public static void AllModRecipesWish()
+        [WishCommand(Command = "bust my stuff")]
+        public static void BustMyStuff_WishHandler()
         {
-            GameObject sampleBep = GameObjectFactory.Factory.CreateSampleObject("Bep");
+            GameObject player = The.Player;
+            Predicate<GameObjectBlueprint> filter = delegate (GameObjectBlueprint GOB)
+            {
+                return GOB.InheritsFrom("Item")
+                    && !GOB.InheritsFrom("Corpse")
+                    && !GOB.HasTagOrProperty("NoRepair")
+                    && (!GOB.HasTagOrProperty("NoEffects") || GOB.HasStat("Hitpoints"))
+                    && !GOB.IsNatural()
+                    && !GOB.HasTagOrProperty("BaseObject")
+                    && !GOB.HasTagOrProperty("ExcludeFromDynamicEncounters")
+                    && GOB.GetPartParameter<string>(nameof(Physics), nameof(Physics.Owner)) is null
+                    && GOB.GetPartParameter<bool>(nameof(Physics), nameof(Physics.Takeable));
+            };
+            for (int i = 0; i < 25; i++)
+            {
+                player.ReceiveObject(GameObject.Create(EncountersAPI.GetABlueprintModel(filter), Context: "Wish"), Context: "Wish");
+            }
+            List<GameObject> playerItems = Event.NewGameObjectList(player.GetInventoryAndEquipment(GO => filter(GO.GetBlueprint())));
 
-            Debug.Entry(4, DebugString(), Indent: 0, Toggle: true);
-            GameObject sampleItem = null;
-            TinkerInvoice tinkerInvoice = null;
-            BitCost bitCost;
+            if (playerItems.IsNullOrEmpty())
+            {
+                Popup.Show($"You oughtta get some stuff to bust, first.");
+                return;
+            }
             try
             {
-                int blueprintCount = GameObjectFactory.Factory.BlueprintList.Count;
-                int recipeCount = TinkerData.TinkerRecipes.Count;
-                int totalProgress = blueprintCount * recipeCount;
-                int currentBlueprint = 0;
-                int currentRecipe = 0;
-                int progress = 0;
-                foreach (GameObjectBlueprint gameObjectBlueprint in GameObjectFactory.Factory.BlueprintList)
+                foreach (GameObject playerItem in playerItems)
                 {
-                    currentBlueprint++;
-                    if (!gameObjectBlueprint.HasTagOrProperty("Mods") 
-                        || gameObjectBlueprint.HasTagOrProperty("BaseObject") 
-                        || gameObjectBlueprint.HasTagOrProperty("ExcludeFromDynamicEncounters"))
+                    GameObject playerItemFromStack = playerItem;
+                    for (int i = 0; i < playerItem.Count; i++)
                     {
-                        currentRecipe += recipeCount;
-                        progress = currentBlueprint + currentRecipe;
-                        Loading.SetLoadingStatus(
-                            $"{progress} of {totalProgress} | " +
-                            $"{gameObjectBlueprint?.DisplayName()?.Strip()} has No Mods...");
-                        continue;
-                    }
-                    sampleItem = GameObjectFactory.Factory.CreateSampleObject(gameObjectBlueprint);
-                    TinkeringHelpers.StripForTinkering(sampleItem);
-                    string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Short: true, Stripped: true) ?? NULL;
-                    try
-                    {
-                        foreach (TinkerData modRecipe in TinkerData.TinkerRecipes)
+                        if (playerItem.Count > 1)
                         {
-                            currentRecipe++;
-                            progress = currentBlueprint + currentRecipe;
-                            if (modRecipe.Type != "Mod" || !ItemModding.ModAppropriate(sampleItem, modRecipe))
+                            playerItemFromStack = playerItem.SplitFromStack();
+                        }
+                        playerItemFromStack = playerItem.SplitFromStack(); 
+                        int high = 120;
+                        // Damage, Rust, or Break most of the items in the player inventory and equipment.
+                        int roll = (Stat.RandomCosmetic(0, 7000) % high) + 1;
+
+                        bool rusted = false;
+                        bool busted = false;
+                        if (roll < (high / 3))
+                        {
+                            rusted = playerItemFromStack.ForceApplyEffect(new Rusted());
+                            if (rusted)
                             {
-                                Loading.SetLoadingStatus(
-                                    $"{progress} of {totalProgress} | " +
-                                    $"{sampleItemDisplayName} skipping Build Recipe or Unapplicable Mod...");
                                 continue;
                             }
-                            Loading.SetLoadingStatus(
-                                $"{progress} of {totalProgress} | " +
-                                $"{sampleItemDisplayName} and {modRecipe?.PartName}...");
-                            bitCost = new();
-                            int recipeTier = Tier.Constrain(modRecipe.Tier);
-
-                            int modSlotsUsed = sampleItem.GetModificationSlotsUsed();
-                            int noCostMods = sampleItem.GetIntProperty("NoCostMods");
-
-                            int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + sampleItem.GetTechTier());
-
-                            bitCost.Increment(BitType.TierBits[recipeTier]);
-                            bitCost.Increment(BitType.TierBits[existingModsTier]);
-
-                            tinkerInvoice = new(sampleBep, modRecipe, bitCost, true, sampleItem);
-
-                            Debug.Entry(4, tinkerInvoice.DebugString(), Indent: 0, Toggle: true);
-                            tinkerInvoice?.Clear();
                         }
-                    }
-                    finally
-                    {
-                        if (GameObject.Validate(ref sampleItem))
+                        if (roll < (high / 3) * 2 || !rusted)
                         {
-                            sampleItem.Obliterate();
+                            busted = playerItemFromStack.ForceApplyEffect(new Broken());
+                            if (busted)
+                            {
+                                continue;
+                            }
+                        }
+                        if ((roll < high || !busted) && playerItemFromStack.GetStat("Hitpoints") is Statistic hitpoints)
+                        {
+                            int damage = Stat.RandomCosmetic(1, hitpoints.BaseValue - 1);
+                            damage = Math.Max(damage, Stat.RandomCosmetic(1, hitpoints.BaseValue - 1));
+                            playerItemFromStack.TakeDamage(ref damage, "Cosmic", "you were too busted", "it was too busted", player, player, player, player, player, "from %t willing it to be the case!", true);
                         }
                     }
                 }
             }
             finally
             {
-                Loading.SetLoadingStatus(null);
-                if (GameObject.Validate(ref sampleBep))
-                {
-                    sampleBep.Obliterate();
-                }
-                tinkerInvoice?.Clear();
+                playerItems?.Clear();
             }
+
+            Popup.Show($"Stuff: Busted.");
         }
     }
 }

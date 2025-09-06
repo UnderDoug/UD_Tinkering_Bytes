@@ -168,7 +168,11 @@ namespace XRL.World.Parts
                     {
                         if (!BytesBucket.ContainsKey(blueprint))
                         {
-                            BytesBucket.Add(blueprint, GameObjectFactory.Factory.CreateObject(blueprint));
+                            GameObject byteObject = GameObjectFactory.Factory.CreateObject(blueprint);
+                            if (byteObject != null)
+                            {
+                                BytesBucket.Add(blueprint, byteObject);
+                            }
                         }
                         else
                         {
@@ -176,7 +180,7 @@ namespace XRL.World.Parts
                         }
                     }
                 }
-                if (BytePunnet.ParentObject.Count > 0)
+                if (BytePunnet.ParentObject.Count > 1)
                 {
                     BytePunnet.ParentObject.Count--;
                 }
@@ -184,6 +188,7 @@ namespace XRL.World.Parts
                 {
                     BytePunnet.ParentObject.Destroy();
                 }
+                return true;
             }
             return false;
         }
@@ -290,6 +295,7 @@ namespace XRL.World.Parts
                     {
                         byteBlueprints.Add(byteStack.Blueprint);
                         receivedBytesSortable.Add(byteStack.Blueprint, byteStack.Count.Things(byteStack.Render.DisplayName));
+                        E.Actor.ReceiveObject(byteStack);
                     }
                     byteBlueprints.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
                     foreach (string byteBlueprint in byteBlueprints)

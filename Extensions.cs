@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UD_Modding_Toolbox;
+using XRL.World;
 using XRL.World.Tinkering;
 
 namespace UD_Tinkering_Bytes
@@ -44,6 +45,18 @@ namespace UD_Tinkering_Bytes
         public static StringBuilder AppendLines(this StringBuilder SB, int Lines)
         {
             return SB.AppendLines(null, Lines, null);
+        }
+
+        public static string ThemIt(this GameObject Object)
+        {
+            bool multipleItems = Object.IsPlural || Object.Count > 1;
+            return multipleItems ? "Them" : Object.Them;
+        }
+
+        public static string themIt(this GameObject Object)
+        {
+            bool multipleItems = Object.IsPlural || Object.Count > 1;
+            return multipleItems ? "them" : Object.them;
         }
     }
 }
