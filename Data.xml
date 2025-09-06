@@ -4,5 +4,6 @@
     <tag Name="Able To Tinker" Value="Items/sw_unfurled_scroll1.bmp" />
     <tag Name="Tinker Recipes" Value="Items/sw_unfurled_scroll1.bmp" />
     <tag Name="Bytes" Value="4_byte_cleo_inverted.png" />
+    <tag Name="Missile Weapon" Value="Items/sw_revolver.bmp" />
   </object>
 </objects>
