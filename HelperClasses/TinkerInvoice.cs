@@ -118,7 +118,7 @@ namespace UD_Tinkering_Bytes
                     ItemName = Grammar.Pluralize(ItemName);
                 }
                 else
-                if (Service == MOD)
+                if (Service == MOD || Service == REPAIR)
                 {
                     ItemName = Item.t(Single:true, Short:true);
                 }
@@ -434,6 +434,13 @@ namespace UD_Tinkering_Bytes
                 SB.Append("Labour: ").AppendColored("C", GetMarkUpValue().Things("dram")).AppendLine();
             }
 
+            // Item ID.
+            if (Service == BUILD && !Item.Understood())
+            {
+                SB.Append("Identification of Item: ").AppendColored("y", GetLabourValue().Things("dram"));
+                SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
+            }
+
             // Ingredients
             if (!GetIngredientList().IsNullOrEmpty())
             {
@@ -448,7 +455,7 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    SB.Append($"Provided by {player.ShortDisplayName}");
+                    SB.Append($"Provided by {player?.GetReferenceDisplayName(Short: true)}");
                 }
                 SB.AppendLine();
                 foreach (string ingredient in GetIngredientList())
@@ -472,7 +479,7 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    SB.Append($"Provided by {player?.ShortDisplayName}");
+                    SB.Append($"Provided by {player?.GetReferenceDisplayName(Short: true)}");
                 }
                 SB.AppendLine();
             }
@@ -932,17 +939,20 @@ namespace UD_Tinkering_Bytes
             {
                 return GOB.InheritsFrom("Item")
                     && !GOB.InheritsFrom("Corpse")
+                    && !GOB.InheritsFrom("Food")
                     && !GOB.HasTagOrProperty("NoRepair")
                     && (!GOB.HasTagOrProperty("NoEffects") || GOB.HasStat("Hitpoints"))
                     && !GOB.IsNatural()
                     && !GOB.HasTagOrProperty("BaseObject")
                     && !GOB.HasTagOrProperty("ExcludeFromDynamicEncounters")
                     && GOB.GetPartParameter<string>(nameof(Physics), nameof(Physics.Owner)) is null
-                    && GOB.GetPartParameter<bool>(nameof(Physics), nameof(Physics.Takeable));
+                    && (!GOB.HasPartParameter(nameof(Physics), nameof(Physics.Takeable)) || GOB.GetPartParameter<bool>(nameof(Physics), nameof(Physics.Takeable)));
             };
-            for (int i = 0; i < 25; i++)
+            for (int i = 0; i < 50; i++)
             {
-                player.ReceiveObject(GameObject.Create(EncountersAPI.GetABlueprintModel(filter), Context: "Wish"), Context: "Wish");
+                GameObject itemToBust = GameObject.Create(EncountersAPI.GetABlueprintModel(filter), Context: "Wish");
+                TinkeringHelpers.StripForTinkering(itemToBust);
+                player.ReceiveObject(itemToBust, Context: "Wish");
             }
             List<GameObject> playerItems = Event.NewGameObjectList(player.GetInventoryAndEquipment(GO => filter(GO.GetBlueprint())));
 

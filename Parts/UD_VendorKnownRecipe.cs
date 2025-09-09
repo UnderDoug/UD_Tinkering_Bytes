@@ -136,8 +136,8 @@ namespace XRL.World.Parts
                 if (GameObject.CreateSample(Data.Blueprint) is GameObject sampleObject)
                 {
                     TinkeringHelpers.StripForTinkering(sampleObject);
-                    ObjectName = sampleObject.GetDisplayName(Short: true, Single: true);
-                    isUnderstood = sampleObject.Understood();
+                    isUnderstood = sampleObject.Understood() || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering)));
+                    ObjectName = sampleObject.GetDisplayName(Short: true, Single: true, AsIfKnown: isUnderstood);
 
                     if (GameObject.Validate(ref sampleObject))
                     {
@@ -145,7 +145,7 @@ namespace XRL.World.Parts
                     }
                 }
                 SB.Append(": ").AppendColored("C", ObjectName); 
-                if (isUnderstood)
+                if (isUnderstood || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
                 {
                     SB.Append(" <");
                     Cost.Clear();
@@ -174,6 +174,8 @@ namespace XRL.World.Parts
             if (Data != null)
             {
                 bool isUnderstood = false;
+                bool isPlayerTinker = The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering));
+                bool isBuildItemPlural = false;
                 if (Data.Type == "Mod")
                 {
                     string modDesc = ItemModding.GetModificationDescription(Data.Blueprint, 0);
@@ -181,16 +183,18 @@ namespace XRL.World.Parts
                 }
                 else
                 {
-                    GameObject sampleObject = GameObject.CreateSample(Data.Blueprint);
-                    if (sampleObject != null && sampleObject.Understood())
+                    if (GameObject.CreateSample(Data.Blueprint) is GameObject sampleObject 
+                        && (sampleObject.Understood() || isPlayerTinker))
                     {
-                        isUnderstood = true;
+                        isUnderstood = sampleObject.Understood();
+                        isBuildItemPlural = sampleObject.IsPlural;
                         TinkeringHelpers.StripForTinkering(sampleObject);
                         TinkerItem tinkerItem = sampleObject.GetPart<TinkerItem>();
                         Description description = sampleObject.GetPart<Description>();
                         E.Postfix.AppendRules("Creates: ");
                         if (tinkerItem != null && tinkerItem.NumberMade > 1)
                         {
+                            isBuildItemPlural = true; 
                             E.Postfix.Append(Grammar.Cardinal(tinkerItem.NumberMade)).Append(' ');
                             E.Postfix.Append(Grammar.Pluralize(ObjectName ?? sampleObject.DisplayNameOnly));
                         }
@@ -206,7 +210,7 @@ namespace XRL.World.Parts
                         sampleObject.Obliterate();
                     }
                 }
-                if (Data.Type == "Mod" || isUnderstood)
+                if (Data.Type == "Mod" || isUnderstood || isPlayerTinker)
                 {
                     E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
                     if (FromImplant)
@@ -217,6 +221,15 @@ namespace XRL.World.Parts
                     {
                         E.Postfix.AppendLine().AppendRules("You also know this recipe.");
                     }
+                }
+                if (Data.Type == "Build" && isPlayerTinker && !isUnderstood)
+                {
+                    string thisThese = !isBuildItemPlural ? "this" : "these";
+                    string isAre = !isBuildItemPlural ? "is" : "are";
+                    string itThem = !isBuildItemPlural ? "it" : "them";
+                    E.Postfix.AppendLine().AppendRules(
+                        $"You know approximately what {thisThese} {isAre} " +
+                        $"but you do not {"understand".Color("y")} {itThem}.");
                 }
             }
             return base.HandleEvent(E);
@@ -257,8 +270,7 @@ namespace XRL.World.Parts
                             DramsCost: 100, 
                             ClearAndSetUpTradeUI: true);
                     }
-                    else
-                    if (GetIdentifyLevel(E.Vendor) > 0)
+                    if (!sampleObject.Understood() && GetIdentifyLevel(E.Vendor) > 0)
                     {
                         E.AddAction(
                             Name: "Identify Recipe",
