@@ -1433,7 +1433,7 @@ namespace XRL.World.Parts
                         E.Infix.AppendRules("Tinkering Skills".Color("M") + ":");
                         foreach (BaseSkill skill in ParentObject.GetPart<Skills>().SkillList)
                         {
-                            if (skill.GetType().Name.StartsWith(nameof(Skill.Tinkering)) || skill.GetType().Name == nameof(UD_Basics))
+                            if (skill.GetType().Name.StartsWith(nameof(Skill.Tinkering))) // || skill.GetType().Name == nameof(UD_Basics))
                             {
                                 E.Infix.AppendRules("\u0007 ".Color("K") + skill.DisplayName.Color("y"));
                             }
