@@ -421,7 +421,12 @@ namespace XRL.World.Parts
             }    
             KnownRecipes ??= new();
             bool learned = false;
-            if (Vendor.IsGiganticCreature || Vendor.HasPart("GigantismPlus"))
+            bool hasGigantismMutationEntry = false;
+            if (MutationFactory.GetMutationEntryByName(nameof(Gigantism)) is MutationEntry gigantismMutationEntry)
+            {
+                hasGigantismMutationEntry = Vendor.HasPart(gigantismMutationEntry.Class);
+            }
+            if (Vendor.IsGiganticCreature || Vendor.HasPart("GigantismPlus") || hasGigantismMutationEntry)
             {
                 Debug.Entry(3, $"Spinning up {nameof(ModGigantic)} data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
                 foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
