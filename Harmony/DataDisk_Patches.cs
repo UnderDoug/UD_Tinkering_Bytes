@@ -91,7 +91,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}:     {match.opcode} {match.operand}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -147,7 +147,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}:     {match.opcode} {match.operand}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -185,7 +185,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}:     {match.opcode} {match.operand}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
 
@@ -207,7 +207,7 @@ namespace UD_Tinkering_Bytes.Harmony
             if (gameObject_Understood is null)
             {
                 MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(MethodInfo)} {nameof(gameObject_Understood)}");
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -300,7 +300,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -365,7 +365,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             codeMatcher.Instruction.operand = label_If_DataTypeMod;
@@ -381,7 +381,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -403,14 +403,14 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
             codeMatcher.Instruction.operand = label_RequiresSkill_PostFixAppend_BeforeObliterate;
 
             MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
-            return codeMatcher.Vomit(doVomit).InstructionEnumeration();
+            return codeMatcher.Vomit(Generator, doVomit).InstructionEnumeration();
         }
 
         [HarmonyPatch(
@@ -482,7 +482,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -498,7 +498,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -511,7 +511,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 {
                     MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
                 }
-                codeMatcher.Vomit(doVomit);
+                codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -533,7 +533,7 @@ namespace UD_Tinkering_Bytes.Harmony
                 
 
             MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
-            return codeMatcher.Vomit(doVomit).InstructionEnumeration();
+            return codeMatcher.Vomit(Generator, doVomit).InstructionEnumeration();
         }
     }
 }

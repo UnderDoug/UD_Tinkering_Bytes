@@ -530,7 +530,6 @@ namespace XRL.World.Parts
 
             if (!installedCybernetics.IsNullOrEmpty())
             {
-                Debug.Entry(3, $"Spinning up installed shemasoft for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
                 List<CyberneticsSchemasoft> implantedSchemasoftList = new();
                 foreach (GameObject installedCybernetic in installedCybernetics)
                 {
@@ -541,6 +540,7 @@ namespace XRL.World.Parts
                 }
                 if (!implantedSchemasoftList.IsNullOrEmpty())
                 {
+                    Debug.Entry(3, $"Spinning up installed shemasoft for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
                     foreach (CyberneticsSchemasoft implantedSchemasoft in implantedSchemasoftList)
                     {
                         Debug.LoopItem(3, $"{implantedSchemasoft?.ParentObject?.DebugName ?? NULL} Recipes", Indent: 1);
@@ -1315,7 +1315,7 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(ImplantAddedEvent E)
         {
-            if (E.Implantee != null && ParentObject == E.Implantee)
+            if (E.Implantee != null && ParentObject == E.Implantee && !E.Implantee.IsPlayer())
             {
                 KnowImplantedRecipes(E.Implantee, InstalledRecipes);
             }
@@ -1323,7 +1323,7 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(ImplantRemovedEvent E) 
         {
-            if (E.Implantee != null && ParentObject == E.Implantee)
+            if (E.Implantee != null && ParentObject == E.Implantee && !E.Implantee.IsPlayer())
             {
                 KnowImplantedRecipes(E.Implantee, InstalledRecipes);
             }
@@ -2183,7 +2183,10 @@ namespace XRL.World.Parts
         public override void FinalizeRead(SerializationReader Reader)
         {
             base.FinalizeRead(Reader);
-            KnowImplantedRecipes(ParentObject, InstalledRecipes);
+            if (!ParentObject.IsPlayer())
+            {
+                KnowImplantedRecipes(ParentObject, InstalledRecipes);
+            }
         }
 
         [WishCommand(Command = "give random bits")]
