@@ -121,6 +121,7 @@
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="No"
+        Restart="true"
     >
     <helptext>
       When {{W|enabled}}, the base game implementation of repair keeps its inverted evaluation of an item's value in calculating its repair cost. Items will get more expenseive to repair the better the player's trade performance is, resulting in objects getting more expensive to repair as their ego and faction rep goes up.
@@ -138,6 +139,7 @@
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="No"
+        Restart="true"
     >
     <helptext>
       When {{W|enabled}}, the base game implementation of repair keeps its reduction of the item's value by a factor of 0.01 when an item is broken or rusted, or a factor of 1/Amount for shattered, for the purpose of calculating its repair cost.
