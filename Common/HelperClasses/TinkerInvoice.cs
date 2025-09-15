@@ -1,9 +1,9 @@
-﻿using Qud.API;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Forms;
-using UD_Modding_Toolbox;
+
+using Qud.API;
+
 using XRL;
 using XRL.Language;
 using XRL.Rules;
@@ -15,6 +15,9 @@ using XRL.World.Effects;
 using XRL.World.Parts;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
+
+using UD_Modding_Toolbox;
+
 using static UD_Modding_Toolbox.Const;
 using static UD_Tinkering_Bytes.Utils;
 
@@ -558,7 +561,7 @@ namespace UD_Tinkering_Bytes
             return Event.FinalizeString(SB);
         }
 
-        public static string DebugString(TinkerInvoice TinkerInvoice = null)
+        public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)
         {
             if (TinkerInvoice != null)
             {
@@ -585,6 +588,10 @@ namespace UD_Tinkering_Bytes
                 SB.Append(nameof(LabourValue)).Append(",");
                 SB.Append(nameof(TotalCost)).Append(",");
                 SB.Append(nameof(DepositCost));
+                if (Service == REPAIR)
+                {
+                    SB.Append(",").Append("BaseGameRepair");
+                }
 
                 return Event.FinalizeString(SB);
             }
@@ -638,6 +645,10 @@ namespace UD_Tinkering_Bytes
             SB.Append(GetLabourValue()).Append(",");
             SB.Append(GetTotalCost()).Append(",");
             SB.Append(GetDepositCost());
+            if (Service == REPAIR)
+            {
+                SB.Append((TradeUI.GetValue(Item, true) / 25) * Item.Count);
+            }
 
             return Event.FinalizeString(SB);
         }
@@ -935,26 +946,26 @@ namespace UD_Tinkering_Bytes
         public static void BustMyStuff_WishHandler()
         {
             GameObject player = The.Player;
-            Predicate<GameObjectBlueprint> filter = delegate (GameObjectBlueprint GOB)
+            static bool itemThatCouldBeRepaired(GameObjectBlueprint gameObjectBlueprint)
             {
-                return GOB.InheritsFrom("Item")
-                    && !GOB.InheritsFrom("Corpse")
-                    && !GOB.InheritsFrom("Food")
-                    && !GOB.HasTagOrProperty("NoRepair")
-                    && (!GOB.HasTagOrProperty("NoEffects") || GOB.HasStat("Hitpoints"))
-                    && !GOB.IsNatural()
-                    && !GOB.HasTagOrProperty("BaseObject")
-                    && !GOB.HasTagOrProperty("ExcludeFromDynamicEncounters")
-                    && GOB.GetPartParameter<string>(nameof(Physics), nameof(Physics.Owner)) is null
-                    && (!GOB.HasPartParameter(nameof(Physics), nameof(Physics.Takeable)) || GOB.GetPartParameter<bool>(nameof(Physics), nameof(Physics.Takeable)));
-            };
+                return gameObjectBlueprint.InheritsFrom("Item")
+                    && !gameObjectBlueprint.InheritsFrom("Corpse")
+                    && !gameObjectBlueprint.InheritsFrom("Food")
+                    && !gameObjectBlueprint.HasTagOrProperty("NoRepair")
+                    && (!gameObjectBlueprint.HasTagOrProperty("NoEffects") || gameObjectBlueprint.HasStat("Hitpoints"))
+                    && !gameObjectBlueprint.IsNatural()
+                    && !gameObjectBlueprint.HasTagOrProperty("BaseObject")
+                    && !gameObjectBlueprint.HasTagOrProperty("ExcludeFromDynamicEncounters")
+                    && gameObjectBlueprint.GetPartParameter<string>(nameof(Physics), nameof(Physics.Owner)) is null
+                    && (!gameObjectBlueprint.HasPartParameter(nameof(Physics), nameof(Physics.Takeable)) || gameObjectBlueprint.GetPartParameter<bool>(nameof(Physics), nameof(Physics.Takeable)));
+            }
             for (int i = 0; i < 50; i++)
             {
-                GameObject itemToBust = GameObject.Create(EncountersAPI.GetABlueprintModel(filter), Context: "Wish");
+                GameObject itemToBust = GameObject.Create(EncountersAPI.GetABlueprintModel(itemThatCouldBeRepaired), Context: "Wish");
                 TinkeringHelpers.StripForTinkering(itemToBust);
                 player.ReceiveObject(itemToBust, Context: "Wish");
             }
-            List<GameObject> playerItems = Event.NewGameObjectList(player.GetInventoryAndEquipment(GO => filter(GO.GetBlueprint())));
+            List<GameObject> playerItems = Event.NewGameObjectList(player.GetInventoryAndEquipment(GO => itemThatCouldBeRepaired(GO.GetBlueprint())));
 
             if (playerItems.IsNullOrEmpty())
             {
