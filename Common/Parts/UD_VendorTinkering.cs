@@ -3,26 +3,26 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using UD_Modding_Toolbox;
-using UD_Tinkering_Bytes;
-using UD_Vendor_Actions;
+
 using XRL.Language;
 using XRL.Rules;
 using XRL.UI;
-using XRL.UI.ObjectFinderClassifiers;
 using XRL.Wish;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
-using XRL.World.Conversations.Parts;
 using XRL.World.Parts.Mutation;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
+
 using static UD_Modding_Toolbox.Const;
 using static UD_Tinkering_Bytes.Options;
-using static UD_Tinkering_Bytes.Utils;
+
+using UD_Modding_Toolbox;
+using UD_Vendor_Actions;
+
 using static XRL.World.Parts.Skill.Tinkering;
-using SerializeField = UnityEngine.SerializeField;
+
+using UD_Tinkering_Bytes;
 
 namespace XRL.World.Parts
 {
@@ -1572,12 +1572,12 @@ namespace XRL.World.Parts
                         && IsRepairableEvent.Check(E.Vendor, E.Item, null, vendorRepairSkill, null))
                     {
                         E.AddAction(
-                            Name: "Scaling Repair", // Repair
-                            Display: "scaling repair", // repair
+                            Name: "Repair",
+                            Display: "repair",
                             Command: COMMAND_REPAIR_SCALING,
-                            Key: 'R', // r
+                            Key: 'r',
                             Priority: 7,
-                            Override: false); // true
+                            Override: true);
                     }
                     if (EnableOverrideTinkerRecharge
                         && E.Item.InInventory != E.Vendor 

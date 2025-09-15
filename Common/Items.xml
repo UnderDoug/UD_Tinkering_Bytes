@@ -131,11 +131,10 @@
     <part Name="Description" Short="A tidily packed punnet of exactly *32 bytes*, equal to *256 bits*." />
     <removepart Name="TinkerItem" />
     <part Name="Commerce" Value="400" />
-    <removetag Name="Scrap" />
     <removetag Name="DefaultDisassemble" />
+    <removestag Name="Scrap" />
     <tag Name="BaseObject" Value="*noinherit" />
     <property Name="NeverStack" Value="No stacks for me please." />
-    <removestag Name="Scrap" />
     <removetag Name="Breakable" />
     <part Name="ItemElements" Elements="circuitry::8" />
     <part Name="UD_BytePunnet" Bytes="0" />
