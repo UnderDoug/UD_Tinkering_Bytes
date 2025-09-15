@@ -24,8 +24,8 @@ namespace XRL.World.Parts
     [Serializable]
     public class UD_VendorKnownRecipe 
         : IScribedPart
-        , IVendorActionEventHandler
-        , IModEventHandler<EndTradeEvent>
+        , I_UD_VendorActionEventHandler
+        , IModEventHandler<UD_EndTradeEvent>
     {
         private static bool doDebug => false;
 
@@ -100,9 +100,9 @@ namespace XRL.World.Parts
                 || ID == GetDisplayNameEvent.ID
                 || ID == GetShortDescriptionEvent.ID
                 || ID == GetInventoryCategoryEvent.ID
-                || ID == GetVendorActionsEvent.ID
-                || ID == VendorActionEvent.ID
-                || ID == EndTradeEvent.ID;
+                || ID == UD_GetVendorActionsEvent.ID
+                || ID == UD_VendorActionEvent.ID
+                || ID == UD_EndTradeEvent.ID;
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
@@ -246,7 +246,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(GetVendorActionsEvent E)
+        public virtual bool HandleEvent(UD_GetVendorActionsEvent E)
         {
             if (E.Item != null && E.Item == ParentObject)
             {
@@ -289,7 +289,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(VendorActionEvent E)
+        public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
             if (E.Command == COMMAND_IDENTIFY_BY_RECIPE 
                 && E.Item != null && E.Item == ParentObject 
@@ -361,7 +361,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(EndTradeEvent E)
+        public virtual bool HandleEvent(UD_EndTradeEvent E)
         {
             if (GameObject.Validate(ParentObject))
             {

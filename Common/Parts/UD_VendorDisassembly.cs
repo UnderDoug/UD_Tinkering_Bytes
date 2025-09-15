@@ -22,7 +22,7 @@ using static UD_Tinkering_Bytes.Options;
 namespace XRL.World.Parts
 {
     [Serializable]
-    public class UD_VendorDisassembly : IScribedPart, IVendorActionEventHandler
+    public class UD_VendorDisassembly : IScribedPart, I_UD_VendorActionEventHandler
     {
         private static bool doDebug = true;
 
@@ -573,8 +573,8 @@ namespace XRL.World.Parts
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
-                || (WantVendorActions && ID == GetVendorActionsEvent.ID)
-                || (WantVendorActions && ID == VendorActionEvent.ID);
+                || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
+                || (WantVendorActions && ID == UD_VendorActionEvent.ID);
         }
         public override bool HandleEvent(AllowTradeWithNoInventoryEvent E)
         {
@@ -584,7 +584,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(GetVendorActionsEvent E)
+        public virtual bool HandleEvent(UD_GetVendorActionsEvent E)
         {
             if (E.Vendor != null && ParentObject == E.Vendor && WantVendorActions)
             {
@@ -601,7 +601,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(VendorActionEvent E)
+        public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
             if ((E.Command == COMMAND_DISASSEMBLE || E.Command == COMMAND_DISASSEMBLE_ALL) 
                 && E.Item != null 

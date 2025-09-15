@@ -65,10 +65,10 @@ namespace UD_Tinkering_Bytes.Harmony
             codeMatcher.Insert(
                 new CodeInstruction[]
                 {
-                    new(OpCodes.Ldsfld, AccessTools.Field(typeof(VendorAction), nameof(VendorAction.CurrentAction))),
+                    new(OpCodes.Ldsfld, AccessTools.Field(typeof(UD_VendorAction), nameof(UD_VendorAction.CurrentAction))),
                     new(OpCodes.Brfalse, label_If_Amount_GT_1),
-                    new(OpCodes.Ldsfld, AccessTools.Field(typeof(VendorAction), nameof(VendorAction.CurrentAction))),
-                    new(OpCodes.Ldfld, AccessTools.Field(typeof(VendorAction), nameof(VendorAction.Name))),
+                    new(OpCodes.Ldsfld, AccessTools.Field(typeof(UD_VendorAction), nameof(UD_VendorAction.CurrentAction))),
+                    new(OpCodes.Ldfld, AccessTools.Field(typeof(UD_VendorAction), nameof(UD_VendorAction.Name))),
                     new(OpCodes.Ldstr, "Repair"),
                     new(OpCodes.Call, AccessTools.Method(typeof(string), nameof(string.Equals), new Type[] { typeof(object) })),
                     new(OpCodes.Brtrue, label_Return_BaseHandleEventE),

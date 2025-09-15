@@ -28,7 +28,7 @@ namespace XRL.World.Parts
 {
     [HasWishCommand]
     [Serializable]
-    public class UD_VendorTinkering : IScribedPart, IVendorActionEventHandler
+    public class UD_VendorTinkering : IScribedPart, I_UD_VendorActionEventHandler
     {
         private static bool doDebug = true;
 
@@ -1275,8 +1275,8 @@ namespace XRL.World.Parts
                 || ID == GetShortDescriptionEvent.ID
                 || (WantVendorActions && ID == StockedEvent.ID)
                 || (WantVendorActions && ID == StartTradeEvent.ID)
-                || (WantVendorActions && ID == GetVendorActionsEvent.ID)
-                || (WantVendorActions && ID == VendorActionEvent.ID);
+                || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
+                || (WantVendorActions && ID == UD_VendorActionEvent.ID);
         }
         public override bool HandleEvent(AllowTradeWithNoInventoryEvent E)
         {
@@ -1500,7 +1500,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(GetVendorActionsEvent E)
+        public virtual bool HandleEvent(UD_GetVendorActionsEvent E)
         {
             if (E.Vendor != null && ParentObject == E.Vendor && E.Item != null && WantVendorActions)
             {
@@ -1598,7 +1598,7 @@ namespace XRL.World.Parts
             }
             return base.HandleEvent(E);
         }
-        public virtual bool HandleEvent(VendorActionEvent E)
+        public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
             if (E.Vendor != null && E.Vendor == ParentObject)
             {
