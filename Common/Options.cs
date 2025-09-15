@@ -32,6 +32,11 @@ namespace UD_Tinkering_Bytes
 
         // Checkbox settings
         [OptionFlag] public static bool EnableKnownRecipeCategoryMirroring;
+        [OptionFlag] public static bool EnableOverrideTinkerRepair;
+        [OptionFlag] public static bool DisableBB14284Patch_RepairInvertedPerformance;
+        [OptionFlag] public static bool DisableBB14285Patch_RepairBrokenValue;
+        [OptionFlag] public static bool EnableOverrideTinkerRecharge;
+        [OptionFlag] public static bool EnableGiantsAllKnowModGiganticIfTinkerableAtAll;
 
     } //!-- public static class Options
 }

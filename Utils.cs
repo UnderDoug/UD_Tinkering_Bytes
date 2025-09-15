@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using XRL;
 
 namespace UD_Tinkering_Bytes
 {
     public static class Utils
     {
+        public static ModInfo ThisMod => ModManager.GetMod("UD_Tinkering_Bytes");
+
         public static string GetScrapBlueprintFromBit(char Bit)
         {
             return Bit switch

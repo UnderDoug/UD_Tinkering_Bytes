@@ -415,7 +415,7 @@ namespace XRL.World.Parts
         }
         public static bool LearnGiganticRecipe(GameObject Vendor, List<TinkerData> KnownRecipes)
         {
-            if (Vendor == null)
+            if (Vendor == null || !EnableGiantsAllKnowModGiganticIfTinkerableAtAll)
             {
                 return false;
             }    
@@ -1566,7 +1566,8 @@ namespace XRL.World.Parts
                             Override: true,
                             ClearAndSetUpTradeUI: true);
                     }
-                    if (E.Item.InInventory != E.Vendor 
+                    if (EnableOverrideTinkerRepair
+                        && E.Item.InInventory != E.Vendor 
                         && vendorRepairSkill != null
                         && IsRepairableEvent.Check(E.Vendor, E.Item, null, vendorRepairSkill, null))
                     {
@@ -1578,7 +1579,8 @@ namespace XRL.World.Parts
                             Priority: 7,
                             Override: false); // true
                     }
-                    if (E.Item.InInventory != E.Vendor 
+                    if (EnableOverrideTinkerRecharge
+                        && E.Item.InInventory != E.Vendor 
                         && E.Vendor.HasSkill(nameof(Tinkering_Tinker1))
                         && (itemUnderstood || vendorIdentifyLevel > E.Item.GetComplexity()) 
                         && E.Item.NeedsRecharge())

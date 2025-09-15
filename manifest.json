@@ -10,5 +10,18 @@
     "Dependencies": {
         "UD_Modding_Toolbox": ">=0.0.1",
         "UD_Vendor_Actions": ">=0.0.1"
-    }
+    },
+    "Directories": [
+        {
+            "Paths": [ "/Common/", "/Textures/" ]
+        },
+        {
+            "Path": "/EnableBB14284Patch_RepairInvertedPerformance/",
+            "Option": "Option_UD_Tinkering_Bytes_DisableBB14284Patch_RepairInvertedPerformance == No"
+        },
+        {
+            "Path": "/EnableBB14285Patch_RepairBrokenValue/",
+            "Option": "Option_UD_Tinkering_Bytes_DisableBB14285Patch_RepairBrokenValue == No"
+        }
+    ]
 }

@@ -531,7 +531,6 @@ namespace UD_Tinkering_Bytes.Harmony
                     }
                 );
                 
-
             MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
             return codeMatcher.Vomit(Generator, doVomit).InstructionEnumeration();
         }

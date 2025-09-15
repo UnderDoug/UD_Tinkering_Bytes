@@ -1,0 +1,192 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<options>
+
+  <!-- 
+  Debug Options
+  -->
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugBitLockerDebugDescriptions"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC BitLocker internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, internal debug information relating to BitLockers will be displayed when [{{W|l}}]ooking at Tinker NPCs.
+
+      {{M|BitLocker}}:
+      {{W|General}}: Literally the contents of the Tinker NPC's BitLocker as though it were the player's.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugKnownRecipesDebugDescriptions"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC KnownRecipes internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, internal debug information relating to KnownRecipes will be displayed when [{{W|l}}]ooking at Tinker NPCs.
+
+      {{M|KnownRecipes}}:
+      {{W|General}}: Literally just a list of the recipes that the NPC &quot;knows&quot; in the order they were assigned them at creation and, later, &quot;learned&quot; them if they've done so.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugTinkerSkillsDebugDescriptions"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC Tinkering Skills internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, internal debug information relating to Tinkering Skills will be displayed when [{{W|l}}]ooking at Tinker NPCs.
+
+      {{M|Tinkering Skills}}:
+      {{W|General}}: Literally just a list of the tinkering skills that the NPC has, in the order they appear in in the creature's Skills part.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DebugSpawnSnapjawWhileVendorDisassembles"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Test Vendor Disassembly interruption by hostile creature."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When enabled, during vendor disassembly a snapjaw scavenger will spawn after the 25th item has been disassembled with &quot;disassemble all.&quot;.
+      
+      This is designed to test whether or not hostile creatrues will successfully interrupt a vendor while they're tinkering.
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <!-- 
+  Mod Options
+  -->
+  <option
+        ID="Option_UD_Tinkering_Bytes_EnableKnownRecipeCategoryMirroring"
+        DisplayText="Enable category mirroring for recipes tinker traders know."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="Yes"
+    >
+    <helptext>
+      When {{W|enabled}}, the recipes that tinker traders know will be categorized in the trade UI according to the category of the item they produce.
+      
+      &quot;Build&quot; recipes will be &quot;artifacts&quot; while the player doesn't understand the item.
+
+      &quot;Mod&quot; recipes will be &quot;data disks&quot;.
+      
+      When {{w|disabled}}, all the recipes that tinker traders know will be categorized into a single category, &quot;Tinker Recipes&quot;.
+
+      The default is {{W|Enabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRepair"
+        DisplayText="Override the base game's implementation of trader repairing with the one offered by this mod."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="Yes"
+    >
+    <helptext>
+      When {{W|enabled}}, tinker traders will utilise the more complex trader repair process implemented by this mod.
+
+      On top of the labour costs involved, repairing will also require bits which can be provided by the player or purchased from the trader during the process of initiating the repair.
+
+      Traders must actually have the required bits if they are to be paid for them.
+
+      When {{w|disabled}}, repairing will be as it is in the base game except for having {{B|BitBucket}} {{C|issues #14284}} and {{C|issues #14285}} addressed with a patch.
+
+      The default is {{W|Enabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DisableBB14284Patch_RepairInvertedPerformance"
+		    Requires="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRepair==No"
+        DisplayText="Disable this mod's patch to address {{B|BitBucket}} {{C|issue #14284}}: inverted trade performance scaling."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When {{W|enabled}}, the base game implementation of repair keeps its inverted evaluation of an item's value in calculating its repair cost. Items will get more expenseive to repair the better the player's trade performance is, resulting in objects getting more expensive to repair as their ego and faction rep goes up.
+
+      When {{w|disabled}}, {{B|BitBucket}} {{C|issue #14284}} is addressed with a patch that flips the cost calculation so that repair cost goes down as trade performance increases.
+
+      The default is {{w|disabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_DisableBB14285Patch_RepairBrokenValue"
+		    Requires="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRepair==No"
+        DisplayText="Disable this mod's patch to address {{B|BitBucket}} {{C|issue #14285}}: Broken/Rusted/Cracked reducing repair cost."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="No"
+    >
+    <helptext>
+      When {{W|enabled}}, the base game implementation of repair keeps its reduction of the item's value by a factor of 0.01 when an item is broken or rusted, or a factor of 1/Amount for shattered, for the purpose of calculating its repair cost.
+
+      The result of this is that items which are broken or rusted cost 1/1000th to repair, and items that are shattered more than once cost 1/2 as much or less, compared to an item that is simply damaged.
+
+      When {{w|disabled}}, {{B|BitBucket}} {{C|issue #14285}} is addressed with a patch that makes the cost calculation for repairing an item ignore broken, rusted, and shattered when factoring in the item's value.
+
+      The default is {{w|disabled}}.
+    </helptext>
+  </option>
+
+  <option
+        ID="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRecharge"
+        DisplayText="Override the base game's implementation of trader recharging with the one offered by this mod."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="Yes"
+    >
+    <helptext>
+      When {{W|enabled}}, tinker traders will utilise the more complex trader recharge process implemented by this mod.
+
+      On top of the labour costs involved, recharging will also require bits which can be provided by the player or purchased from the trader during the process of initiating the recharge.
+
+      Traders must actually have the required bits if they are to be paid for them.
+
+      When {{w|disabled}}, recharging will be as it is in the base game.
+
+      The default is {{W|Enabled}}.
+    </helptext>
+  </option>
+  
+  <option
+        ID="Option_UD_Tinkering_Bytes_EnableGiantsAllKnowModGiganticIfTinkerableAtAll"
+		    Requires="Option_GigantismPlus_EnableGiganticTinkering==Yes"
+        DisplayText="Enable ModGigantic being a known recipe for all gigantic creatures."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="Yes"
+    >
+    <helptext>
+      When {{W|enabled}}, ModGigantic will always be a &quot;{{Y|Known Recipe}}&quot; for gigantic creatures that are also capable of tinkering.
+      
+      This option requires the GigantismPlus mod be enabled, and its option to enable ModGigantic as tinkerable set to {{W|enabled}}.
+
+      The default is {{W|Enabled}}.
+    </helptext>
+  </option>
+
+  <!-- End of Mod Options -->
+  
+</options>
