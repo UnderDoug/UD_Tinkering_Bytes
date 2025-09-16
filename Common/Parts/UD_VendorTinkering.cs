@@ -581,68 +581,46 @@ namespace XRL.World.Parts
             return DataDisk.Understood() && The.Player != null && (The.Player.HasSkill("Tinkering") || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech));
         }
 
-        public static GameObject GetBitLockerDisplayItem(BitLocker BitLocker, int DisplayNameStyle = 0)
+        public static bool ReceiveBitLockerDisplayItem(GameObject Vendor)
         {
-            if (BitLocker == null
-                || BitLocker.ParentObject is not GameObject vendor
-                || GameObject.Create(BITLOCK_DISPLAY) is not GameObject bitLockerDisplayItem
-                || !bitLockerDisplayItem.TryGetPart(out Description description)
-                || !bitLockerDisplayItem.TryGetPart(out Render render))
+            ClearBitLockerDisplayItem(Vendor);
+            bool received = false;
+            if (Vendor.TryGetPart(out BitLocker bitLocker))
             {
-                return null;
+                if (!DebugShowAllTinkerBitLockerInlineDisplay)
+                {
+                    if (GameObject.CreateSample(BITLOCK_DISPLAY) is GameObject bitLockerDisplayItem)
+                    {
+                        Debug.Entry(4, nameof(bitLockerDisplayItem), bitLockerDisplayItem.DisplayName);
+                        received = Vendor.ReceiveObject(bitLockerDisplayItem);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < 7; i++)
+                    {
+                        if (GameObject.CreateSample(BITLOCK_DISPLAY) is GameObject bitLockerDisplayItem
+                            && bitLockerDisplayItem.TryGetPart(out UD_BitLocker_Display bitLockerDisplayPart))
+                        {
+                            bitLockerDisplayPart.DisplayNameStyle = i;
+                            Debug.Entry(4, nameof(bitLockerDisplayItem), bitLockerDisplayItem.DisplayName);
+                            received = Vendor.ReceiveObject(bitLockerDisplayItem) || received;
+                        }
+                    }
+                }
             }
-
-            // style 0: bit locker
-            // style 1: bit locker <A(23)B(36)C(25)D(37)1(6)2(24)3(22)4(18)5(12)6(24)788> (this is base game BitType.GetDisplayString(bits))
-            // style 2: bit locker - Ax23 Bx36 Cx25 Dx37 1x6 2x24 3x22 4x18 5x12 6x24 7x1 8x2
-            // style 3: bit locker - A++ B++ C++ D++ 1+ 2++ 3++ 4++ 5++ 6++ 7 8
-            // style 4: bit locker <ABCD12345678> (these are colored or not based of having any or not)
-            // style 5: bit locker <AB•D12•45•78> (these are also colored or not based of having any or not)
-            // style 6: bit locker - AA BB CC DD 1 22 33 44 55 66 7 8 (replaces the digits in the count with the appropriate bit)
-
-            string bits = DisplayNameStyle switch
-            {
-                1 => BitLocker.GetBitsDisplayString(),
-                2 => BitLocker.GetSpacedXDisplayString(),
-                3 => BitLocker.GetBitPPDisplayString(),
-                4 => BitLocker.GetDullMissingDisplayString(),
-                5 => BitLocker.GetReplaceDullMissingDisplayString(),
-                6 => BitLocker.GetBitDigitDisplayString(),
-                _ => "",
-            };
-            if (bits.IsNullOrEmpty())
-            {
-                bits = "empty".Color("K");
-            }
-            string bitLockerContents = DisplayNameStyle > 0 ? $" - {bits.Color("y")}" : "";
-            if (DisplayNameStyle == 1
-                || DisplayNameStyle == 4
-                || DisplayNameStyle == 5)
-            {
-                bitLockerContents = $" <{bits.Color("y")}>";
-            }
-            render.DisplayName += bitLockerContents;
-
-            render.DisplayName = $"{DisplayNameStyle.Color("K")} {render.DisplayName}";
-
-            description._Short = description._Short
-                .Replace("*vendor's*", GameText.VariableReplace("=subject.T's=", vendor))
-                .Replace("*bitlocker*", $"\n\n{BitLocker.GetBitsString()}");
-            return bitLockerDisplayItem;
+            return received;
         }
-        public GameObject GetBitLockerDisplayItem(int DisplayNameStyle = 0)
+        public bool ReceiveBitLockerDisplayItem()
         {
-            return GetBitLockerDisplayItem(ParentObject.GetPart<BitLocker>(), DisplayNameStyle);
+            return ReceiveBitLockerDisplayItem(ParentObject);
         }
 
         public static void ClearBitLockerDisplayItem(GameObject Vendor)
         {
-            foreach (GameObject item in Vendor.GetInventoryAndEquipment())
+            foreach (GameObject item in Vendor.GetInventoryAndEquipment(GO => GO.HasPart<UD_BitLocker_Display>()))
             {
-                if (item.Blueprint == BITLOCK_DISPLAY)
-                {
-                    item.Obliterate();
-                }
+                item.Obliterate();
             }
         }
         public void ClearBitLockerDisplayItem()
@@ -1573,14 +1551,7 @@ namespace XRL.World.Parts
         {
             if (E.Trader == ParentObject && WantVendorActions)
             {
-                GenerateKnownRecipeDisplayItems();
-                for (int i = 0; i < 7; i++)
-                {
-                    if (GetBitLockerDisplayItem(i) is GameObject bitLockerDisplayItem)
-                    {
-                        ParentObject.ReceiveObject(bitLockerDisplayItem);
-                    }
-                }
+                ReceiveBitLockerDisplayItem();
             }
             return base.HandleEvent(E);
         }
@@ -1588,22 +1559,7 @@ namespace XRL.World.Parts
         {
             if (E.Vendor == ParentObject)
             {
-                ClearBitLockerDisplayItem();
-                for (int i = 0; i < 7; i++)
-                {
-                    if (GetBitLockerDisplayItem(i) is GameObject bitLockerDisplayItem)
-                    {
-                        ParentObject.ReceiveObject(bitLockerDisplayItem);
-                    }
-                }
-            }
-            return base.HandleEvent(E);
-        }
-        public virtual bool HandleEvent(UD_EndTradeEvent E)
-        {
-            if (E.Trader == ParentObject)
-            {
-                ClearBitLockerDisplayItem();
+                // ReceiveBitLockerDisplayItem();
             }
             return base.HandleEvent(E);
         }
@@ -1620,7 +1576,14 @@ namespace XRL.World.Parts
                 {
                     if (dataDisk?.Data?.Type == "Mod")
                     {
-                        E.AddAction("Mod From Data Disk", "mod an item with tinkering", COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, ClearAndSetUpTradeUI: true);
+                        E.AddAction(
+                            Name: "Mod Data Disk",
+                            Display: "mod an item with tinkering",
+                            Command: COMMAND_MOD,
+                            PreferToHighlight: "tinkering",
+                            Key: 'T',
+                            Priority: -4,
+                            ClearAndSetUpTradeUI: true);
                     }
                     else
                     if (dataDisk?.Data?.Type == "Build"
@@ -1630,7 +1593,7 @@ namespace XRL.World.Parts
                         if (sampleObject.Understood() || The.Player.HasSkill(nameof(Skill.Tinkering)) || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))
                         {
                             E.AddAction(
-                                Name: "Build From Data Disk",
+                                Name: "Build Data Disk",
                                 Display: "tinker item",
                                 Command: COMMAND_BUILD,
                                 PreferToHighlight: "tinker",
@@ -1643,7 +1606,7 @@ namespace XRL.World.Parts
                         if (vendorIdentifyLevel > 0)
                         {
                             E.AddAction(
-                                Name: "Identify From Data Disk",
+                                Name: "Identify Data Disk",
                                 Display: "identify recipe",
                                 Command: COMMAND_IDENTIFY_BY_DATADISK,
                                 Key: 'i',

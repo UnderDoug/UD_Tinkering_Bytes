@@ -2,5 +2,6 @@
 <colors>
   <shaders>
     <shader Name="UD_bytes" Type="sequence" Colors="c-K-W-Y-M" ShowInPicker="true" />
+    <shader Name="UD_bitlocker" Type="sequence" Colors="c-W-c-c-c-W-c-c-c-c" ShowInPicker="true" />
   </shaders>
 </colors>

@@ -68,7 +68,7 @@ namespace UD_Tinkering_Bytes
             }
             string bits = "";
 
-            // A(23)B(36)C(25)D(37)1(6)2(24)3(22)4(18)5(12)6(24)788 (this is base game BitType.GetDisplayString(bits))
+            // A(23)B(36)D(37)1(6)2(24)4(18)5(12)788 (this is base game BitType.GetDisplayString(bits))
 
             foreach ((char bit, int count) in BitLocker.BitStorage)
             {
@@ -88,7 +88,7 @@ namespace UD_Tinkering_Bytes
             }
             string bits = "";
 
-            // Ax23 Bx36 Cx25 Dx37 1x6 2x24 3x22 4x18 5x12 6x24 7x1 8x2
+            // Ax23 Bx36 Dx37 1x6 2>99 4x18 5x12 7x1 8x2
 
             foreach ((char bit, int count) in BitLocker.BitStorage)
             {
@@ -101,12 +101,17 @@ namespace UD_Tinkering_Bytes
                     bits += " ";
                 }
                 bits += BitType.TranslateBit(bit).Color($"{bit}");
-                string countString = count.ToString();
+                string countString = Math.Min(count, 99).ToString();
                 if (!CountColor.IsNullOrEmpty())
                 {
                     countString = countString.Color(CountColor);
                 }
-                bits += $"x{countString}";
+                string op = "x";
+                if (count > 99)
+                {
+                    op = ">";
+                }
+                bits += $"{op}{countString}";
             }
             return bits;
         }
@@ -119,7 +124,7 @@ namespace UD_Tinkering_Bytes
             }
             string bits = "";
 
-            // A++ B++ C++ D++ 1+ 2++ 3++ 4++ 5++ 6++ 7 8
+            // A++ B++ D++ 1+ 2++ 4++ 5++ 7 8
 
             foreach ((char bit, int count) in BitLocker.BitStorage)
             {

@@ -28,7 +28,11 @@ namespace UD_Tinkering_Bytes
         [OptionFlag] public static bool DebugBitLockerDebugDescriptions;
         [OptionFlag] public static bool DebugKnownRecipesDebugDescriptions;
         [OptionFlag] public static bool DebugTinkerSkillsDebugDescriptions;
+        [OptionFlag] public static bool DebugShowAllTinkerBitLockerInlineDisplay;
         [OptionFlag] public static bool DebugSpawnSnapjawWhileVendorDisassembles;
+
+        // Combo Options
+        [OptionFlag] public static int SelectTinkerBitLockerInlineDisplay;
 
         // Checkbox settings
         [OptionFlag] public static bool EnableKnownRecipeCategoryMirroring;

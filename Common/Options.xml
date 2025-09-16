@@ -9,8 +9,7 @@
         DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC BitLocker internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
         Category="Debug"
         Type="Checkbox"
-        Default="No"
-    >
+        Default="No" >
     <helptext>
       When enabled, internal debug information relating to BitLockers will be displayed when [{{W|l}}]ooking at Tinker NPCs.
 
@@ -26,8 +25,7 @@
         DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC KnownRecipes internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
         Category="Debug"
         Type="Checkbox"
-        Default="No"
-    >
+        Default="No" >
     <helptext>
       When enabled, internal debug information relating to KnownRecipes will be displayed when [{{W|l}}]ooking at Tinker NPCs.
 
@@ -43,8 +41,7 @@
         DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show Tinker NPC Tinkering Skills internal debug information in relevant ShortDescriptions displayed in the [{{W|l}}]ook UI."
         Category="Debug"
         Type="Checkbox"
-        Default="No"
-    >
+        Default="No" >
     <helptext>
       When enabled, internal debug information relating to Tinkering Skills will be displayed when [{{W|l}}]ooking at Tinker NPCs.
 
@@ -56,12 +53,34 @@
   </option>
   
   <option
+        ID="Option_UD_Tinkering_Bytes_DebugShowAllTinkerBitLockerInlineDisplay"
+        DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Show all in-line display styles for the tinker trader {{UD_bitlocker|bit locker}} pseudo-item."
+        Category="Debug"
+        Type="Checkbox"
+        Default="No" >
+    <helptext>
+      When enabled, tinker traders with a {{UD_bitlocker|bit locker}} will have one pseudo-item each for each of the 7 styles of in-line bit summary display for you to look at and decide on.
+
+      They are numbered, and ordered the same as the selection option:
+
+      0|None
+      1|BitCost
+      2|BxN
+      3|++
+      4|Dull Missing
+      5|Replaced Dull Missing
+      6|Bit Digits
+
+      The default is {{w|Disabled}}.
+    </helptext>
+  </option>
+  
+  <option
         ID="Option_UD_Tinkering_Bytes_DebugSpawnSnapjawWhileVendorDisassembles"
         DisplayText="{{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}: Test Vendor Disassembly interruption by hostile creature."
         Category="Debug"
         Type="Checkbox"
-        Default="No"
-    >
+        Default="No" >
     <helptext>
       When enabled, during vendor disassembly a snapjaw scavenger will spawn after the 25th item has been disassembled with &quot;disassemble all.&quot;.
       
@@ -75,12 +94,48 @@
   Mod Options
   -->
   <option
+        ID="Option_UD_Tinkering_Bytes_SelectTinkerBitLockerInlineDisplay"
+        DisplayText="Select in-line display style for tinker trader {{UD_bitlocker|bit locker}} pseudo-item."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Combo"
+        Default="2"
+        Values="0|None,1|BitCost,2|BxN,3|++,4|Dull Missing,5|Replaced Dull Missing,6|Bit Digits" >
+    <helptext>
+      Select which style to use for the short in-line &quot;bit summary&quot; the {{UD_bitlocker|bit locker}} pseudo-item each tinker trader will have in the trade UI to show how many bits they have available to tinker with.
+      
+      None:
+      {{y|    bit locker}}
+
+      BitCost:
+      {{y|    bit locker &lt;{{R|A}}(15){{G|B}}(7){{B|C}}(119){{r|1}}(4){{b|333}}{{c|4}}(45){{Y|7}}{{M|8}}&gt;}}
+
+      BxN:
+      {{y|    bit locker &#2500; {{R|A}}x{{C|15}} {{G|B}}x{{C|7}} {{B|C}}&gt;{{C|99}} {{r|1}}x{{C|4}} {{b|3}}x{{C|3}} {{c|4}}x{{C|45}} {{Y|7}}x{{C|1}} {{M|8}}x{{C|1}}}}
+
+      ++:
+      {{y|    bit locker &#2500; {{R|A}}++ {{G|B}}+ {{B|C}}++ {{r|1}} {{b|3}} {{c|4}}++ {{Y|7}} {{M|8}}}}
+
+      Dull Missing:
+      {{y|    bit locker &lt;{{R|A}}{{G|B}}{{B|C}}{{k|D}}{{r|1}}{{k|2}}{{b|3}}{{c|4}}{{k|5}}{{k|6}}{{Y|7}}{{M|8}}&gt;}}
+
+      Replaced Dull Missing:
+      {{y|    bit locker &lt;{{R|A}}{{G|B}}{{B|C}}{{k|&#x2022;}}{{r|1}}{{k|&#x2022;}}{{b|3}}{{c|4}}{{k|&#x2022;}}{{k|&#x2022;}}{{Y|7}}{{M|8}}&gt;}}
+
+      Bit Digits:
+      {{y|    bit locker &#2500; {{R|AA}} {{G|B}} {{B|CCC}} {{r|1}} {{b|3}} {{c|44}} {{Y|7}} {{M|8}}}}
+
+      See {{c|Debug: {{g|U}}{{G|D}} {{C|Tinkering}} {{UD_bytes|Bytes}}}} for a debug option to see all 7 styles, at once, in the trade window, exactly as they'll appear.
+
+      The default is {{W|BxN}}.
+    </helptext>
+  </option>
+  
+  <option
         ID="Option_UD_Tinkering_Bytes_EnableKnownRecipeCategoryMirroring"
         DisplayText="Enable category mirroring for recipes tinker traders know."
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
-        Default="Yes"
-    >
+        Default="No" >
     <helptext>
       When {{W|enabled}}, the recipes that tinker traders know will be categorized in the trade UI according to the category of the item they produce.
       
@@ -90,7 +145,7 @@
       
       When {{w|disabled}}, all the recipes that tinker traders know will be categorized into a single category, &quot;Tinker Recipes&quot;.
 
-      The default is {{W|Enabled}}.
+      The default is {{W|Disabled}}.
     </helptext>
   </option>
   
@@ -100,8 +155,7 @@
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="Yes"
-        Restart="true"
-    >
+        Restart="true" >
     <helptext>
       When {{W|enabled}}, tinker traders will utilise the more complex trader repair process implemented by this mod.
 
@@ -122,8 +176,7 @@
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="No"
-        Restart="true"
-    >
+        Restart="true" >
     <helptext>
       When {{W|enabled}}, the base game implementation of repair keeps its inverted evaluation of an item's value in calculating its repair cost. Items will get more expenseive to repair the better the player's trade performance is, resulting in objects getting more expensive to repair as their ego and faction rep goes up.
 
@@ -140,8 +193,7 @@
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="No"
-        Restart="true"
-    >
+        Restart="true" >
     <helptext>
       When {{W|enabled}}, the base game implementation of repair keeps its reduction of the item's value by a factor of 0.01 when an item is broken or rusted, or a factor of 1/Amount for shattered, for the purpose of calculating its repair cost.
 
@@ -158,8 +210,7 @@
         DisplayText="Override the base game's implementation of trader recharging with the one offered by this mod."
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
-        Default="Yes"
-    >
+        Default="Yes" >
     <helptext>
       When {{W|enabled}}, tinker traders will utilise the more complex trader recharge process implemented by this mod.
 
@@ -179,8 +230,7 @@
         DisplayText="Enable ModGigantic being a known recipe for all gigantic creatures."
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
-        Default="Yes"
-    >
+        Default="Yes" >
     <helptext>
       When {{W|enabled}}, ModGigantic will always be a &quot;{{Y|Known Recipe}}&quot; for gigantic creatures that are also capable of tinkering.
       

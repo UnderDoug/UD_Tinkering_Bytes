@@ -4,7 +4,7 @@
     <tag Name="Able To Tinker" Value="Items/sw_unfurled_scroll1.bmp" />
     <tag Name="Tinker Recipes" Value="Items/sw_unfurled_scroll1.bmp" />
     <tag Name="Bytes" Value="4_byte_cleo_inverted.png" />
-    <tag Name="Available Bits" Value="Items/sw_revolver.bmp" />
+    <tag Name="Available Bits" Value="Items/sw_multi_cabinet_1.bmp" />
     
     <!-- fixes for other mods I've seen misspell categories -->
     <tag Name="Missile Weapon" Value="Items/sw_revolver.bmp" />

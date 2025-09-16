@@ -7,8 +7,9 @@
 
   <object Name="UD_BitLocker_Display" Inherits="UD_TradeUI_DisplayItem">
     <part Name="Physics" Category="Available Bits" />
-    <part Name="Render" DisplayName="bit locker" TileColor="&amp;c" DetailColor="W" Tile="Items/sw_multi_cabinet_1.bmp" />
-    <part Name="Description" Short="*vendor's* bit locker contains:*bitlocker*" />
+    <part Name="Render" DisplayName="{{UD_bitlocker|bit locker}}" TileColor="&amp;c" DetailColor="W" Tile="Items/sw_multi_cabinet_1.bmp" />
+    <part Name="Description" Short="An assortment of half-had ideas lay prostrate in piles of have-been and could-yet-be..." />
+    <part Name="UD_BitLocker_Display" />
     <property Name="NeverStack" Value="No stacks for me please." />
   </object>
 

@@ -252,7 +252,15 @@ namespace XRL.World.Parts
             {
                 if (Data?.Type == "Mod")
                 {
-                    E.AddAction("Mod From Recipe", "mod an item with tinkering", UD_VendorTinkering.COMMAND_MOD, "tinkering", Key: 'T', Priority: -4, DramsCost: 100, ClearAndSetUpTradeUI: true);
+                    E.AddAction(
+                        Name: "Mod Recipe",
+                        Display: "mod an item with tinkering",
+                        Command: UD_VendorTinkering.COMMAND_MOD,
+                        PreferToHighlight: "tinkering",
+                        Key: 'T',
+                        Priority: -4,
+                        DramsCost: 100,
+                        ClearAndSetUpTradeUI: true);
                 }
                 else
                 if (Data?.Type == "Build" 
@@ -261,13 +269,13 @@ namespace XRL.World.Parts
                     if (sampleObject.Understood() || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
                     {
                         E.AddAction(
-                            Name: "Build From Recipe", 
-                            Display: "tinker item", 
-                            Command: UD_VendorTinkering.COMMAND_BUILD, 
-                            PreferToHighlight: "tinker", 
-                            Key: 'T', 
-                            Priority: -4, 
-                            DramsCost: 100, 
+                            Name: "Build Recipe",
+                            Display: "tinker item",
+                            Command: UD_VendorTinkering.COMMAND_BUILD,
+                            PreferToHighlight: "tinker",
+                            Key: 'T',
+                            Priority: -4,
+                            DramsCost: 100,
                             ClearAndSetUpTradeUI: true);
                     }
                     if (!sampleObject.Understood() && GetIdentifyLevel(E.Vendor) > 0)
