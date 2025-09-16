@@ -5,9 +5,16 @@
     <part Name="UD_Byte_DataDisk" />
   </object>
 
+  <object Name="UD_BitLocker_Display" Inherits="UD_TradeUI_DisplayItem">
+    <part Name="Physics" Category="Available Bits" />
+    <part Name="Render" DisplayName="bit locker" TileColor="&amp;c" DetailColor="W" Tile="Items/sw_multi_cabinet_1.bmp" />
+    <part Name="Description" Short="*vendor's* bit locker contains:*bitlocker*" />
+    <property Name="NeverStack" Value="No stacks for me please." />
+  </object>
+
   <object Name="UD_VendorKnownRecipe" Inherits="UD_TradeUI_DisplayItem">
     <part Name="Physics" Category="Tinker Recipes" />
-    <part Name="Render" DisplayName="tinker recipe" DetailColor="Y" TileColor="&amp;y" Tile="items/sw_data_disc.bmp" />
+    <part Name="Render" DisplayName="tinker recipe" TileColor="&amp;y" DetailColor="Y" Tile="items/sw_data_disc.bmp" />
     <part Name="Description" Short="&quot;Things&quot; are as leaves on a summer breeze; knowledge lives on in the very being of all who think." />
     <builder Name="RandomTile" Tiles="Items/sw_unfurled_scroll1.bmp,Items/sw_unfurled_scroll2.bmp" />
     <property Name="NeverStack" Value="No stacks for me please." />

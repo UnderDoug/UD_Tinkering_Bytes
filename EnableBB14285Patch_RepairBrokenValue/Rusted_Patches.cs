@@ -27,7 +27,7 @@ namespace UD_Tinkering_Bytes.Harmony
         [HarmonyTranspiler]
         public static IEnumerable<CodeInstruction> HandleEvent_AdjustValueEvent_SkipIfRepair_Transpile(IEnumerable<CodeInstruction> Instructions, ILGenerator Generator)
         {
-            bool doVomit = true;
+            bool doVomit = false;
             string patchMethodName = $"{nameof(Rusted_Patches)}.{nameof(Rusted.HandleEvent)}({nameof(AdjustValueEvent)})";
             int metricsCheckSteps = 0;
 

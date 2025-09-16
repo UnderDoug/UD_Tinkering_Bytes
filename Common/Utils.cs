@@ -9,6 +9,8 @@ namespace UD_Tinkering_Bytes
     {
         public static ModInfo ThisMod => ModManager.GetMod("UD_Tinkering_Bytes");
 
+        public static int BitLockerDisplay = 3;
+
         public static string GetScrapBlueprintFromBit(char Bit)
         {
             return Bit switch

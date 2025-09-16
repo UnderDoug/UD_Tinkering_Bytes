@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UD_Modding_Toolbox;
 using XRL.World;
+using XRL.World.Parts;
 using XRL.World.Tinkering;
 
 namespace UD_Tinkering_Bytes
@@ -57,6 +58,170 @@ namespace UD_Tinkering_Bytes
         {
             bool multipleItems = Object.IsPlural || Object.Count > 1;
             return multipleItems ? "them" : Object.them;
+        }
+
+        public static string GetBitsDisplayString(this BitLocker BitLocker)
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bits = "";
+
+            // A(23)B(36)C(25)D(37)1(6)2(24)3(22)4(18)5(12)6(24)788 (this is base game BitType.GetDisplayString(bits))
+
+            foreach ((char bit, int count) in BitLocker.BitStorage)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    bits += bit;
+                }
+            }
+            return BitType.GetDisplayString(bits);
+        }
+
+        public static string GetSpacedXDisplayString(this BitLocker BitLocker, string CountColor = "C")
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bits = "";
+
+            // Ax23 Bx36 Cx25 Dx37 1x6 2x24 3x22 4x18 5x12 6x24 7x1 8x2
+
+            foreach ((char bit, int count) in BitLocker.BitStorage)
+            {
+                if (count == 0)
+                {
+                    continue;
+                }
+                if (!bits.IsNullOrEmpty())
+                {
+                    bits += " ";
+                }
+                bits += BitType.TranslateBit(bit).Color($"{bit}");
+                string countString = count.ToString();
+                if (!CountColor.IsNullOrEmpty())
+                {
+                    countString = countString.Color(CountColor);
+                }
+                bits += $"x{countString}";
+            }
+            return bits;
+        }
+
+        public static string GetBitPPDisplayString(this BitLocker BitLocker, string PlusColor = "y")
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bits = "";
+
+            // A++ B++ C++ D++ 1+ 2++ 3++ 4++ 5++ 6++ 7 8
+
+            foreach ((char bit, int count) in BitLocker.BitStorage)
+            {
+                if (count == 0)
+                {
+                    continue;
+                }
+                if (!bits.IsNullOrEmpty())
+                {
+                    bits += " ";
+                }
+                bits += BitType.TranslateBit(bit).Color($"{bit}");
+
+                string pluses = "";
+                if (count > 4)
+                {
+                    pluses += "+";
+                }
+                if (count > 8)
+                {
+                    pluses += "+";
+                }
+                if (!pluses.IsNullOrEmpty())
+                {
+                    if (!PlusColor.IsNullOrEmpty())
+                    {
+                        pluses = pluses.Color(PlusColor);
+                    }
+                    bits += pluses;
+                }
+            }
+            return bits;
+        }
+
+        public static string GetDullMissingDisplayString(this BitLocker BitLocker, string DullColor = "k")
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bits = "";
+
+            // <ABCD12345678> (these are colored or not based of having any or not)
+
+            foreach (BitType bit in BitType.BitTypes)
+            {
+                char c = bit.Color;
+                Dictionary<char,int> bitStorage = BitLocker.BitStorage;
+                string bitColor = !bitStorage.ContainsKey(c) || bitStorage[c] == 0 ? DullColor : $"{c}";
+                bits += BitType.TranslateBit(c).Color(bitColor);
+            }
+            return bits;
+        }
+
+        public static string GetReplaceDullMissingDisplayString(this BitLocker BitLocker, string Replacement = "\u2022", string DullColor = "k")
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bits = "";
+
+            // <AB•D12•45•78> (these are colored or not based of having any or not)
+
+            foreach (BitType bit in BitType.BitTypes)
+            {
+                char c = bit.Color;
+                Dictionary<char,int> bitStorage = BitLocker.BitStorage;
+                bool missingBit = !bitStorage.ContainsKey(c) || bitStorage[c] == 0;
+                string bitColor = missingBit ? DullColor : $"{c}";
+                string bitString = missingBit ? Replacement : BitType.TranslateBit(c);
+                bits += bitString.Color(bitColor);
+            }
+            return bits;
+        }
+
+        public static string GetBitDigitDisplayString(this BitLocker BitLocker)
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bits = "";
+
+            // AA BB CC DD 1 22 33 44 55 66 7 8 (replaces the digits in the count with the appropriate bit)
+
+            foreach ((char bit, int count) in BitLocker.BitStorage)
+            {
+                if (count == 0)
+                {
+                    continue;
+                }
+                if (!bits.IsNullOrEmpty())
+                {
+                    bits += " ";
+                }
+                for (int i = 0; i < count.ToString().Length; i++)
+                {
+                    bits += BitType.TranslateBit(bit).Color($"{bit}");
+                }
+            }
+            return bits;
         }
     }
 }

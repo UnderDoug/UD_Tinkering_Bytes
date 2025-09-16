@@ -96,10 +96,11 @@
   
   <option
         ID="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRepair"
-        DisplayText="Override the base game's implementation of trader repairing with the one offered by this mod."
+        DisplayText="Override the base game's implementation of trader repairing with the one offered by this mod. ({{r|restart}})"
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="Yes"
+        Restart="true"
     >
     <helptext>
       When {{W|enabled}}, tinker traders will utilise the more complex trader repair process implemented by this mod.
@@ -117,7 +118,7 @@
   <option
         ID="Option_UD_Tinkering_Bytes_DisableBB14284Patch_RepairInvertedPerformance"
 		    Requires="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRepair==No"
-        DisplayText="Disable this mod's patch to address {{B|BitBucket}} {{C|issue #14284}}: inverted trade performance scaling."
+        DisplayText="Disable this mod's patch to address {{B|BitBucket}} {{C|issue #14284}}: inverted trade performance scaling. ({{r|restart}})"
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="No"
@@ -135,7 +136,7 @@
   <option
         ID="Option_UD_Tinkering_Bytes_DisableBB14285Patch_RepairBrokenValue"
 		    Requires="Option_UD_Tinkering_Bytes_EnableOverrideTinkerRepair==No"
-        DisplayText="Disable this mod's patch to address {{B|BitBucket}} {{C|issue #14285}}: Broken/Rusted/Cracked reducing repair cost."
+        DisplayText="Disable this mod's patch to address {{B|BitBucket}} {{C|issue #14285}}: Broken/Rusted/Cracked reducing repair cost. ({{r|restart}})"
         Category="Mod: UD Tinkering Bytes"
         Type="Checkbox"
         Default="No"

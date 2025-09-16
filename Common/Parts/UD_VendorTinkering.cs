@@ -28,7 +28,10 @@ namespace XRL.World.Parts
 {
     [HasWishCommand]
     [Serializable]
-    public class UD_VendorTinkering : IScribedPart, I_UD_VendorActionEventHandler
+    public class UD_VendorTinkering 
+        : IScribedPart
+        , I_UD_VendorActionEventHandler
+        , IModEventHandler<UD_EndTradeEvent>
     {
         private static bool doDebug = true;
 
@@ -38,7 +41,10 @@ namespace XRL.World.Parts
         public const string COMMAND_IDENTIFY_SCALING = "CmdVendorExamineScaling";
         public const string COMMAND_RECHARGE_SCALING = "CmdVendorRechargeScaling";
         public const string COMMAND_REPAIR_SCALING = "CmdVendorRepairScaling";
+
         public const string HELD_FOR_PLAYER = "HeldForPlayer";
+
+        public const string BITLOCK_DISPLAY = "UD_BitLocker_Display";
 
         public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
 
@@ -573,6 +579,75 @@ namespace XRL.World.Parts
         public static bool PlayerCanReadDataDisk(GameObject DataDisk)
         {
             return DataDisk.Understood() && The.Player != null && (The.Player.HasSkill("Tinkering") || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech));
+        }
+
+        public static GameObject GetBitLockerDisplayItem(BitLocker BitLocker, int DisplayNameStyle = 0)
+        {
+            if (BitLocker == null
+                || BitLocker.ParentObject is not GameObject vendor
+                || GameObject.Create(BITLOCK_DISPLAY) is not GameObject bitLockerDisplayItem
+                || !bitLockerDisplayItem.TryGetPart(out Description description)
+                || !bitLockerDisplayItem.TryGetPart(out Render render))
+            {
+                return null;
+            }
+
+            // style 0: bit locker
+            // style 1: bit locker <A(23)B(36)C(25)D(37)1(6)2(24)3(22)4(18)5(12)6(24)788> (this is base game BitType.GetDisplayString(bits))
+            // style 2: bit locker - Ax23 Bx36 Cx25 Dx37 1x6 2x24 3x22 4x18 5x12 6x24 7x1 8x2
+            // style 3: bit locker - A++ B++ C++ D++ 1+ 2++ 3++ 4++ 5++ 6++ 7 8
+            // style 4: bit locker <ABCD12345678> (these are colored or not based of having any or not)
+            // style 5: bit locker <AB•D12•45•78> (these are also colored or not based of having any or not)
+            // style 6: bit locker - AA BB CC DD 1 22 33 44 55 66 7 8 (replaces the digits in the count with the appropriate bit)
+
+            string bits = DisplayNameStyle switch
+            {
+                1 => BitLocker.GetBitsDisplayString(),
+                2 => BitLocker.GetSpacedXDisplayString(),
+                3 => BitLocker.GetBitPPDisplayString(),
+                4 => BitLocker.GetDullMissingDisplayString(),
+                5 => BitLocker.GetReplaceDullMissingDisplayString(),
+                6 => BitLocker.GetBitDigitDisplayString(),
+                _ => "",
+            };
+            if (bits.IsNullOrEmpty())
+            {
+                bits = "empty".Color("K");
+            }
+            string bitLockerContents = DisplayNameStyle > 0 ? $" - {bits.Color("y")}" : "";
+            if (DisplayNameStyle == 1
+                || DisplayNameStyle == 4
+                || DisplayNameStyle == 5)
+            {
+                bitLockerContents = $" <{bits.Color("y")}>";
+            }
+            render.DisplayName += bitLockerContents;
+
+            render.DisplayName = $"{DisplayNameStyle.Color("K")} {render.DisplayName}";
+
+            description._Short = description._Short
+                .Replace("*vendor's*", GameText.VariableReplace("=subject.T's=", vendor))
+                .Replace("*bitlocker*", $"\n\n{BitLocker.GetBitsString()}");
+            return bitLockerDisplayItem;
+        }
+        public GameObject GetBitLockerDisplayItem(int DisplayNameStyle = 0)
+        {
+            return GetBitLockerDisplayItem(ParentObject.GetPart<BitLocker>(), DisplayNameStyle);
+        }
+
+        public static void ClearBitLockerDisplayItem(GameObject Vendor)
+        {
+            foreach (GameObject item in Vendor.GetInventoryAndEquipment())
+            {
+                if (item.Blueprint == BITLOCK_DISPLAY)
+                {
+                    item.Obliterate();
+                }
+            }
+        }
+        public void ClearBitLockerDisplayItem()
+        {
+            ClearBitLockerDisplayItem(ParentObject);
         }
 
         public static GameObject GetKnownRecipeDisplayItem(TinkerData KnownRecipe, IEnumerable<TinkerData> InstalledRecipes = null)
@@ -1275,6 +1350,8 @@ namespace XRL.World.Parts
                 || ID == GetShortDescriptionEvent.ID
                 || (WantVendorActions && ID == StockedEvent.ID)
                 || (WantVendorActions && ID == StartTradeEvent.ID)
+                || (WantVendorActions && ID == UD_AfterVendorActionEvent.ID)
+                || (WantVendorActions && ID == UD_EndTradeEvent.ID)
                 || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
                 || (WantVendorActions && ID == UD_VendorActionEvent.ID);
         }
@@ -1497,6 +1574,36 @@ namespace XRL.World.Parts
             if (E.Trader == ParentObject && WantVendorActions)
             {
                 GenerateKnownRecipeDisplayItems();
+                for (int i = 0; i < 7; i++)
+                {
+                    if (GetBitLockerDisplayItem(i) is GameObject bitLockerDisplayItem)
+                    {
+                        ParentObject.ReceiveObject(bitLockerDisplayItem);
+                    }
+                }
+            }
+            return base.HandleEvent(E);
+        }
+        public virtual bool HandleEvent(UD_AfterVendorActionEvent E)
+        {
+            if (E.Vendor == ParentObject)
+            {
+                ClearBitLockerDisplayItem();
+                for (int i = 0; i < 7; i++)
+                {
+                    if (GetBitLockerDisplayItem(i) is GameObject bitLockerDisplayItem)
+                    {
+                        ParentObject.ReceiveObject(bitLockerDisplayItem);
+                    }
+                }
+            }
+            return base.HandleEvent(E);
+        }
+        public virtual bool HandleEvent(UD_EndTradeEvent E)
+        {
+            if (E.Trader == ParentObject)
+            {
+                ClearBitLockerDisplayItem();
             }
             return base.HandleEvent(E);
         }

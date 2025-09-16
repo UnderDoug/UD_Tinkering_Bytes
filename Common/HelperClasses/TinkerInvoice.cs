@@ -212,9 +212,14 @@ namespace UD_Tinkering_Bytes
             {
                 double minCost = 2;
                 double examineCost = GetExamineCost(Item, Performance);
-                if (Service == REPAIR || Service == RECHARGE)
+                if (Service == RECHARGE)
                 {
                     examineCost *= 0.3;
+                }
+                else
+                if (Service == REPAIR)
+                {
+                    examineCost *= 0.5;
                 }
                 LabourValue = Math.Round(Math.Max(minCost, examineCost), 2);
             }
