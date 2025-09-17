@@ -1551,6 +1551,7 @@ namespace XRL.World.Parts
         {
             if (E.Trader == ParentObject && WantVendorActions)
             {
+                GenerateKnownRecipeDisplayItems();
                 ReceiveBitLockerDisplayItem();
             }
             return base.HandleEvent(E);

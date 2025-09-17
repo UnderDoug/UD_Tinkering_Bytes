@@ -463,7 +463,7 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    SB.Append($"Provided by {player?.GetReferenceDisplayName(Short: true)}");
+                    SB.Append($"Provided by {player?.t(Short: true)}");
                 }
                 SB.AppendLine();
                 foreach (string ingredient in GetIngredientList())

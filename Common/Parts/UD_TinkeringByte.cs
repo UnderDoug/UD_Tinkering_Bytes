@@ -91,6 +91,7 @@ namespace XRL.World.Parts
             {
                 TinkerItem tinkerItem = E.Object.GetPart<TinkerItem>();
                 string bits = "bit";
+                bool haveBits = false;
                 if (tinkerItem != null)
                 {
                     char bit = tinkerItem.Bits[0];
@@ -98,9 +99,10 @@ namespace XRL.World.Parts
                     {
                         BitType bitType = BitType.BitMap[bit];
                         bits = bitType.Description;
+                        haveBits = true;
                     }
                 }
-                description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, bits));
+                description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, haveBits ? bits : null));
             }
             return base.HandleEvent(E);
         }

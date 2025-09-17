@@ -211,6 +211,7 @@ namespace XRL.World.Parts
                 Render render = E.Object.GetPart<Render>();
                 string bytes = "byte";
                 string bits = "bit";
+                bool haveBits = false;
                 if (render != null)
                 {
                     if (Bytes.Length > 1)
@@ -225,19 +226,17 @@ namespace XRL.World.Parts
                             bytes = byteBlueprint.DisplayName();
                         }
                     }
-                    if (render.TileColor.IsNullOrEmpty() && render.TileColor.Length > 1)
-                    {
-                        if (BitType.BitMap.ContainsKey(render.TileColor[1]))
-                        {
-                            BitType bitType = BitType.BitMap[render.TileColor[1]];
-                            bits = bitType.Description;
-                        }
-                    }
                     render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
+                }
+                if (!Bytes.IsNullOrEmpty() && Bytes.Length == 1)
+                {
+                    BitType bitType = BitType.BitMap[BitType.ReverseCharTranslateBit(Bytes[0])];
+                    bits = bitType.Description;
+                    haveBits = true;
                 }
                 description._Short = description._Short
                     .Replace("*32 bytes*", BytesPerPunnet.Things(bytes))
-                    .Replace("*256 bits*", BitsPerPunnet.Things(bits, bits));
+                    .Replace("*256 bits*", BitsPerPunnet.Things(bits, haveBits ? bits : null));
             }
             return base.HandleEvent(E);
         }
@@ -304,7 +303,7 @@ namespace XRL.World.Parts
                     }
                     string thisPunnet = E.Command == COMMAND_UNPACK ? ParentObject.DisplayName : amountToUnpack.Things(ParentObject.DisplayName);
                     string receivedString = Grammar.MakeAndList(receivedBytesList);
-                    E.Actor.ShowSuccess($"{E.Actor.GetVerb("unpack")} {E.Actor.Poss(thisPunnet)} into {receivedString}");
+                    E.Actor.ShowSuccess($"{E.Actor.T()}{E.Actor.GetVerb("unpack")} {E.Actor.poss(thisPunnet)} into {receivedString}");
                     E.RequestInterfaceExit();
                     return true;
                 }
