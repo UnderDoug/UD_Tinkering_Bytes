@@ -1,18 +1,17 @@
-﻿using System;
-using System.Text;
+﻿using Qud.API;
+using Qud.UI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Text;
+using UD_Modding_Toolbox;
+using UD_Tinkering_Bytes;
 using XRL.Language;
 using XRL.Messages;
 using XRL.Rules;
 using XRL.UI;
 using XRL.World.Capabilities;
 using XRL.World.Tinkering;
-
-using UD_Tinkering_Bytes;
-
-using UD_Modding_Toolbox;
 
 namespace XRL.World.Parts
 {
@@ -202,7 +201,17 @@ namespace XRL.World.Parts
             return base.WantEvent(ID, Cascade)
                 || ID == AfterObjectCreatedEvent.ID
                 || ID == GetInventoryActionsEvent.ID
-                || ID == InventoryActionEvent.ID;
+                || ID == InventoryActionEvent.ID
+                || ID == GetDisplayNameEvent.ID;
+        }
+        public override bool HandleEvent(GetDisplayNameEvent E)
+        {
+            The.Player?.EmitMessage(E.Context ?? Const.NULL);
+            if (E.Context == nameof(EquipmentAPI.ShowInventoryActionMenu))
+            {
+                E.AddAdjective(nameof(EquipmentAPI.ShowInventoryActionMenu));
+            }
+            return base.HandleEvent(E);
         }
         public override bool HandleEvent(AfterObjectCreatedEvent E)
         {

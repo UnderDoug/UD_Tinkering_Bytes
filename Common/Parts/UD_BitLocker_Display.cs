@@ -18,6 +18,7 @@ using static UD_Modding_Toolbox.Const;
 
 using UD_Tinkering_Bytes;
 using static UD_Tinkering_Bytes.Options;
+using Qud.UI;
 
 namespace XRL.World.Parts
 {
@@ -72,13 +73,9 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
-            bool notCurrentlyLooking = true // Come back to this. Consider a tag in the item BP to adjust what pops up for vendor action picking
-                || UD_VendorAction.CurrentAction?.Name is not string currentVendorAction
-                || !currentVendorAction.Contains("Look");
-
-            if (notCurrentlyLooking
-                && ParentObject.InInventory is GameObject vendor
-                && vendor.TryGetPart(out BitLocker bitLocker))
+            if (ParentObject.InInventory is GameObject vendor
+                && vendor.TryGetPart(out BitLocker bitLocker)
+                && E.Context == nameof(TradeLine))
             {
                 // style 0: bit locker
                 // style 1: bit locker <A(23)B(36)C(119)1(6)2(24)4(18)5(12)788> (this is base game BitType.GetDisplayString(bits))

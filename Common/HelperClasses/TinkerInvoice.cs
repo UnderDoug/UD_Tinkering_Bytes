@@ -115,16 +115,21 @@ namespace UD_Tinkering_Bytes
         {
             if (ItemName.IsNullOrEmpty() && Item != null)
             {
-                ItemName = Item.GetDisplayName(Single: true, Short: true)?.Color("y");
+                ItemName = Item.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
                 if (Service == BUILD && NumberMade != 1)
                 {
                     ItemName = Grammar.Pluralize(ItemName);
                 }
                 else
-                if (Service == MOD || Service == REPAIR)
+                if (Service == MOD)
                 {
                     ItemName = Item.t(Single:true, Short:true);
                 }
+                if (Service == REPAIR)
+                {
+                    ItemName = Item.t(Short:true);
+                }
+                ItemName = ItemName.Color("y");
             }
             return ItemName;
         }
@@ -411,14 +416,14 @@ namespace UD_Tinkering_Bytes
                 SB.Append(" to ").Append(GetItemName()).AppendLine();
             }
             else
+            if (Service == REPAIR)
+            {
+                SB.Append("Description: Repair ").Append(GetItemName()).AppendLine();
+            }
+            else
             if (Service == RECHARGE)
             {
                 SB.Append("Description: Recharge ").Append(GetItemName()).AppendLine();
-            }
-            else
-            if (Service == REPAIR)
-            {
-                SB.Append("Description: Repair ").Append($"{Item?.Count}x ").Append(GetItemName()).AppendLine();
             }
             SB.Append(DividerLine().Color("K")).AppendLine();
 
@@ -706,7 +711,7 @@ namespace UD_Tinkering_Bytes
                 else
                 if (Service.ToLower() == MOD.ToLower())
                 {
-                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("Item");
+                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("Item");
                     if (blueprintList.IsNullOrEmpty())
                     {
                         Popup.Show($"There are some how no blueprints that inherit from \"Item\"");
@@ -781,7 +786,7 @@ namespace UD_Tinkering_Bytes
                 else
                 if (Service.ToLower() == REPAIR.ToLower())
                 {
-                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("Item");
+                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("Item");
                     if (blueprintList.IsNullOrEmpty())
                     {
                         Popup.Show($"There are some how no blueprints that inherit from \"Item\"");
@@ -859,7 +864,7 @@ namespace UD_Tinkering_Bytes
                         return;
                     }
 
-                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.GetBlueprintsInheritingFrom("Item");
+                    List<GameObjectBlueprint> blueprintList = GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("Item");
                     if (blueprintList.IsNullOrEmpty())
                     {
                         Popup.Show($"There are some how no blueprints that inherit from \"Item\"");

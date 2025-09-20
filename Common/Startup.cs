@@ -9,21 +9,45 @@ using XRL.World.Parts;
 using XRL.World.Tinkering;
 
 using UD_Modding_Toolbox;
+using UD_Vendor_Actions;
+using XRL.World.Parts.Skill;
 
 namespace UD_Tinkering_Bytes
 {
+    public static class Startup
+    {
+        public static bool SaveStartedWithVendorActions => UD_Vendor_Actions.Startup.SaveStartedWithVendorActions;
+        public static bool SaveStartedWithTinkeringBytes => (bool)The.Game?.GetBooleanGameState(nameof(UD_Tinkering_Bytes_GameBasedInitialiser));
+    }
+
     [PlayerMutator]
     public class LearnAllTheBytes : IPlayerMutator
     {
         public void mutate(GameObject player)
         {
-            
             WorldCreationProgress.StepProgress("Converting bits to bytes...");
 
             Debug.Header(3, $"{nameof(LearnAllTheBytes)}", $"{nameof(mutate)}(GameObject player: {player.DebugName})");
-            
-            Debug.Entry(3, $"Spinning up data disks...", Indent: 1);
 
+            AddByteBlueprints(player);
+
+            Debug.Footer(3, $"{nameof(LearnAllTheBytes)}", $"{nameof(mutate)}(GameObject player: {player.DebugName})");
+        }
+
+        public static void AddByteBlueprints(GameObject player)
+        {
+            if (player == null)
+            {
+                MetricsManager.LogModError(Utils.ThisMod, 
+                    $"{nameof(LearnAllTheBytes)}.{nameof(AddByteBlueprints)}:" +
+                    $" supplied {nameof(player)} was null");
+                return;
+            }
+            if ((bool)The.Game?.GetBooleanGameState(nameof(LearnAllTheBytes)))
+            {
+                return;
+            }
+            Debug.Entry(3, $"Spinning up data disks...", Indent: 1);
             List<string> byteBlueprints = new();
             List<GameObjectBlueprint> byteGameObjectBlueprints = new(UD_TinkeringByte.GetByteGameObjectBlueprints());
             if (!byteGameObjectBlueprints.IsNullOrEmpty())
@@ -34,7 +58,7 @@ namespace UD_Tinkering_Bytes
                     TinkerData.LearnBlueprint(byteBlueprint.Name);
                 }
             }
-            Debug.Footer(3, $"{nameof(LearnAllTheBytes)}", $"{nameof(mutate)}(GameObject player: {player.DebugName})");
+            The.Game?.SetBooleanGameState(nameof(LearnAllTheBytes), true);
         }
     }
 
@@ -78,6 +102,14 @@ namespace UD_Tinkering_Bytes
         public static void OnLoadGameCallback()
         {
             // Gets called every time the game is loaded but not during generation
+            if (!Startup.SaveStartedWithVendorActions || !Startup.SaveStartedWithTinkeringBytes)
+            {
+                The.Player?.RequireSkill<UD_Basics>();
+                if ((bool)!The.Game?.GetBooleanGameState(nameof(LearnAllTheBytes)))
+                {
+                    LearnAllTheBytes.AddByteBlueprints(The.Player);
+                }
+            }
         }
     }
 }

@@ -1,6 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <objects>
 
+  <!--object Name="Inheritance Issue Test" Inherits="Blueprint That Doesnt Exist">
+    <tag Name="IsTest" Value="Is" />
+  </object-->
+
   <object Name="DataDisk" Load="Merge">
     <part Name="UD_Byte_DataDisk" />
   </object>

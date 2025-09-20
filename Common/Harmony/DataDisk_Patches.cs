@@ -86,10 +86,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchStartForward(match_Return_BaseHandleEvent_E).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_Return_BaseHandleEvent_E)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_Return_BaseHandleEvent_E)}");
                 foreach (CodeMatch match in match_Return_BaseHandleEvent_E)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}:     {match.opcode} {match.operand}");
+                    MetricsManager.LogModError(ThisMod, $"{patchMethodName}:     {match.opcode} {match.operand}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -108,7 +108,7 @@ namespace UD_Tinkering_Bytes.Harmony
             if (AccessTools.FirstMethod(typeof(DataDisk), mi => IsMethodGetRequiredSkillHumanReadable(mi))
                 is not MethodInfo dataDisk_GetRequiredSkillHumanReadable_Instance)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(AccessTools.GetDeclaredMethods)} failed to find method {nameof(DataDisk)}.{nameof(DataDisk.GetRequiredSkillHumanReadable)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(AccessTools.GetDeclaredMethods)} failed to find method {nameof(DataDisk)}.{nameof(DataDisk.GetRequiredSkillHumanReadable)}");
                 return Instructions;
             }
             metricsCheckSteps++;
@@ -142,10 +142,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchStartForward(match_RequiresSkill_PostfixAppend).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_RequiresSkill_PostfixAppend)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_RequiresSkill_PostfixAppend)}");
                 foreach (CodeMatch match in match_RequiresSkill_PostfixAppend)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}:     {match.opcode} {match.operand}");
+                    MetricsManager.LogModError(ThisMod, $"{patchMethodName}:     {match.opcode} {match.operand}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -180,10 +180,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from start
             if (codeMatcher.Start().MatchEndForward(match_If_GameObjectNull).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_If_GameObjectNull)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_If_GameObjectNull)}");
                 foreach (CodeMatch match in match_If_GameObjectNull)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}:     {match.opcode} {match.operand}");
+                    MetricsManager.LogModError(ThisMod, $"{patchMethodName}:     {match.opcode} {match.operand}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -206,7 +206,7 @@ namespace UD_Tinkering_Bytes.Harmony
             }
             if (gameObject_Understood is null)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(MethodInfo)} {nameof(gameObject_Understood)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(MethodInfo)} {nameof(gameObject_Understood)}");
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
             }
@@ -295,10 +295,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchStartForward(match_GameObject_Obliterate).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_GameObject_Obliterate)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_GameObject_Obliterate)}");
                 foreach (CodeMatch match in match_GameObject_Obliterate)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -360,10 +360,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchEndForward(match_AddsItemMod_PostfixAppend).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_AddsItemMod_PostfixAppend)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_AddsItemMod_PostfixAppend)}");
                 foreach (CodeMatch match in match_AddsItemMod_PostfixAppend)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -376,10 +376,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchEndForward(match_If_DataNull).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_If_DataNull)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_If_DataNull)}");
                 foreach (CodeMatch match in match_If_DataNull)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -398,10 +398,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchEndForward(match_If_DescriptionNull).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_If_DescriptionNull)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchStartForward)} failed to find instructions {nameof(match_If_DescriptionNull)}");
                 foreach (CodeMatch match in match_If_DescriptionNull)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -409,7 +409,7 @@ namespace UD_Tinkering_Bytes.Harmony
             metricsCheckSteps++;
             codeMatcher.Instruction.operand = label_RequiresSkill_PostFixAppend_BeforeObliterate;
 
-            MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
+            MetricsManager.LogModInfo(ThisMod, $"Successfully transpiled {patchMethodName}");
             return codeMatcher.Vomit(Generator, doVomit).InstructionEnumeration();
         }
 
@@ -477,10 +477,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the end
             if (codeMatcher.End().MatchStartBackwards(match_If_KnownUnderstoodSkilledScanning).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find instructions {nameof(match_If_KnownUnderstoodSkilledScanning)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find instructions {nameof(match_If_KnownUnderstoodSkilledScanning)}");
                 foreach (CodeMatch match in match_If_KnownUnderstoodSkilledScanning)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -493,10 +493,10 @@ namespace UD_Tinkering_Bytes.Harmony
             // from the start
             if (codeMatcher.Start().MatchStartForward(match_If_Understood).IsInvalid)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find instructions {nameof(match_If_Understood)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find instructions {nameof(match_If_Understood)}");
                 foreach (CodeMatch match in match_If_Understood)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -506,10 +506,10 @@ namespace UD_Tinkering_Bytes.Harmony
             codeMatcher.Advance(-1);
             if (codeMatcher.Instruction.operand is not Label label_If_KnownUnderstoodSkilledScanning_True)
             {
-                MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(Label)} {nameof(label_If_KnownUnderstoodSkilledScanning_True)}");
+                MetricsManager.LogModError(ThisMod, $"{patchMethodName}: ({metricsCheckSteps}) {nameof(CodeMatcher.MatchEndBackwards)} failed to find {nameof(Label)} {nameof(label_If_KnownUnderstoodSkilledScanning_True)}");
                 foreach (CodeMatch match in match_If_Understood)
                 {
-                    MetricsManager.LogModError(ModManager.GetMod("UD_Tinkering_Bytes"), $"    {match.name} {match.opcode}");
+                    MetricsManager.LogModError(ThisMod, $"    {match.name} {match.opcode}");
                 }
                 codeMatcher.Vomit(Generator, doVomit);
                 return Instructions;
@@ -531,7 +531,7 @@ namespace UD_Tinkering_Bytes.Harmony
                     }
                 );
                 
-            MetricsManager.LogModInfo(ModManager.GetMod("UD_Tinkering_Bytes"), $"Successfully transpiled {patchMethodName}");
+            MetricsManager.LogModInfo(ThisMod, $"Successfully transpiled {patchMethodName}");
             return codeMatcher.Vomit(Generator, doVomit).InstructionEnumeration();
         }
     }

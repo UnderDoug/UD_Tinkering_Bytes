@@ -26,6 +26,7 @@ using UD_Tinkering_Bytes;
 
 namespace XRL.World.Parts
 {
+    [AlwaysHandlesVendor_UD_VendorActions]
     [HasWishCommand]
     [Serializable]
     public class UD_VendorTinkering 
@@ -34,6 +35,8 @@ namespace XRL.World.Parts
         , IModEventHandler<UD_EndTradeEvent>
     {
         private static bool doDebug = true;
+
+        private static bool SaveStartedWithVendorActions => UD_Vendor_Actions.Startup.SaveStartedWithVendorActions;
 
         public const string COMMAND_BUILD = "CmdVendorBuild";
         public const string COMMAND_MOD = "CmdVendorMod";
@@ -46,7 +49,7 @@ namespace XRL.World.Parts
 
         public const string BITLOCK_DISPLAY = "UD_BitLocker_Display";
 
-        public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Skill.Tinkering)) && !ParentObject.IsPlayer();
+        public bool WantVendorActions => (bool)ParentObject?.HasSkill(nameof(Skill.Tinkering)) && (bool)!ParentObject?.IsPlayer();
 
         private List<TinkerData> _KnownRecipes;
         public List<TinkerData> KnownRecipes
@@ -75,6 +78,23 @@ namespace XRL.World.Parts
             ScribesKnownRecipesOnRestock = true;
             RestockScribeChance = 15;
             LearnRecipes();
+        }
+
+        public override void AddedAfterCreation()
+        {
+            base.AddedAfterCreation();
+            if (WantVendorActions && !SaveStartedWithVendorActions)
+            {
+                GiveRandomBits(ParentObject);
+
+                LearnByteRecipes(ParentObject, KnownRecipes);
+
+                LearnGiganticRecipe(ParentObject, KnownRecipes);
+
+                LearnSkillRecipes(ParentObject, KnownRecipes);
+
+                KnowImplantedRecipes(ParentObject, InstalledRecipes);
+            }
         }
 
         public List<TinkerData> LearnRecipes()
@@ -400,7 +420,7 @@ namespace XRL.World.Parts
             KnownRecipes ??= new();
             List<string> byteBlueprints = new();
             Debug.Entry(3, $"Spinning up byte data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
-            foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
+            foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("BaseByte"))
             {
                 Debug.LoopItem(3, $"{byteBlueprint.DisplayName().Strip()}", Indent: 1, Toggle: doDebug);
                 byteBlueprints.Add(byteBlueprint.Name);
@@ -874,8 +894,8 @@ namespace XRL.World.Parts
             if (!BitSupplierBitLocker.HasBits(BitCost))
             {
                 string message = GameText.VariableReplace(
-                    $"{RecipeBitSupplier.T()}{RecipeBitSupplier.GetVerb("do")} not have the required <{BitCost}> bits! " +
-                    $"{RecipeBitSupplier.It} =verb:have:afterpronoun=:\n\n " +
+                    $"{RecipeBitSupplier.T()}{RecipeBitSupplier.GetVerb("do")} not have the required <{BitCost}> bits!\n\n" +
+                    $"{RecipeBitSupplier.It} =verb:have:afterpronoun=:\n" +
                     $"{BitSupplierBitLocker.GetBitsString()}", RecipeBitSupplier);
                 Popup.ShowFail(Message: message);
                 return false;
@@ -1651,7 +1671,6 @@ namespace XRL.World.Parts
                             Override: true);
                     }
                     if (EnableOverrideTinkerRecharge
-                        && E.Item.InInventory != E.Vendor 
                         && E.Vendor.HasSkill(nameof(Tinkering_Tinker1))
                         && (itemUnderstood || vendorIdentifyLevel > E.Item.GetComplexity()) 
                         && E.Item.NeedsRecharge())
@@ -2178,8 +2197,8 @@ namespace XRL.World.Parts
                     if (!bitSupplierBitLocker.HasBits(bitCost))
                     {
                         string message = GameText.VariableReplace(
-                            $"{repairBitSupplier.T()}{repairBitSupplier.GetVerb("do")} not have the required <{bitCost}> bits! " +
-                            $"{repairBitSupplier.It} =verb:have:afterpronoun=:\n\n " +
+                            $"{repairBitSupplier.T()}{repairBitSupplier.GetVerb("do")} not have the required <{bitCost}> bits!\n\n" +
+                            $"{repairBitSupplier.It} =verb:have:afterpronoun=:\n" +
                             $"{bitSupplierBitLocker.GetBitsString()}", repairBitSupplier);
                         Popup.ShowFail(Message: message);
                         return false;

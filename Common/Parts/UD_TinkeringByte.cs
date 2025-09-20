@@ -5,6 +5,7 @@ using UD_Tinkering_Bytes;
 using UD_Modding_Toolbox;
 using XRL.World.Tinkering;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace XRL.World.Parts
 {
@@ -21,11 +22,7 @@ namespace XRL.World.Parts
 
         public static IEnumerable<GameObjectBlueprint> GetByteGameObjectBlueprints()
         {
-            foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseByte"))
-            {
-                yield return byteBlueprint;
-            }
-            yield break;
+            return GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("BaseByte").AsEnumerable();
         }
         public static IEnumerable<string> GetByteBlueprints()
         {

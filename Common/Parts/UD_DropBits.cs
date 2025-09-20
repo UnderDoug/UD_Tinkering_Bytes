@@ -148,7 +148,7 @@ namespace XRL.World.Parts
 
                 Dictionary<char, string> bytePunnetBlueprints = new();
                 Debug.Entry(4, $"Getting {nameof(bytePunnetBlueprints)}...", Indent: indent + 2, Toggle: doDebug);
-                foreach (GameObjectBlueprint bytePunnetBlueprint in GameObjectFactory.Factory.GetBlueprintsInheritingFrom("BaseBytePunnet"))
+                foreach (GameObjectBlueprint bytePunnetBlueprint in GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("BaseBytePunnet"))
                 {
                     try
                     {

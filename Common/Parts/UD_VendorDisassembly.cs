@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Text;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 using XRL.Language;
 using XRL.Messages;
@@ -21,6 +19,7 @@ using static UD_Tinkering_Bytes.Options;
 
 namespace XRL.World.Parts
 {
+    [AlwaysHandlesVendor_UD_VendorActions]
     [Serializable]
     public class UD_VendorDisassembly : IScribedPart, I_UD_VendorActionEventHandler
     {
@@ -29,7 +28,7 @@ namespace XRL.World.Parts
         public const string COMMAND_DISASSEMBLE = "CmdVendorDisassemble";
         public const string COMMAND_DISASSEMBLE_ALL = "CmdVendorDisassembleAll";
 
-        public bool WantVendorActions => ParentObject != null && ParentObject.HasSkill(nameof(Tinkering_Disassemble)) && !ParentObject.IsPlayer();
+        public bool WantVendorActions => (bool)ParentObject?.HasSkill(nameof(Tinkering_Disassemble)) && (bool)!ParentObject?.IsPlayer();
 
         public List<TinkerData> KnownRecipes => ParentObject?.GetPart<UD_VendorTinkering>()?.KnownRecipes;
 

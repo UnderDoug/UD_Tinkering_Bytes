@@ -5,7 +5,6 @@
   <object Name="PhysicalObject" Load="Merge">
     <part Name="UD_DropBits" />
     <part Name="UD_VendorTinkering" />
-    <part Name="UD_VendorDisassembly" />
     <tag Name="AnimatedSkills" Value="UD_Basics" />
     <property Name="AnimatedSkills" Value="UD_Basics" />
   </object>

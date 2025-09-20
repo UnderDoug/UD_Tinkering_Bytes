@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.Text;
 using XRL;
+using XRL.World;
+
+using UD_Modding_Toolbox;
+using UD_Vendor_Actions;
 
 namespace UD_Tinkering_Bytes
 {
     public static class Utils
     {
         public static ModInfo ThisMod => ModManager.GetMod("UD_Tinkering_Bytes");
-
-        public static int BitLockerDisplay = 3;
 
         public static string GetScrapBlueprintFromBit(char Bit)
         {
