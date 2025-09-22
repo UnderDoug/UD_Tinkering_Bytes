@@ -16,8 +16,11 @@ namespace XRL.World.Parts
 
         public static int BitsPerByte => 8;
 
+        public char Bit;
+
         public UD_TinkeringByte()
         {
+            Bit = 'r';
         }
 
         public static IEnumerable<GameObjectBlueprint> GetByteGameObjectBlueprints()
@@ -86,18 +89,13 @@ namespace XRL.World.Parts
         {
             if (E.Object != null && E.Object == ParentObject && E.Object.TryGetPart(out Description description))
             {
-                TinkerItem tinkerItem = E.Object.GetPart<TinkerItem>();
                 string bits = "bit";
                 bool haveBits = false;
-                if (tinkerItem != null)
+                if (BitType.BitMap.ContainsKey(Bit))
                 {
-                    char bit = tinkerItem.Bits[0];
-                    if (BitType.BitMap.ContainsKey(bit))
-                    {
-                        BitType bitType = BitType.BitMap[bit];
-                        bits = bitType.Description;
-                        haveBits = true;
-                    }
+                    BitType bitType = BitType.BitMap[Bit];
+                    bits = bitType.Description;
+                    haveBits = true;
                 }
                 description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, haveBits ? bits : null));
             }

@@ -11,6 +11,8 @@ using XRL.World.Tinkering;
 using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 using XRL.World.Parts.Skill;
+using System.Linq;
+using System;
 
 namespace UD_Tinkering_Bytes
 {
@@ -83,6 +85,8 @@ namespace UD_Tinkering_Bytes
             // Called once when world is first generated.
 
             // The.Game registered events should go here.
+
+            Utils.ForceByteBitCost();
         }
     }
 
@@ -110,6 +114,24 @@ namespace UD_Tinkering_Bytes
                     LearnAllTheBytes.AddByteBlueprints(The.Player);
                 }
             }
+            Utils.ForceByteBitCost();
+            /* 
+            List<TinkerData> playerKnownRecipes = new(TinkerData.KnownRecipes);
+            TinkerData.KnownRecipes.Clear();
+            foreach (TinkerData playerKnownRecipe in playerKnownRecipes)
+            {
+                if (!TinkerData.KnownRecipes.Any(datum => datum.IsSameDatumAs(playerKnownRecipe)))
+                {
+                    TinkerData.KnownRecipes.Add(playerKnownRecipe);
+                    continue;
+                }
+                MetricsManager.LogModWarning(Utils.ThisMod, 
+                    $"{nameof(OnLoadGameCallback)} found duplicate " +
+                    $"{nameof(TinkerData)}.{nameof(TinkerData.KnownRecipes)} entry, " +
+                    $"{playerKnownRecipe.DisplayName.Strip()}," +
+                    $" while loading game.");
+            }
+            */
         }
     }
 }

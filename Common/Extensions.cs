@@ -228,5 +228,16 @@ namespace UD_Tinkering_Bytes
             }
             return bits;
         }
+
+        public static bool IsSameDatumAs(this TinkerData ContainedDatum, TinkerData QueryingDatum)
+        {
+            bool doDebug = false;
+            Debug.Entry(4, $"{ContainedDatum.DisplayName.Strip()}:", Toggle: doDebug);
+            Debug.LoopItem(4, nameof(ContainedDatum.Blueprint), $"{ContainedDatum.Blueprint}, {QueryingDatum.Blueprint}", Toggle: doDebug);
+            Debug.LoopItem(4, nameof(ContainedDatum.PartName), $"{ContainedDatum.PartName}, {QueryingDatum.PartName}", Toggle: doDebug);
+            Debug.LoopItem(4, nameof(ContainedDatum.Cost), $"{ContainedDatum.Cost}, {QueryingDatum.Cost}", Toggle: doDebug);
+            return (ContainedDatum.Blueprint == QueryingDatum.Blueprint || ContainedDatum.PartName == QueryingDatum.PartName)
+                && ContainedDatum.Cost == QueryingDatum.Cost;
+        }
     }
 }

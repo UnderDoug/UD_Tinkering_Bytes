@@ -206,7 +206,6 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
-            The.Player?.EmitMessage(E.Context ?? Const.NULL);
             if (E.Context == nameof(EquipmentAPI.ShowInventoryActionMenu))
             {
                 E.AddAdjective(nameof(EquipmentAPI.ShowInventoryActionMenu));

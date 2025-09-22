@@ -42,5 +42,5 @@ namespace UD_Tinkering_Bytes
         [OptionFlag] public static bool EnableOverrideTinkerRecharge;
         [OptionFlag] public static bool EnableGiantsAllKnowModGiganticIfTinkerableAtAll;
 
-    } //!-- public static class Options
+    }
 }

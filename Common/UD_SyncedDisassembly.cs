@@ -22,14 +22,17 @@ namespace UD_Tinkering_Bytes
 
         public int EnergyCostPer;
 
-        public UD_SyncedDisassembly(Disassembly Disassembly, GameObject Disassembler, List<TinkerData> KnownRecipes, int DramsCostPer = 0, int EnergyCostPer = 1000)
+        public UD_SyncedDisassembly(Disassembly Disassembly, GameObject Disassembler, ref List<TinkerData> KnownRecipes, int DramsCostPer = 0, int EnergyCostPer = 1000)
         {
             this.Disassembly = Disassembly;
             this.Disassembler = Disassembler;
             this.KnownRecipes = KnownRecipes;
             this.DramsCostPer = DramsCostPer;
             this.EnergyCostPer = EnergyCostPer;
-            this.Disassembly.EnergyCostPer = 0;
+            if (EnergyCostPer > 0)
+            {
+                this.Disassembly.EnergyCostPer = 0;
+            }
         }
 
         public override string GetDescription()
@@ -67,6 +70,8 @@ namespace UD_Tinkering_Bytes
 
         public override void Interrupt()
         {
+            base.Interrupt();
+            Disassembly.InterruptBecause ??= GameText.VariableReplace("=object.t= interrupted =pronouns.objective=", Disassembler, The.Player);
             Disassembly.Interrupt();
             MessageQueue.AddPlayerMessage(Event.NewStringBuilder()
                 .Append(Disassembler.T())
@@ -78,7 +83,6 @@ namespace UD_Tinkering_Bytes
                 .Append(".")
                 .ToString());
             Loading.SetLoadingStatus($"Interrupted!");
-            base.Interrupt();
 
             if (Disassembler.TryGetPart(out UD_VendorDisassembly vendorDisassembly))
             {
@@ -88,18 +92,18 @@ namespace UD_Tinkering_Bytes
 
         public override void Complete()
         {
-            Disassembly.Complete();
             base.Complete();
+            Disassembly.Complete();
         }
 
         public override void End()
         {
+            base.End();
             UD_VendorDisassembly.VendorDisassemblyEnd(Disassembler, Disassembly);
             if (Disassembler.TryGetPart(out UD_VendorDisassembly vendorDisassembly))
             {
                 vendorDisassembly.ResetDisassembly();
             }
-            base.End();
         }
     }
 }

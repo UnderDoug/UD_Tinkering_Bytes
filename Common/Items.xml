@@ -40,7 +40,7 @@
     <part Name="Physics" Weight="1" Category="Bytes" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly *8 bits*." />
     <part Name="TinkerItem" CanBuild="true" BuildTier="0" />
-    <part Name="UD_TinkeringByte" />
+    <part Name="UD_TinkeringByte" Bit="R" />
     <tag Name="TinkerCategory" Value="bytes" />
     <tag Name="Tier" Value="0" />
     <tag Name="VendorTinker_ExpertiseValueOverride" Value="0" />
@@ -60,30 +60,35 @@
           TileColor="&amp;R" ColorString="&amp;R"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="RRRRRRRR" />
+    <part Name="UD_TinkeringByte" Bit="R" />
   </object>
   <object Name="B Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{G|B}} {{y|byte}}"
           TileColor="&amp;G" ColorString="&amp;G"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="GGGGGGGG" />
+    <part Name="UD_TinkeringByte" Bit="G" />
   </object>
   <object Name="C Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{B|C}} {{y|byte}}"
           TileColor="&amp;B" ColorString="&amp;B"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="BBBBBBBB" />
+    <part Name="UD_TinkeringByte" Bit="B" />
   </object>
   <object Name="D Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{C|D}} {{y|byte}}"
           TileColor="&amp;C" ColorString="&amp;C"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="CCCCCCCC" />
+    <part Name="UD_TinkeringByte" Bit="C" />
   </object>
   <object Name="1 Byte" Inherits="BaseByte">
     <part Name="Render" DisplayName="{{r|1}} {{y|byte}}"
           TileColor="&amp;r" ColorString="&amp;r"
           Tile="1_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="11111111" />
+    <part Name="UD_TinkeringByte" Bit="r" />
     <part Name="Commerce" Value="120" />
   </object>
   <object Name="2 Byte" Inherits="BaseByte">
@@ -91,6 +96,7 @@
           TileColor="&amp;g" ColorString="&amp;g"
           Tile="2_byte_cleo.png" />
     <part Name="TinkerItem" Bits="22222222" />
+    <part Name="UD_TinkeringByte" Bit="g" />
     <part Name="Commerce" Value="200" />
   </object>
   <object Name="3 Byte" Inherits="BaseByte">
@@ -98,6 +104,7 @@
           TileColor="&amp;b" ColorString="&amp;b"
           Tile="3_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="33333333" />
+    <part Name="UD_TinkeringByte" Bit="b" />
     <part Name="Commerce" Value="280" />
   </object>
   <object Name="4 Byte" Inherits="BaseByte">
@@ -105,6 +112,7 @@
           TileColor="&amp;c" ColorString="&amp;c"
           Tile="4_byte_cleo.png" />
     <part Name="TinkerItem" Bits="44444444" />
+    <part Name="UD_TinkeringByte" Bit="c" />
     <part Name="Commerce" Value="360" />
   </object>
   <object Name="5 Byte" Inherits="BaseByte">
@@ -112,6 +120,7 @@
           TileColor="&amp;K" ColorString="&amp;K"
           Tile="5_byte_cleo.png" />
     <part Name="TinkerItem" Bits="55555555" />
+    <part Name="UD_TinkeringByte" Bit="K" />
     <part Name="Commerce" Value="440" />
   </object>
   <object Name="6 Byte" Inherits="BaseByte">
@@ -119,6 +128,7 @@
           TileColor="&amp;W" ColorString="&amp;W"
           Tile="6_byte_cleo.png" />
     <part Name="TinkerItem" Bits="66666666" />
+    <part Name="UD_TinkeringByte" Bit="W" />
     <part Name="Commerce" Value="520" />
   </object>
   <object Name="7 Byte" Inherits="BaseByte">
@@ -126,6 +136,7 @@
           TileColor="&amp;Y" ColorString="&amp;Y"
           Tile="7_byte_cleo.png" />
     <part Name="TinkerItem" Bits="77777777" />
+    <part Name="UD_TinkeringByte" Bit="Y" />
     <part Name="Commerce" Value="600" />
   </object>
   <object Name="8 Byte" Inherits="BaseByte">
@@ -133,6 +144,7 @@
           TileColor="&amp;M" ColorString="&amp;M"
           Tile="8_byte_cleo.png" />
     <part Name="TinkerItem" Bits="88888888" />
+    <part Name="UD_TinkeringByte" Bit="M" />
     <part Name="Commerce" Value="680" />
   </object>
 

@@ -129,6 +129,10 @@ namespace UD_Tinkering_Bytes
                 {
                     ItemName = Item.t(Short:true);
                 }
+                if (Item.InInventory != Vendor && Service == RECHARGE)
+                {
+                    ItemName = Item.t(Short: true);
+                }
                 ItemName = ItemName.Color("y");
             }
             return ItemName;
@@ -492,7 +496,7 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    SB.Append($"Provided by {player?.GetReferenceDisplayName(Short: true)}");
+                    SB.Append($"Provided by {player?.t(Short: true)}");
                 }
                 SB.AppendLine();
             }

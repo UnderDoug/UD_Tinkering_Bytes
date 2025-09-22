@@ -85,6 +85,9 @@ namespace XRL.World.Parts
             base.AddedAfterCreation();
             if (WantVendorActions && !SaveStartedWithVendorActions)
             {
+                int indent = Debug.LastIndent;
+                Debug.Entry(4, $"{nameof(UD_VendorTinkering)}.{nameof(AddedAfterCreation)}()", Indent: indent + 1, Toggle: doDebug);
+
                 GiveRandomBits(ParentObject);
 
                 LearnByteRecipes(ParentObject, KnownRecipes);
@@ -94,6 +97,8 @@ namespace XRL.World.Parts
                 LearnSkillRecipes(ParentObject, KnownRecipes);
 
                 KnowImplantedRecipes(ParentObject, InstalledRecipes);
+
+                Debug.LastIndent = indent;
             }
         }
 
@@ -112,7 +117,8 @@ namespace XRL.World.Parts
 
         public static bool LearnRecipe(GameObject Vendor, TinkerData TinkerData, List<TinkerData> KnownRecipes, bool CreateDisk = false)
         {
-            if (Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerData.Tier)) && !KnownRecipes.Contains(TinkerData))
+            if (Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerData.Tier)) 
+                && !KnownRecipes.Any(datum => datum.IsSameDatumAs(TinkerData)))
             {
                 KnownRecipes ??= new();
                 KnownRecipes.Add(TinkerData);
@@ -413,29 +419,28 @@ namespace XRL.World.Parts
 
         public static bool LearnByteRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
         {
-            if (Vendor == null)
+            if (Vendor == null || Vendor.GetIntProperty(nameof(LearnByteRecipes)) > 0)
             {
                 return false;
             }
             KnownRecipes ??= new();
-            List<string> byteBlueprints = new();
+            List<string> byteBlueprints = new(UD_TinkeringByte.GetByteBlueprints());
             Debug.Entry(3, $"Spinning up byte data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
-            foreach (GameObjectBlueprint byteBlueprint in GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("BaseByte"))
-            {
-                Debug.LoopItem(3, $"{byteBlueprint.DisplayName().Strip()}", Indent: 1, Toggle: doDebug);
-                byteBlueprints.Add(byteBlueprint.Name);
-            }
             bool learned = false;
             if (!byteBlueprints.IsNullOrEmpty())
             {
                 foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
                 {
-                    if (byteBlueprints.Contains(tinkerDatum.Blueprint) && !KnownRecipes.Contains(tinkerDatum))
+                    if (byteBlueprints.Contains(tinkerDatum.Blueprint))
                     {
-                        KnownRecipes.Add(tinkerDatum);
-                        learned = true;
+                        Debug.LoopItem(3, $"{tinkerDatum.DisplayName.Strip()}", Indent: 1, Toggle: doDebug);
+                        learned = LearnRecipe(Vendor, tinkerDatum, KnownRecipes) || learned;
                     }
                 }
+            }
+            if (learned)
+            {
+                Vendor.ModIntProperty(nameof(LearnByteRecipes), 1);
             }
             return learned;
         }
@@ -460,7 +465,7 @@ namespace XRL.World.Parts
                     if (tinkerDatum.PartName == nameof(ModGigantic))
                     {
                         Debug.CheckYeh(3, $"{nameof(ModGigantic)}: Found", Indent: 1, Toggle: doDebug);
-                        KnownRecipes.Add(tinkerDatum);
+                        LearnRecipe(Vendor, tinkerDatum, KnownRecipes);
                         break;
                     }
                 }
@@ -539,12 +544,7 @@ namespace XRL.World.Parts
                 for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
                 {
                     TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(LearnSkillRecipes));
-                    if (recipeToKnow != null && !KnownRecipes.Contains(recipeToKnow))
-                    {
-                        Debug.LoopItem(3, $"{recipeToKnow.Blueprint ?? recipeToKnow.PartName ?? recipeToKnow.DisplayName.Strip()}", Indent: 1);
-                        KnownRecipes.Add(recipeToKnow);
-                        learned = true;
-                    }
+                    learned = LearnRecipe(Vendor, recipeToKnow, KnownRecipes) || learned;
                 }
             }
             return learned;
@@ -581,9 +581,10 @@ namespace XRL.World.Parts
                             foreach (TinkerData availableRecipe in availableRecipes)
                             {
                                 if (availableRecipe.Tier <= implantedSchemasoft.MaxTier 
-                                    && availableRecipe.Category == implantedSchemasoft.Category)
+                                    && availableRecipe.Category == implantedSchemasoft.Category
+                                    && !InstalledRecipes.Any(datum => datum.IsSameDatumAs(availableRecipe)))
                                 {
-                                    InstalledRecipes.TryAdd(availableRecipe);
+                                    InstalledRecipes.Add(availableRecipe);
                                     Debug.LoopItem(3, $"{availableRecipe.Blueprint ?? availableRecipe.PartName ?? availableRecipe.DisplayName.Strip()}", Indent: 2);
                                     learned = true;
                                 }
@@ -603,6 +604,8 @@ namespace XRL.World.Parts
 
         public static bool ReceiveBitLockerDisplayItem(GameObject Vendor)
         {
+            int indent = Debug.LastIndent;
+            bool doDebug = false;
             ClearBitLockerDisplayItem(Vendor);
             bool received = false;
             if (Vendor.TryGetPart(out BitLocker bitLocker))
@@ -611,7 +614,7 @@ namespace XRL.World.Parts
                 {
                     if (GameObject.CreateSample(BITLOCK_DISPLAY) is GameObject bitLockerDisplayItem)
                     {
-                        Debug.Entry(4, nameof(bitLockerDisplayItem), bitLockerDisplayItem.DisplayName);
+                        Debug.Entry(4, nameof(bitLockerDisplayItem), bitLockerDisplayItem.DisplayName, Indent: indent + 1, Toggle: doDebug);
                         received = Vendor.ReceiveObject(bitLockerDisplayItem);
                     }
                 }
@@ -623,12 +626,13 @@ namespace XRL.World.Parts
                             && bitLockerDisplayItem.TryGetPart(out UD_BitLocker_Display bitLockerDisplayPart))
                         {
                             bitLockerDisplayPart.DisplayNameStyle = i;
-                            Debug.Entry(4, nameof(bitLockerDisplayItem), bitLockerDisplayItem.DisplayName);
+                            Debug.Entry(4, nameof(bitLockerDisplayItem), bitLockerDisplayItem.DisplayName, Indent: indent + 1, Toggle: doDebug);
                             received = Vendor.ReceiveObject(bitLockerDisplayItem) || received;
                         }
                     }
                 }
             }
+            Debug.LastIndent = indent;
             return received;
         }
         public bool ReceiveBitLockerDisplayItem()
@@ -698,7 +702,7 @@ namespace XRL.World.Parts
         {
             return ItemModding.ModAppropriate(ApplicableItem, ModData)
                 && CanTinkerRecipe(Vendor, ModData, InstalledRecipes)
-                && !ExistingRecipes.ContainsKey(ModData);
+                && !ExistingRecipes.Keys.Any(datum => datum.IsSameDatumAs(ModData));
         }
         public bool IsModApplicableAndNotAlreadyInDictionary(GameObject ApplicableItem, TinkerData ModData, Dictionary<TinkerData, string> ExistingRecipes)
         {
@@ -1571,6 +1575,12 @@ namespace XRL.World.Parts
         {
             if (E.Trader == ParentObject && WantVendorActions)
             {
+                List<TinkerData> knownRecipes = GetKnownRecipes(IncludeInstalled: false).ToList();
+                KnownRecipes.Clear();
+                foreach (TinkerData knownRecipe in knownRecipes)
+                {
+                    LearnRecipe(knownRecipe);
+                }
                 GenerateKnownRecipeDisplayItems();
                 ReceiveBitLockerDisplayItem();
             }

@@ -16,6 +16,7 @@ using UD_Vendor_Actions;
 using UD_Tinkering_Bytes;
 
 using static UD_Tinkering_Bytes.Options;
+using System.Linq;
 
 namespace XRL.World.Parts
 {
@@ -82,10 +83,31 @@ namespace XRL.World.Parts
 
         public static bool VendorDisassemblyContinue(GameObject Vendor, Disassembly Disassembly, UD_SyncedDisassembly SyncedDisassembly, ref List<TinkerData> KnownRecipes)
         {
+            if (Disassembly == null)
+            {
+                MetricsManager.LogPotentialModError(UD_Tinkering_Bytes.Utils.ThisMod,
+                    $"{nameof(UD_VendorDisassembly)}.{nameof(VendorDisassemblyContinue)} passed null {nameof(Disassembly)}");
+                return false;
+            }
+
             int indent = Debug.LastIndent;
             GameObject Item = Disassembly.Object;
 
-            Debug.LoopItem(4, $"{CurrentDisassembly++}]{nameof(VendorDisassemblyContinue)}", Indent: indent + 1, Toggle: doDebug);
+            int counter;
+            if (Disassembly != null)
+            {
+                counter = CurrentDisassembly = Disassembly.TotalNumberDone;
+            }
+            else
+            {
+                counter = CurrentDisassembly++;
+            }
+            int counterPadding = (int)Disassembly?.TotalNumberWanted.ToString().Length;
+            string paddedCounter = counter++.ToString().PadLeft((int)Disassembly?.TotalNumberWanted.ToString().Length);
+            Debug.LoopItem(4, 
+                $"{paddedCounter}/{Disassembly?.TotalNumberWanted}] {nameof(VendorDisassemblyContinue)}, " +
+                $"{nameof(Item)}: {Item?.DebugName ?? Const.NULL}",
+                Indent: indent + 1, Toggle: doDebug);
 
             int currentDisassembly = CurrentDisassembly;
 
@@ -97,13 +119,13 @@ namespace XRL.World.Parts
             }
             if (Item.IsInGraveyard())
             {
-                Disassembly.InterruptBecause = $"the item {Vendor.it} {Vendor.GetVerb("were")} working on was destroyed";
+                Disassembly.InterruptBecause = $"the item {Vendor.it}{Vendor.GetVerb("were")} working on was destroyed";
                 Debug.LastIndent = indent;
                 return false;
             }
             if (Item.IsNowhere())
             {
-                Disassembly.InterruptBecause = $"the item {Vendor.it} {Vendor.GetVerb("were")} working on disappeared";
+                Disassembly.InterruptBecause = $"the item {Vendor.it}{Vendor.GetVerb("were")} working on disappeared";
                 Debug.LastIndent = indent;
                 return false;
             }
@@ -174,10 +196,13 @@ namespace XRL.World.Parts
                 string activeBlueprint = tinkerItem.ActiveBlueprint;
                 TinkerData learnableBuildRecipe = null;
                 List<TinkerData> learnableMods = null;
-                if (Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)))
+                List<TinkerData> knownRecipes = new(KnownRecipes);
+                if (Vendor.HasSkill(nameof(Tinkering_ReverseEngineer))
+                    && TinkerData.TinkerRecipes.Any(datum => 
+                        (Item.HasPart(datum.PartName) && !knownRecipes.Contains(datum)) 
+                        || (datum.Blueprint == Item.Blueprint && !knownRecipes.Contains(datum))))
                 {
                     Debug.Entry(4, $"{nameof(Tinkering_ReverseEngineer)}", Indent: indent + 1, Toggle: doDebug);
-
                     vendorTinkering = Vendor.RequirePart<UD_VendorTinkering>();
                     foreach (TinkerData tinkerRecipe in TinkerData.TinkerRecipes)
                     {
@@ -193,7 +218,7 @@ namespace XRL.World.Parts
                         }
 
                         Debug.Divider(4, Const.HONLY, Count: 56, Indent: indent + 2, Toggle: doDebug);
-                        Debug.LoopItem(4, $"{tinkerRecipe.DisplayName}", Indent: indent + 2, Toggle: doDebug);
+                        Debug.LoopItem(4, $"{tinkerRecipe.Blueprint ?? tinkerRecipe.PartName}", Indent: indent + 2, Toggle: doDebug);
 
                         Debug.LoopItem(4, $"{nameof(recipeBlueprintIsThisItem)}", $"{recipeBlueprintIsThisItem}",
                             Good: recipeBlueprintIsThisItem, Indent: indent + 3, Toggle: doDebug);
@@ -216,7 +241,7 @@ namespace XRL.World.Parts
                             foreach (TinkerData knownRecipe in KnownRecipes)
                             {
                                 Debug.Divider(4, Const.HONLY, Count: 52, Indent: indent + 3, Toggle: doDebug);
-                                Debug.LoopItem(4, $"{knownRecipe.DisplayName}", Indent: indent + 3, Toggle: doDebug);
+                                Debug.LoopItem(4, $"{knownRecipe.Blueprint ?? knownRecipe.PartName}", Indent: indent + 3, Toggle: doDebug);
                                 if (recipeBlueprintIsThisItem)
                                 {
                                     Debug.Entry(4, $"{nameof(recipeBlueprintIsThisItem)}", $"{recipeBlueprintIsThisItem}", Indent: indent + 4, Toggle: doDebug);
@@ -355,7 +380,8 @@ namespace XRL.World.Parts
                                 {
                                     learnedModsDisplayNames.Add(learnableMod.DisplayName);
                                 }
-                                string learnedModsMessage = $"mod items with the {Grammar.MakeAndList(learnedModsDisplayNames)} {learnedModsDisplayNames.Count.Things("mod")}";
+                                string pluralMods = learnedModsDisplayNames.Count > 1 ? "mods" : "mod";
+                                string learnedModsMessage = $"mod items with the {Grammar.MakeAndList(learnedModsDisplayNames)} {pluralMods}";
                                 
                                 if (!reverseEngineerMessage.IsNullOrEmpty())
                                 {
@@ -380,9 +406,7 @@ namespace XRL.World.Parts
                             {
                                 bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
                                 if (vendorTinkering.LearnRecipe(learnableBuildRecipe, shouldScribeRecipe))
-                                { 
-                                    KnownRecipes.Add(learnableBuildRecipe);
-                                    vendorTinkering?.ReceiveKnownRecipeDisplayItem(learnableBuildRecipe);
+                                {
                                     Debug.CheckYeh(4, $"{learnableBuildRecipe.DisplayName} \"Learned\"", Indent: indent + 2, Toggle: doDebug);
                                 }
                             }
@@ -393,8 +417,6 @@ namespace XRL.World.Parts
                                     bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
                                     if (vendorTinkering.LearnRecipe(learnableMod, shouldScribeRecipe))
                                     {
-                                        KnownRecipes.Add(learnableMod);
-                                        vendorTinkering?.ReceiveKnownRecipeDisplayItem(learnableMod);
                                         Debug.CheckYeh(4, $"{learnableMod.DisplayName} \"Learned\"", Indent: indent + 2, Toggle: doDebug);
                                     }
                                 }
@@ -434,7 +456,8 @@ namespace XRL.World.Parts
                             Disassembly.Queue.RemoveAt(0);
                             Disassembly.NumberDone = 0;
                             Disassembly.OriginalCount = Item.Count;
-                            if (Disassembly.QueueNumberWanted == null || !Disassembly.QueueNumberWanted.TryGetValue(Item, out Disassembly.NumberWanted))
+                            if (Disassembly.QueueNumberWanted == null 
+                                || !Disassembly.QueueNumberWanted.TryGetValue(Item, out Disassembly.NumberWanted))
                             {
                                 Disassembly.NumberWanted = Disassembly.OriginalCount;
                             }
@@ -456,7 +479,10 @@ namespace XRL.World.Parts
                     The.Player.UseEnergy(totalEnergyCost, "Vendor Tinkering Disassemble");
                 }
             }
-            Debug.Divider(4, Const.HONLY, Indent: indent + 1, Toggle: doDebug);
+            if (Debug.LastIndent > indent + 1)
+            {
+                Debug.Divider(4, Const.HONLY, Indent: indent + 1, Toggle: doDebug);
+            }
 
             if (DebugSpawnSnapjawWhileVendorDisassembles && currentDisassembly % 25 == 0)
             {
@@ -469,11 +495,17 @@ namespace XRL.World.Parts
 
         public static void VendorDisassemblyEnd(GameObject Vendor, Disassembly Disassembly)
         {
+            if (Disassembly == null)
+            {
+                MetricsManager.LogPotentialModError(UD_Tinkering_Bytes.Utils.ThisMod, 
+                    $"{nameof(UD_VendorDisassembly)}.{nameof(VendorDisassemblyEnd)} passed null {nameof(Disassembly)}");
+                return;
+            }
             if (Disassembly.TotalNumberDone > 0)
             {
                 VendorDisassemblyProcessDisassemblingWhat(Disassembly);
                 StringBuilder SB = Event.NewStringBuilder();
-                SB.Append(Vendor.T()).Append(Vendor.GetVerb("disassemble")).Append(" ");
+                SB.Append(Vendor.T()).Append(" disassembled ");
                 if (Disassembly.DisassembledWhats.IsNullOrEmpty())
                 {
                     SB.Append(Disassembly.DisassembledWhat ?? "something");
@@ -514,13 +546,14 @@ namespace XRL.World.Parts
                 SB.Append('.');
                 if (!Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                 {
+                    SB.AppendLines(2);
                     if (Disassembly.ReverseEngineeringMessage.Contains('\n'))
                     {
-                        SB.AppendLines(2).Append(Disassembly.ReverseEngineeringMessage).AppendLines(2);
+                        SB.Append(Disassembly.ReverseEngineeringMessage).AppendLines(2);
                     }
                     else
                     {
-                        SB.Compound(Disassembly.ReverseEngineeringMessage, ' ');
+                        SB.Append(Disassembly.ReverseEngineeringMessage).AppendLine();
                     }
                 }
                 string finishedMessage = null;
@@ -553,9 +586,8 @@ namespace XRL.World.Parts
                 Popup.ShowFail($"That trader or item doesn't exist, or the item can't be disassembled (this is an error).");
                 return false;
             }
-
             Disassembly disassembly = Disassembly;
-            UD_SyncedDisassembly syncedDisassembly = new(disassembly, Vendor, KnownRecipes, CostPerItem);
+            UD_SyncedDisassembly syncedDisassembly = new(disassembly, Vendor, ref KnownRecipes, CostPerItem);
 
             AutoAct.Action = syncedDisassembly;
             Vendor.ForfeitTurn(EnergyNeutral: true);
@@ -591,10 +623,26 @@ namespace XRL.World.Parts
                     && E.Item.TryGetPart(out TinkerItem tinkerItem)
                     && tinkerItem.CanBeDisassembled(E.Vendor))
                 {
-                    E.AddAction("Disassemble", "disassemble", COMMAND_DISASSEMBLE, Key: 'd', Priority: -4, ProcessSecondAfterAwait: true, Staggered: true, CloseTradeBeforeProcessingSecond: true);
+                    E.AddAction(
+                        Name: "Disassemble",
+                        Display: "disassemble", 
+                        Command: COMMAND_DISASSEMBLE,
+                        Key: 'd',
+                        Priority: -4,
+                        ProcessSecondAfterAwait: true,
+                        Staggered: true,
+                        CloseTradeBeforeProcessingSecond: true);
                     if (E.Item.Count > 1)
                     {
-                        E.AddAction("Disassemble all", "disassemble all", COMMAND_DISASSEMBLE_ALL, Key: 'D', Priority: -5, ProcessSecondAfterAwait: true, Staggered: true, CloseTradeBeforeProcessingSecond: true);
+                        E.AddAction(
+                            Name: "Disassemble all", 
+                            Display: "disassemble all", 
+                            Command: COMMAND_DISASSEMBLE_ALL, 
+                            Key: 'D',
+                            Priority: -5,
+                            ProcessSecondAfterAwait: true,
+                            Staggered: true,
+                            CloseTradeBeforeProcessingSecond: true);
                     }
                 }
             }
@@ -732,7 +780,7 @@ namespace XRL.World.Parts
                             }
                         }
 
-                        Disassembly = new(E.Item, multipleItems ? itemCount : 1);
+                        Disassembly = new(E.Item, multipleItems ? itemCount : 1, EnergyCostPer: 0);
                         return true;
                     }
                     E.RequestCancelSecond();

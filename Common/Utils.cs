@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
-using XRL;
-using XRL.World;
-
 using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
+using XRL;
+using XRL.World;
+using XRL.World.Parts;
+using XRL.World.Tinkering;
 
 namespace UD_Tinkering_Bytes
 {
@@ -50,6 +52,28 @@ namespace UD_Tinkering_Bytes
                 'M' => "Scrap 8",
                 _ => null,
             };
+        }
+
+        public static void ForceByteBitCost()
+        {
+            List<GameObjectBlueprint> byteGameObjectBlueprints = new(UD_TinkeringByte.GetByteGameObjectBlueprints());
+            if (!byteGameObjectBlueprints.IsNullOrEmpty())
+            {
+                foreach (GameObjectBlueprint byteBlueprint in UD_TinkeringByte.GetByteGameObjectBlueprints())
+                {
+                    char bit = byteBlueprint.GetPartParameter<char>(nameof(UD_TinkeringByte), nameof(UD_TinkeringByte.Bit));
+                    if (TinkerItem.BitCostMap.ContainsKey(byteBlueprint.Name)
+                        && TinkerItem.BitCostMap[byteBlueprint.Name].Any(c => c != bit))
+                    {
+                        string bitCost = "";
+                        for (int i = 0; i < UD_TinkeringByte.BitsPerByte; i++)
+                        {
+                            bitCost += bit;
+                        }
+                        TinkerItem.BitCostMap[byteBlueprint.Name] = bitCost;
+                    }
+                }
+            }
         }
     }
 }

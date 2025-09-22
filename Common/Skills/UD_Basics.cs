@@ -16,6 +16,7 @@ namespace XRL.World.Parts.Skill
         public override void Attach()
         {
             base.Attach();
+            /*
             if (!ParentObject.IsPlayer() 
                 && ParentObject.RequirePart<UD_VendorTinkering>() is UD_VendorTinkering uD_VendorTinkering)
             {
@@ -27,6 +28,7 @@ namespace XRL.World.Parts.Skill
             {
                 LearnAllTheBytes.AddByteBlueprints(ParentObject);
             }
+            */
         }
     }
 }
