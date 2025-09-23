@@ -300,6 +300,7 @@ namespace XRL.World.Parts
                         return false;
                     }
                     chance += reverseEngineerBonus;
+                    Debug.Entry(4, $"{nameof(chance)}", chance.ToString(), Indent: indent + 2, Toggle: doDebug);
                 }
                 try
                 {
