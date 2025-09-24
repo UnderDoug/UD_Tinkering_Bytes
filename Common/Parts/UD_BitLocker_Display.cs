@@ -49,27 +49,13 @@ namespace XRL.World.Parts
             return true;
         }
 
-        public override bool WantTurnTick()
-        {
-            return base.WantTurnTick();
-        }
-        public override void TurnTick(long TimeTick, int Amount)
-        {
-            if (GameObject.Validate(ParentObject))
-            {
-                ParentObject.Obliterate();
-            }
-            base.TurnTick(TimeTick, Amount);
-        }
-
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
                 || ID == GetDisplayNameEvent.ID
                 || ID == GetShortDescriptionEvent.ID
                 || ID == UD_VendorActionEvent.ID
-                || ID == UD_AfterVendorActionEvent.ID
-                || ID == UD_EndTradeEvent.ID;
+                || ID == UD_AfterVendorActionEvent.ID;
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
@@ -125,14 +111,6 @@ namespace XRL.World.Parts
                     .Append(GameText.VariableReplace("=subject.T's= bit locker contains:", vendor))
                     .AppendLine().AppendLine()
                     .Append(bitLocker.GetBitsString());
-            }
-            return base.HandleEvent(E);
-        }
-        public virtual bool HandleEvent(UD_EndTradeEvent E)
-        {
-            if (GameObject.Validate(ParentObject))
-            {
-                ParentObject.Obliterate();
             }
             return base.HandleEvent(E);
         }

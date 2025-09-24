@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <objects>
-  <object Name="UD_PhysicsCategoryIcons" Load="Merge">
+ <object Name="UD_PhysicsCategoryIcons" Load="Merge">
     <tag Name="Able To Tinker" Value="Items/sw_unfurled_scroll1.bmp" />
     <tag Name="Tinker Recipes" Value="Items/sw_unfurled_scroll1.bmp" />
     <tag Name="Bytes" Value="4_byte_cleo_inverted.png" />
