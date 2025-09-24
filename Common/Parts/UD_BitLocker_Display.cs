@@ -26,7 +26,6 @@ namespace XRL.World.Parts
     public class UD_BitLocker_Display
         : IScribedPart
         , I_UD_VendorActionEventHandler
-        , IModEventHandler<UD_EndTradeEvent>
     {
         private static bool doDebug => false;
 
@@ -53,9 +52,7 @@ namespace XRL.World.Parts
         {
             return base.WantEvent(ID, Cascade)
                 || ID == GetDisplayNameEvent.ID
-                || ID == GetShortDescriptionEvent.ID
-                || ID == UD_VendorActionEvent.ID
-                || ID == UD_AfterVendorActionEvent.ID;
+                || ID == GetShortDescriptionEvent.ID;
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
