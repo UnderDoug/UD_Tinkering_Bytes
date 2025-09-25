@@ -608,7 +608,7 @@ namespace XRL.World.Parts
             bool doDebug = false;
             ClearBitLockerDisplayItem(Vendor);
             bool received = false;
-            if (Vendor.TryGetPart(out BitLocker bitLocker))
+            if (Vendor.HasPart<BitLocker>())
             {
                 if (!DebugShowAllTinkerBitLockerInlineDisplay)
                 {
