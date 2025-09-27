@@ -96,14 +96,14 @@ namespace XRL.World.Parts
             int counter;
             if (Disassembly != null)
             {
-                counter = CurrentDisassembly = Disassembly.TotalNumberDone;
+                counter = CurrentDisassembly = Disassembly.TotalNumberDone + 1;
             }
             else
             {
-                counter = CurrentDisassembly++;
+                counter = ++CurrentDisassembly;
             }
             int counterPadding = (int)Disassembly?.TotalNumberWanted.ToString().Length;
-            string paddedCounter = counter++.ToString().PadLeft((int)Disassembly?.TotalNumberWanted.ToString().Length);
+            string paddedCounter = (counter).ToString().PadLeft((int)Disassembly?.TotalNumberWanted.ToString().Length);
             Debug.LoopItem(4, 
                 $"{paddedCounter}/{Disassembly?.TotalNumberWanted}] {nameof(VendorDisassemblyContinue)}, " +
                 $"{nameof(Item)}: {Item?.DebugName ?? Const.NULL}",
@@ -238,43 +238,57 @@ namespace XRL.World.Parts
                         {
                             Debug.CheckYeh(4, $"{nameof(KnownRecipes)} not NullOrEmpty", Indent: indent + 2, Toggle: doDebug);
                             Debug.Entry(4, $"Looping known recipes", Indent: indent + 2, Toggle: doDebug);
+                            if (recipeBlueprintIsThisItem && KnownRecipes.Any(r => r.Blueprint == tinkerRecipe.Blueprint && r.Cost == tinkerRecipe.Cost))
+                            {
+                                Debug.CheckNah(4, $"\"Already Know\" build recipe", Indent: indent + 3, Toggle: doDebug);
+                                learnableBuildRecipe = null;
+                            }
+                            else
+                            {
+                                Debug.CheckYeh(4, $"build recipe \"Learnable\".", Indent: indent + 3, Toggle: doDebug);
+                            }
+                            if (recipeIsModThisItemHas && KnownRecipes.Any(r => r.PartName == tinkerRecipe.PartName && r.Cost == tinkerRecipe.Cost))
+                            {
+                                Debug.CheckNah(4, $"\"Already Know\" mod recipe", Indent: indent + 3, Toggle: doDebug);
+                                alreadyKnowMod = true;
+                            }
+                            else
+                            {
+                                Debug.CheckYeh(4, $"mod recipe \"Learnable\".", Indent: indent + 3, Toggle: doDebug);
+                            }
+                            /*
                             foreach (TinkerData knownRecipe in KnownRecipes)
                             {
                                 Debug.Divider(4, Const.HONLY, Count: 52, Indent: indent + 3, Toggle: doDebug);
-                                Debug.LoopItem(4, $"{knownRecipe.Blueprint ?? knownRecipe.PartName}", Indent: indent + 3, Toggle: doDebug);
+                                Debug.LoopItem(4, $"{knownRecipe.Blueprint ?? knownRecipe.PartName ?? "No Recipe? This is an error."}", Indent: indent + 3, Toggle: doDebug);
                                 if (recipeBlueprintIsThisItem)
                                 {
-                                    Debug.Entry(4, $"{nameof(recipeBlueprintIsThisItem)}", $"{recipeBlueprintIsThisItem}", Indent: indent + 4, Toggle: doDebug);
                                     if (knownRecipe.Blueprint == tinkerRecipe.Blueprint)
                                     {
-                                        Debug.CheckNah(4, $"\"Already Know\" build recipe", Indent: indent + 5, Toggle: doDebug);
+                                        Debug.CheckNah(4, $"\"Already Know\" build recipe", Indent: indent + 4, Toggle: doDebug);
                                         learnableBuildRecipe = null;
                                         break;
                                     }
-                                    Debug.CheckYeh(4, $"Build recipe learnable", Indent: indent + 5, Toggle: doDebug);
                                 }
                                 if (recipeIsModThisItemHas)
                                 {
-                                    Debug.Entry(4, $"{nameof(recipeIsModThisItemHas)}", $"{recipeIsModThisItemHas}", Indent: indent + 4, Toggle: doDebug);
                                     if (knownRecipe.PartName == tinkerRecipe.PartName)
                                     {
-                                        Debug.CheckNah(4, $"\"Already Know\" mod recipe", Indent: indent + 5, Toggle: doDebug);
+                                        Debug.CheckNah(4, $"\"Already Know\" mod recipe", Indent: indent + 4, Toggle: doDebug);
                                         alreadyKnowMod = true;
                                         break;
-                                    }
-                                    else
-                                    {
-                                        Debug.CheckYeh(4, $"Mod recipe learnable", Indent: indent + 5, Toggle: doDebug);
                                     }
                                 }
                             }
                             Debug.Divider(4, Const.HONLY, Count: 52, Indent: indent + 3, Toggle: doDebug);
+                            Debug.CheckYeh(4, $"Build recipe \"Learnable\"", Indent: indent + 2, Toggle: doDebug);
+                            */
                         }
                         if (!alreadyKnowMod && recipeIsModThisItemHas)
                         {
                             learnableMods ??= new();
                             learnableMods.Add(tinkerRecipe);
-                            Debug.CheckYeh(4, $"mod recipe loaded up", Indent: indent + 3, Toggle: doDebug);
+                            Debug.CheckYeh(4, $"mod recipe loaded up.", Indent: indent + 3, Toggle: doDebug);
                         }
                         if (learnableBuildRecipe != null)
                         {
@@ -284,12 +298,12 @@ namespace XRL.World.Parts
                     Debug.Divider(4, Const.HONLY, Count: 56, Indent: indent + 2, Toggle: doDebug);
                 }
 
-                int chance = 0;
+                int reverseEngineerChance = 0;
                 int reverseEngineerBonus = 0;
                 if (learnableBuildRecipe != null || (learnableMods != null && learnableMods.Count > 0))
                 {
-                    chance = 15;
-                    reverseEngineerBonus = GetTinkeringBonusEvent.GetFor(Vendor, Item, "ReverseEngineer", chance, reverseEngineerBonus, ref interrupt);
+                    reverseEngineerChance = 15;
+                    reverseEngineerBonus = GetTinkeringBonusEvent.GetFor(Vendor, Item, "ReverseEngineer", reverseEngineerChance, reverseEngineerBonus, ref interrupt);
                     if (!interrupt)
                     {
                         reverseEngineerBonus = GetVendorTinkeringBonusEvent.GetFor(Vendor, Item, "ReverseEngineer", reverseEngineerBonus, reverseEngineerBonus, ref interrupt);
@@ -299,8 +313,8 @@ namespace XRL.World.Parts
                         Debug.LastIndent = indent;
                         return false;
                     }
-                    chance += reverseEngineerBonus;
-                    Debug.Entry(4, $"{nameof(chance)}", chance.ToString(), Indent: indent + 2, Toggle: doDebug);
+                    reverseEngineerChance += reverseEngineerBonus;
+                    Debug.Entry(4, $"{nameof(reverseEngineerChance)}", reverseEngineerChance.ToString(), Indent: indent + 2, Toggle: doDebug);
                 }
                 try
                 {
@@ -354,12 +368,36 @@ namespace XRL.World.Parts
                                 }
                             }
                         }
-                        if (!chance.in100())
+
+                        Debug.Entry(4, $"Checking for reverse engineer successes...", Indent: indent + 2, Toggle: doDebug);
+                        if (!reverseEngineerChance.in100() && learnableBuildRecipe != null)
                         {
+                            Debug.CheckNah(4, $"not learning {learnableBuildRecipe.DisplayName} this time", Indent: indent + 3, Toggle: doDebug);
                             learnableBuildRecipe = null;
-                            learnableMods = null;
                         }
-                        if (learnableBuildRecipe != null || (learnableMods != null && learnableMods.Count > 0))
+                        else
+                        {
+                            Debug.CheckYeh(4, $"learning {learnableBuildRecipe.DisplayName}!", Indent: indent + 3, Toggle: doDebug);
+                        }
+                        if (!learnableMods.IsNullOrEmpty())
+                        {
+                            List<TinkerData> removeList = new();
+                            foreach (TinkerData learnableMod in learnableMods)
+                            {
+                                if (!reverseEngineerChance.in100())
+                                {
+                                    Debug.CheckNah(4, $"not learning {learnableMod.DisplayName} this time", Indent: indent + 3, Toggle: doDebug);
+                                    removeList.Add(learnableMod);
+                                }
+                                else
+                                {
+                                    Debug.CheckYeh(4, $"learning {learnableMod.DisplayName}!", Indent: indent + 3, Toggle: doDebug);
+                                }
+                            }
+                            learnableMods.RemoveAll(d => removeList.Contains(d));
+                        }
+                        Debug.Entry(4, $"Learning any learnable recipes...", Indent: indent + 2, Toggle: doDebug);
+                        if (learnableBuildRecipe != null || !learnableMods.IsNullOrEmpty())
                         {
                             vendorTinkering = Vendor.RequirePart<UD_VendorTinkering>();
                             string reverseEngineerMessage = "";
@@ -374,7 +412,7 @@ namespace XRL.World.Parts
 
                                 reverseEngineerMessage = "build " + objectDisplayName;
                             }
-                            if (learnableMods != null)
+                            if (!learnableMods.IsNullOrEmpty())
                             {
                                 List<string> learnedModsDisplayNames = new();
                                 foreach (TinkerData learnableMod in learnableMods)

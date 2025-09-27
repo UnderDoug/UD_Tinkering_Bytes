@@ -50,7 +50,7 @@ namespace UD_Tinkering_Bytes
             int indent = Debug.LastIndent;
             if (GameObject.Validate(ref Item) && Item.WantEvent(ID, CascadeLevel))
             {
-                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("want")} {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent + 1, Toggle: true);
+                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("want")} {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent, Toggle: true);
                 GetVendorTinkeringBonusEvent E = FromPool();
                 E.Vendor = Vendor;
                 E.Item = Item;
@@ -68,7 +68,7 @@ namespace UD_Tinkering_Bytes
             }
             else
             {
-                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("don't")} want {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent + 1, Toggle: true);
+                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("don't")} want {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent, Toggle: true);
             }
             Debug.LastIndent = indent;
             return Bonus;
