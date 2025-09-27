@@ -370,14 +370,16 @@ namespace XRL.World.Parts
                         }
 
                         Debug.Entry(4, $"Checking for reverse engineer successes...", Indent: indent + 2, Toggle: doDebug);
-                        if (!reverseEngineerChance.in100() && learnableBuildRecipe != null)
+                        if (!reverseEngineerChance.in100() && learnableBuildRecipe == null)
                         {
-                            Debug.CheckNah(4, $"not learning {learnableBuildRecipe.DisplayName} this time", Indent: indent + 3, Toggle: doDebug);
+                            Debug.CheckNah(4, $"not learning {Item?.GetBlueprint()?.DisplayName() ?? Const.NULL} this time...",
+                                Indent: indent + 3, Toggle: doDebug);
                             learnableBuildRecipe = null;
                         }
                         else
                         {
-                            Debug.CheckYeh(4, $"learning {learnableBuildRecipe.DisplayName}!", Indent: indent + 3, Toggle: doDebug);
+                            Debug.CheckYeh(4, $"learning {Item?.GetBlueprint()?.DisplayName() ?? Const.NULL}!",
+                                Indent: indent + 3, Toggle: doDebug);
                         }
                         if (!learnableMods.IsNullOrEmpty())
                         {
@@ -386,12 +388,14 @@ namespace XRL.World.Parts
                             {
                                 if (!reverseEngineerChance.in100())
                                 {
-                                    Debug.CheckNah(4, $"not learning {learnableMod.DisplayName} this time", Indent: indent + 3, Toggle: doDebug);
+                                    Debug.CheckNah(4, $"not learning {learnableMod?.DisplayName} this time...",
+                                        Indent: indent + 3, Toggle: doDebug);
                                     removeList.Add(learnableMod);
                                 }
                                 else
                                 {
-                                    Debug.CheckYeh(4, $"learning {learnableMod.DisplayName}!", Indent: indent + 3, Toggle: doDebug);
+                                    Debug.CheckYeh(4, $"learning {learnableMod?.DisplayName}!",
+                                        Indent: indent + 3, Toggle: doDebug);
                                 }
                             }
                             learnableMods.RemoveAll(d => removeList.Contains(d));
@@ -438,7 +442,7 @@ namespace XRL.World.Parts
                                 }
                                 else
                                 {
-                                    Disassembly.ReverseEngineeringMessage = $"{Disassembly.ReverseEngineeringMessage}\n{eurikaMessage}";
+                                    Disassembly.ReverseEngineeringMessage = $"{Disassembly.ReverseEngineeringMessage}\n\n{eurikaMessage}";
                                 }
                             }
                             if (learnableBuildRecipe != null)
@@ -585,15 +589,7 @@ namespace XRL.World.Parts
                 SB.Append('.');
                 if (!Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                 {
-                    SB.AppendLines(2);
-                    if (Disassembly.ReverseEngineeringMessage.Contains('\n'))
-                    {
-                        SB.Append(Disassembly.ReverseEngineeringMessage).AppendLines(2);
-                    }
-                    else
-                    {
-                        SB.Append(Disassembly.ReverseEngineeringMessage).AppendLine();
-                    }
+                    SB.AppendLines(2).Append(Disassembly.ReverseEngineeringMessage).AppendLine();
                 }
                 string finishedMessage = null;
                 if (!Disassembly.BitsDone.IsNullOrEmpty())
