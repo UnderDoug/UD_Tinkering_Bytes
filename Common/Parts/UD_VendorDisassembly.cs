@@ -116,65 +116,57 @@ namespace XRL.World.Parts
 
             int currentDisassembly = CurrentDisassembly;
 
-            ReplaceBuilder RB = ReplaceBuilder.Get();
-            RB.AddObject(Vendor, nameof(Vendor));
-            RB.AddObject(Item, nameof(Item));
-            RB.AddObject(The.Player, nameof(The.Player));
-            if (!GameObject.Validate(ref Disassembly.Object))
+            StringBuilder SB = Event.NewStringBuilder();
+            ReplaceBuilder RB = GameText.StartReplace(SB);
+            RB.AddObject(Vendor, "vendor");
+            RB.AddObject(Item, "item");
+            RB.AddObject(The.Player, "player");
+            bool isInterrupted = false;
+            if (!isInterrupted && !GameObject.Validate(ref Disassembly.Object))
             {
-                Disassembly.InterruptBecause = RB.Start($"the item ={nameof(Vendor)}.subjective ==verb:were:afterpronoun= working on disappeared").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append("the item =vendor.subjective= =verb:were:afterpronoun= working on disappeared");
             }
-            if (Item.IsInGraveyard())
+            if (!isInterrupted && Item.IsInGraveyard())
             {
-                Disassembly.InterruptBecause = RB.Start($"the item ={nameof(Vendor)}.subjective ==verb:were:afterpronoun= working on was destroyed").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"the item =vendor.subjective= =verb:were:afterpronoun= working on was destroyed");
             }
-            if (Item.IsNowhere())
+            if (!isInterrupted && Item.IsNowhere())
             {
-                Disassembly.InterruptBecause = RB.Start($"the item ={nameof(Vendor)}.subjective ==verb:were:afterpronoun= working on disappeared").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"the item =vendor.subjective= =verb:were:afterpronoun= working on disappeared");
             }
-            if (Item.IsInStasis())
+            if (!isInterrupted && Item.IsInStasis())
             {
-                Disassembly.InterruptBecause = RB.Start($"={nameof(Vendor)}.subjective= can no longer interact with ={nameof(Item)}.t=").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"=vendor.subjective= can no longer interact with =item.t=");
             }
-            if (!Item.TryGetPart<TinkerItem>(out var tinkerItem))
+            TinkerItem tinkerItem = Item.GetPart<TinkerItem>();
+            if (!isInterrupted && tinkerItem != null)
             {
-                Disassembly.InterruptBecause = RB.Start($"={nameof(Item)}.subjective= can no longer be disassembled").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"=item.t= can no longer be disassembled");
             }
-            if (!Vendor.HasSkill(nameof(Tinkering_Disassemble)))
+            if (!isInterrupted && !Vendor.HasSkill(nameof(Tinkering_Disassemble)))
             {
-                Disassembly.InterruptBecause = RB.Start($"={nameof(Vendor)}.subjective= no longer =verb:know:afterpronoun= how to disassemble things").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"=vendor.subjective= no longer =verb:know:afterpronoun= how to disassemble things");
             }
-            if (!tinkerItem.CanBeDisassembled(Vendor))
+            if (!isInterrupted && !tinkerItem.CanBeDisassembled(Vendor))
             {
-                Disassembly.InterruptBecause = RB.Start($"={nameof(Item)}.t= can no longer be disassembled").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"=item.t= can no longer be disassembled");
             }
-            if (!Vendor.CanMoveExtremities("Disassemble", ShowMessage: false, Involuntary: false, AllowTelekinetic: true))
+            if (!isInterrupted && !Vendor.CanMoveExtremities("Disassemble", ShowMessage: false, Involuntary: false, AllowTelekinetic: true))
             {
-                Disassembly.InterruptBecause = RB.Start($"={nameof(Vendor)}.subjective= can no longer move ={nameof(Vendor)}.possessive= extremities").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"=vendor.subjective= can no longer move =vendor.possessive= extremities");
             }
-            if (Vendor.ArePerceptibleHostilesNearby(true, true, Action: SyncedDisassembly))
+            if (!isInterrupted && Vendor.ArePerceptibleHostilesNearby(true, true, Action: SyncedDisassembly))
             {
-                Disassembly.InterruptBecause = RB.Start($"={nameof(Vendor)}.subjective= can no longer disassemble safely").ToString();
-                Debug.LastIndent = indent;
-                return false;
+                SB.Append($"=vendor.subjective= can no longer disassemble safely");
             }
-            ReplaceBuilder.Return(RB);
+            if (!isInterrupted)
+            {
+                ReplaceBuilder.Return(RB);
+            }
+            else
+            {
+                Disassembly.InterruptBecause = RB.ToString();
+            }
             UD_VendorTinkering vendorTinkering = null;
             int totalEnergyCost = 0;
             try
@@ -293,11 +285,12 @@ namespace XRL.World.Parts
                 if (Disassembly.DisassemblingWhat == null)
                 {
                     Disassembly.DisassemblingWhat = Item.t(Single: true);
+
                     if (multipleObjects || Disassembly.TotalNumberWanted > 1)
                     {
-                        RB = GameText.StartReplace($"={nameof(Vendor)}.T= =verb:start:afterpronoun= disassembling ={nameof(Item)}.t=.");
-                        RB.AddObject(Vendor, nameof(Vendor));
-                        RB.AddObject(Item, nameof(Item));
+                        RB = GameText.StartReplace($"=subject.T= =verb:start:afterpronoun= disassembling =object.t=.");
+                        RB.AddObject(Vendor);
+                        RB.AddObject(Item);
 
                         MessageQueue.AddPlayerMessage(RB.ToString());
                     }
@@ -541,7 +534,7 @@ namespace XRL.World.Parts
             {
                 VendorDisassemblyProcessDisassemblingWhat(Disassembly);
                 StringBuilder SB = Event.NewStringBuilder();
-                SB.Append(Vendor.T()).Append(" disassembled ");
+                SB.Append("=subject.T= disassembled ");
                 if (Disassembly.DisassembledWhats.IsNullOrEmpty())
                 {
                     SB.Append(Disassembly.DisassembledWhat ?? "something");
@@ -599,20 +592,14 @@ namespace XRL.World.Parts
                     {
                         if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                         {
-                            finishedMessage = $"={nameof(Vendor)}.Subjective= ";
+                            finishedMessage = $"=subject.Subjective= ";
                         }
                         else
                         {
-                            finishedMessage = $"={nameof(Vendor)}.T= ";
+                            finishedMessage = $"=subject.T= ";
                         }
                         string bits = BitType.GetDisplayString(Disassembly.BitsDone);
-                        finishedMessage += $"=verb:give:afterpronoun= ={nameof(The.Player)}.t= tinkering bits <{bits}>.";
-
-                        ReplaceBuilder RB = GameText.StartReplace(finishedMessage)
-                            .AddObject(Vendor, nameof(Vendor))
-                            .AddObject(The.Player, nameof(The.Player));
-
-                        finishedMessage = RB.ToString();
+                        finishedMessage += $"=verb:give:afterpronoun= =object.t= tinkering bits <{bits}>.";
                     }
                 }
                 else
@@ -624,7 +611,7 @@ namespace XRL.World.Parts
                 {
                     SB.Compound(finishedMessage, ' ');
                 }
-                Popup.Show(SB.ToString());
+                Popup.Show(GameText.StartReplace(SB).AddObject(Vendor).AddObject(The.Player).ToString());
             }
         }
 
@@ -759,78 +746,106 @@ namespace XRL.World.Parts
                 }
                 if (!E.Second)
                 {
+                    StringBuilder SB = Event.NewStringBuilder();
+                    ReplaceBuilder RB = GameText.StartReplace(SB);
+                    RB.AddObject(Vendor);
+                    RB.AddObject(player);
+
+                    string thisThese = multipleItems ? ("these " + itemCount.Things("item")) : "this item";
                     if (player.GetFreeDrams() < totalCost)
                     {
-                        Popup.ShowFail(
-                            $"{player.T()}{player.GetVerb("do")} not have the required " +
-                            $"{totalCost.Color("C")} {((totalCost == 1) ? "dram" : "drams")} " +
-                            $"to disassemble {(multipleItems ? $"these {itemCount.Things("item")}" : "this item")}.");
+                        SB.Append("=object.T= =verb:do:afterpronoun= not have the required ");
+                        SB.AppendColored("C", totalCost).Append((totalCost == 1) ? "dram" : "drams");
+                        SB.Append(thisThese).Append(".");
+
+                        Popup.ShowFail(RB.ToString());
                     }
-                    else if (Popup.ShowYesNo(
-                        $"{player.T()} may have {Vendor.T()} disassemble " +
-                        $"{(multipleItems ? $"these {itemCount.Things("item")}" : "this item")} " +
-                        $"for {totalCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes)
+                    else
                     {
-                        List<Action<GameObject>> broadcastActions = null;
 
-                        if (multipleItems && (AutoAct.ShouldHostilesInterrupt("o") || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
-                        {
-                            Popup.ShowFail($"{Vendor.T()} cannot disassemble so many items at once with hostiles nearby.");
-                            E.RequestCancelSecond();
-                            return false;
-                        }
-                        string pluralItems = Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName);
-                        if (Item.IsImportant())
-                        {
-                            if (Item.ConfirmUseImportant(player, "disassemble", null, (!multipleItems) ? 1 : itemCount))
-                            {
-                                E.RequestCancelSecond();
-                                return false;
-                            }
-                        }
-                        else if (TinkerItem.ConfirmBeforeDisassembling(Item)
-                            && Popup.ShowYesNoCancel($"Are you sure you want {Vendor.t()} to disassemble " +
-                            $"{(multipleItems ? $"all the {pluralItems}" : Item.t())}?") != 0)
-                        {
-                            E.RequestCancelSecond();
-                            return false;
-                        }
-                        if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
-                        {
-                            string themIt = multipleItems ? "them" : Item.them;
-                            if (Popup.ShowYesNoCancel(
-                                $"{Item.T()} {(multipleItems ? "are" : Item.Is)} not owned by you. " +
-                                $"Are you sure you want {Vendor.t()} to disassemble {themIt}?") != 0)
-                            {
-                                E.RequestCancelSecond();
-                                return false;
-                            }
-                            broadcastActions ??= new();
-                            broadcastActions.Add(Item.Physics.BroadcastForHelp);
-                        }
-                        GameObject container = Item.InInventory;
-                        if (container != null && container != player && !container.Owner.IsNullOrEmpty() && container.Owner != Item.Owner && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
-                        {
-                            if (Popup.ShowYesNoCancel(
-                                $"{container.Does("are")} not owned by you. " +
-                                $"Are you sure you want {Vendor.t()} to disassemble {(multipleItems ? "items" : Item.an())} inside {container.them}?") != 0)
-                            {
-                                E.RequestCancelSecond();
-                                return false;
-                            }
-                            broadcastActions ??= new();
-                            broadcastActions.Add(container.Physics.BroadcastForHelp);
-                        }
-                        if (!broadcastActions.IsNullOrEmpty())
-                        {
-                            foreach (Action<GameObject> broadcastAction in broadcastActions)
-                            {
-                                broadcastAction(player);
-                            }
-                        }
+                        SB.Append("=object.T= may have =object.t= disassemble ").Append(thisThese).Append(" for ");
+                        SB.AppendColored("C", totalCost).Append((totalCost == 1) ? "dram" : "drams").Append(" of fresh water.");
+                        SB.AppendLines(2).Append("Note: this will close the trade window, ending the conversation that opened it.");
 
-                        Disassembly = new(E.Item, multipleItems ? itemCount : 1, EnergyCostPer: 0);
-                        return true;
+                        if (Popup.ShowYesNo(RB.ToString()) == DialogResult.Yes)
+                        {
+                            List<Action<GameObject>> broadcastActions = null;
+
+                            if (multipleItems && (AutoAct.ShouldHostilesInterrupt("o") || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
+                            {
+                                string hostilesMessage = "=subject.T= cannot disassemble so many items at once with hostiles nearby.";
+                                Popup.ShowFail(hostilesMessage.Replacer(Vendor));
+                                E.RequestCancelSecond();
+                                return false;
+                            }
+
+                            if (Item.IsImportant())
+                            {
+                                if (Item.ConfirmUseImportant(player, "disassemble", null, (!multipleItems) ? 1 : itemCount))
+                                {
+                                    E.RequestCancelSecond();
+                                    return false;
+                                }
+                            }
+
+                            if (TinkerItem.ConfirmBeforeDisassembling(Item))
+                            {
+                                string pluralItems = "=object.t=";
+                                if (multipleItems)
+                                {
+                                    pluralItems = "all the ";
+                                    pluralItems += Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName);
+                                }
+                                string confirmDisassemble = "Are you sure you want =subject.t= to disassemble " + pluralItems + "?";
+                                if (Popup.ShowYesNoCancel(confirmDisassemble.Replacer(Vendor, Item)) != DialogResult.Yes)
+                                {
+                                    E.RequestCancelSecond();
+                                    return false;
+                                }
+                            }
+
+                            if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
+                            {
+                                string themIt = multipleItems ? "them" : Item.them;
+                                string confirmOwnerMessage = "=object.T= =verb:are:afterpronoun= not owned by you. ";
+                                confirmOwnerMessage += "Are you sure you want =subject.t= to disassemble " + themIt + "?";
+                                if (Popup.ShowYesNoCancel(confirmOwnerMessage.Replacer(Vendor, Item)) != DialogResult.Yes)
+                                {
+                                    E.RequestCancelSecond();
+                                    return false;
+                                }
+                                broadcastActions ??= new();
+                                broadcastActions.Add(Item.Physics.BroadcastForHelp);
+                            }
+
+                            if (Item.InInventory is GameObject container
+                                && container != player
+                                && !container.Owner.IsNullOrEmpty() 
+                                && container.Owner != Item.Owner 
+                                && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
+                            {
+                                string itemsAnItem = multipleItems ? "items" : Item.an();
+                                string confirmContainerMessage = "=object.T= =verb:are:afterpronoun= not owned by you. ";
+                                confirmContainerMessage += "Are you sure you want =subject.t= to disassemble " + itemsAnItem + "?";
+                                if (Popup.ShowYesNoCancel(confirmContainerMessage.Replacer(Vendor, container)) != DialogResult.Yes)
+                                {
+                                    E.RequestCancelSecond();
+                                    return false;
+                                }
+                                broadcastActions ??= new();
+                                broadcastActions.Add(container.Physics.BroadcastForHelp);
+                            }
+                            if (!broadcastActions.IsNullOrEmpty())
+                            {
+                                foreach (Action<GameObject> broadcastAction in broadcastActions)
+                                {
+                                    broadcastAction(player);
+                                }
+                            }
+
+                            Disassembly = new(E.Item, multipleItems ? itemCount : 1, EnergyCostPer: 0);
+                            return true;
+                        }
                     }
                     E.RequestCancelSecond();
                 }

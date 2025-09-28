@@ -733,6 +733,7 @@ namespace XRL.World.Parts
             BitCost playerBitCost = null;
             BitCost vendorBitCost = null;
             string itThem = Multiple ? "them" : "it";
+            string askPay = Vendor.IsPlayerLed() ? "Ask" : "Pay";
             if (BitCost != null)
             {
                 playerBitCost = new();
@@ -744,8 +745,8 @@ namespace XRL.World.Parts
             }
             List<string> supplyOptions = new()
             {
-                $"Use my own if I have {(playerBitCost != null ? $"the required <{playerBitCost}> bits" : itThem)}.",
-                $"{(Vendor.IsPlayerLed() ? "Ask" : "Pay")} {Vendor.t()} to supply {(playerBitCost != null ? $"the required <{vendorBitCost}> bits" : itThem)}.",
+                "Use my own if I have " + (playerBitCost != null ? ("the required <" + playerBitCost + "> bits") : itThem) +".",
+                askPay + " =subject.t= to supply " + (vendorBitCost != null ? ("the required <" + vendorBitCost + "> bits") : itThem) + ".",
             };
             List<char> supplyHotkeys = new()
             {
@@ -814,8 +815,8 @@ namespace XRL.World.Parts
                 RecipeIngredientSupplier = PickASupplier(
                     Vendor: Vendor,
                     ForObject: ForObject,
-                    Title: $"{modPrefix}{numberMadePrefix}{TinkerData.DisplayName}" + "\n"
-                    + $"| {recipeIngredientBlueprints.Count.Things("Ingredient")} Required |".Color("Y") + "\n",
+                    Title: modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n"
+                    + ("| " + recipeIngredientBlueprints.Count.Things("Ingredient") + " Required |").Color("Y") + "\n",
                     Message: ingredientsMessage,
                     Multiple: recipeIngredientBlueprints.Count > 1);
 
@@ -837,7 +838,7 @@ namespace XRL.World.Parts
                 {
                     if (temporaryIngredientObject != null)
                     {
-                        Popup.ShowFail($"{temporaryIngredientObject.T()}{temporaryIngredientObject.Is} too unstable to craft with.");
+                        Popup.ShowFail("=subject.t= =verb:are:afterpronoun= too unstable to craft with.".Replacer(temporaryIngredientObject));
                     }
                     else
                     {
@@ -850,7 +851,8 @@ namespace XRL.World.Parts
                             }
                             ingredientName += TinkeringHelpers.TinkeredItemShortDisplayName(recipeIngredient);
                         }
-                        Popup.ShowFail($"{RecipeIngredientSupplier.T()}{RecipeIngredientSupplier.GetVerb("don't")} have the required ingredient: {ingredientName}!");
+                        string noIngredientMessage = "=subject.T= =verb:don't:afterpronoun= have the required ingredient: " + ingredientName;
+                        Popup.ShowFail(noIngredientMessage.Replacer(RecipeIngredientSupplier));
                     }
                     return false;
                 }
@@ -866,7 +868,7 @@ namespace XRL.World.Parts
         {
             BitSupplierBitLocker = null;
 
-            string modPrefix = TinkerData.Type == "Mod" ? $"[{"Mod".Color("W")}] " : "";
+            string modPrefix = TinkerData.Type == "Mod" ? ("[{{W|Mod}}] ") : "";
 
             string numberMadePrefix = null;
             if (TinkerData.Type == "Build"
@@ -874,15 +876,15 @@ namespace XRL.World.Parts
                 && ForObject.TryGetPart(out TinkerItem tinkerItem)
                 && tinkerItem.NumberMade > 1)
             {
-                numberMadePrefix = $"{Grammar.Cardinal(tinkerItem.NumberMade)} ";
+                numberMadePrefix = Grammar.Cardinal(tinkerItem.NumberMade) + " ";
             }
 
             RecipeBitSupplier = PickASupplier(
                 Vendor: Vendor,
                 ForObject: ForObject,
-                Title: $"{modPrefix}{numberMadePrefix}{TinkerData.DisplayName}" + "\n"
+                Title: modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n"
                 + $"| Bit Cost |".Color("y") + "\n"
-                + $"<{BitCost}>" + "\n",
+                + "<" + BitCost + ">" + "\n",
                 CenterIntro: true,
                 BitCost: BitCost);
 
