@@ -48,9 +48,16 @@ namespace UD_Tinkering_Bytes
         public static int GetFor(GameObject Vendor, GameObject Item, string Type, int BaseRating, int Bonus, ref int SecondaryBonus, ref bool Interrupt, bool Interruptable = true)
         {
             int indent = Debug.LastIndent;
+            bool doDebug = false;
             if (GameObject.Validate(ref Item) && Item.WantEvent(ID, CascadeLevel))
             {
-                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("want")} {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent, Toggle: true);
+                Debug.CheckYeh(4, 
+                    $"{Item.GetDisplayName(Single: true, Stripped: true, Short: true)}" +
+                    $"{Item.GetVerb("want")} " +
+                    $"{nameof(GetVendorTinkeringBonusEvent)} for " +
+                    $"{Type}!",
+                    Indent: indent, Toggle: doDebug);
+
                 GetVendorTinkeringBonusEvent E = FromPool();
                 E.Vendor = Vendor;
                 E.Item = Item;
@@ -68,7 +75,12 @@ namespace UD_Tinkering_Bytes
             }
             else
             {
-                Debug.CheckYeh(4, $"{Item.T(Single: true)}{Item.GetVerb("don't")} want {nameof(GetVendorTinkeringBonusEvent)} for {Type}!", Indent: indent, Toggle: true);
+                Debug.CheckNah(4, 
+                    $"{Item.GetDisplayName(Single: true, Stripped: true, Short: true)}" +
+                    $"{Item.GetVerb("don't")} want " +
+                    $"{nameof(GetVendorTinkeringBonusEvent)} for " +
+                    $"{Type}!",
+                    Indent: indent, Toggle: doDebug);
             }
             Debug.LastIndent = indent;
             return Bonus;

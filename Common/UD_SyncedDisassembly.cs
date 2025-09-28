@@ -18,6 +18,10 @@ namespace UD_Tinkering_Bytes
 
         public List<TinkerData> KnownRecipes;
 
+        public TinkerData ReverseEngineeredBuildRecipe;
+
+        public List<TinkerData> ReverseEngineeredModRecipes;
+
         public int DramsCostPer;
 
         public int EnergyCostPer;
@@ -33,6 +37,8 @@ namespace UD_Tinkering_Bytes
             {
                 this.Disassembly.EnergyCostPer = 0;
             }
+            ReverseEngineeredBuildRecipe = null;
+            ReverseEngineeredModRecipes = new();
         }
 
         public override string GetDescription()
@@ -99,7 +105,7 @@ namespace UD_Tinkering_Bytes
         public override void End()
         {
             base.End();
-            UD_VendorDisassembly.VendorDisassemblyEnd(Disassembler, Disassembly);
+            UD_VendorDisassembly.VendorDisassemblyEnd(Disassembler, Disassembly, this);
             if (Disassembler.TryGetPart(out UD_VendorDisassembly vendorDisassembly))
             {
                 vendorDisassembly.ResetDisassembly();
