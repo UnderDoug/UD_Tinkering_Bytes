@@ -12,23 +12,5 @@ namespace XRL.World.Parts.Skill
         public UD_Basics()
         {
         }
-
-        public override void Attach()
-        {
-            base.Attach();
-            /*
-            if (!ParentObject.IsPlayer() 
-                && ParentObject.RequirePart<UD_VendorTinkering>() is UD_VendorTinkering uD_VendorTinkering)
-            {
-                UD_VendorTinkering.LearnByteRecipes(ParentObject, uD_VendorTinkering.KnownRecipes);
-            }
-            else
-            if (ParentObject.IsPlayer()
-                && (bool)!The.Game?.GetBooleanGameState(nameof(LearnAllTheBytes)))
-            {
-                LearnAllTheBytes.AddByteBlueprints(ParentObject);
-            }
-            */
-        }
     }
 }
