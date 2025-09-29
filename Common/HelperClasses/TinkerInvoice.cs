@@ -20,6 +20,7 @@ using UD_Modding_Toolbox;
 
 using static UD_Modding_Toolbox.Const;
 using static UD_Tinkering_Bytes.Utils;
+using System.Linq;
 
 namespace UD_Tinkering_Bytes
 {
@@ -244,7 +245,7 @@ namespace UD_Tinkering_Bytes
         {
             if (Recipe != null && !Recipe.Ingredient.IsNullOrEmpty() && IngredientList.IsNullOrEmpty())
             {
-                IngredientList = Recipe.Ingredient.CachedCommaExpansion();
+                IngredientList = Recipe.Ingredient.CachedCommaExpansion().ToList();
             }
             return IngredientList;
         }
@@ -270,7 +271,7 @@ namespace UD_Tinkering_Bytes
         }
         public static double GetIngedientsValueInDrams(string Ingredients, GameObject Vendor = null)
         {
-            return GetIngedientsValueInDrams(Ingredients?.CachedCommaExpansion(), Vendor);
+            return GetIngedientsValueInDrams(Ingredients?.CachedCommaExpansion().ToList(), Vendor);
         }
 
         public static GameObject GetBitScrapItem(string Bit)

@@ -5,6 +5,7 @@
 		<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
     <BaseIntermediateOutputPath>.dotnet\obj\</BaseIntermediateOutputPath>
     <BaseOutputPath>.dotnet\bin\</BaseOutputPath>
+    <OutputPath>.dotnet\obj\</OutputPath>
   </PropertyGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
