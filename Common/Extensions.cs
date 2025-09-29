@@ -239,5 +239,13 @@ namespace UD_Tinkering_Bytes
             return (ContainedDatum.Blueprint == QueryingDatum.Blueprint || ContainedDatum.PartName == QueryingDatum.PartName)
                 && ContainedDatum.Cost == QueryingDatum.Cost;
         }
+
+        public static bool RemoveFromInventory(this GameObject Actor, GameObject Item)
+        {
+            return Actor != null
+                && Actor.Inventory != null
+                && Item != null
+                && Actor.Inventory.FireEvent(Event.New("CommandRemoveObject", "Object", Item));
+        }
     }
 }
