@@ -2,18 +2,25 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using UD_Modding_Toolbox;
-using UD_Vendor_Actions;
+
 using XRL;
 using XRL.World;
 using XRL.World.Parts;
 using XRL.World.Tinkering;
+
+using UD_Modding_Toolbox;
+using UD_Vendor_Actions;
 
 namespace UD_Tinkering_Bytes
 {
     public static class Utils
     {
         public static ModInfo ThisMod => ModManager.GetMod("UD_Tinkering_Bytes");
+
+        public static GameObjectBlueprint GetGameObjectBlueprint(string Blueprint)
+        {
+            return GameObjectFactory.Factory.GetBlueprintIfExists(Blueprint);
+        }
 
         public static string GetScrapBlueprintFromBit(char Bit)
         {

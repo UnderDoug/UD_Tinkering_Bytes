@@ -52,8 +52,8 @@ namespace UD_Tinkering_Bytes
 
         public double ExpertiseValue = 0;
 
-        public List<string> IngredientList = null;
-        public double IngredientsValue = 0;
+        public GameObject SelectedIngredient = null;
+        public double IngredientValue = 0;
         public bool VendorSuppliesIngredients = true;
 
         public BitCost BitCost = null;
@@ -69,18 +69,19 @@ namespace UD_Tinkering_Bytes
         {
         }
 
-        public TinkerInvoice(GameObject Vendor, string Service, BitCost BitCost = null, GameObject Item = null)
+        public TinkerInvoice(GameObject Vendor, string Service, GameObject SelectedIngredient = null, BitCost BitCost = null, GameObject Item = null)
             : this()
         {
             this.Vendor = Vendor;
             this.Service ??= Service ?? "Sundry";
 
+            this.SelectedIngredient = SelectedIngredient;
             this.BitCost = BitCost;
             this.Item = Item;
         }
 
-        public TinkerInvoice(GameObject Vendor, TinkerData Recipe, BitCost BitCost, bool VendorOwnsRecipe = true, GameObject ApplyModTo = null)
-            : this(Vendor, Recipe.Type, BitCost)
+        public TinkerInvoice(GameObject Vendor, TinkerData Recipe, GameObject SelectedIngredient, BitCost BitCost, bool VendorOwnsRecipe = true, GameObject ApplyModTo = null)
+            : this(Vendor, Recipe.Type, SelectedIngredient, BitCost)
         {
             this.Recipe = Recipe;
             this.VendorOwnsRecipe = VendorOwnsRecipe;
@@ -100,6 +101,10 @@ namespace UD_Tinkering_Bytes
             {
                 Item = ApplyModTo;
             }
+        }
+        public TinkerInvoice(GameObject Vendor, TinkerData Recipe, BitCost BitCost, bool VendorOwnsRecipe = true, GameObject ApplyModTo = null)
+            : this(Vendor, Recipe, null, BitCost, VendorOwnsRecipe, ApplyModTo)
+        {
         }
 
         public void Clear()
@@ -241,37 +246,33 @@ namespace UD_Tinkering_Bytes
             return GetLabourValue() + GetExpertiseValue();
         }
 
-        public List<string> GetIngredientList()
+        public GameObject GetSelectedIngredient()
         {
-            if (Recipe != null && !Recipe.Ingredient.IsNullOrEmpty() && IngredientList.IsNullOrEmpty())
+            if (SelectedIngredient == null
+                && UD_VendorTinkering.PickRecipeIngredientSupplier(
+                    Vendor: Vendor,
+                    ForObject: Item,
+                    TinkerData: Recipe,
+                    RecipeIngredientSupplier: out GameObject ingredientSupplier,
+                    SelectedIngredient: out SelectedIngredient))
             {
-                IngredientList = Recipe.Ingredient.CachedCommaExpansion().ToList();
+                VendorSuppliesIngredients = ingredientSupplier == Vendor;
             }
-            return IngredientList;
+            return SelectedIngredient;
         }
 
-        public static double GetIngedientsValueInDrams(List<string> Ingredients, GameObject Vendor = null)
+        public static double GetIngedientValueInDrams(string Ingredient, GameObject Vendor = null)
         {
-            double combinedIngredientValue = 0;
-            if (!Ingredients.IsNullOrEmpty())
+            double ingredientValue = 0;
+            if (GameObject.CreateSample(Ingredient) is GameObject ingredientObject)
             {
-                foreach (string ingredient in Ingredients)
+                ingredientValue += TradeUI.GetValue(ingredientObject, Vendor != null);
+                if (GameObject.Validate(ref ingredientObject))
                 {
-                    if (GameObject.CreateSample(ingredient) is GameObject ingredientObject)
-                    {
-                        combinedIngredientValue += TradeUI.GetValue(ingredientObject, Vendor != null);
-                        if (GameObject.Validate(ref ingredientObject))
-                        {
-                            ingredientObject?.Obliterate();
-                        }
-                    }
+                    ingredientObject?.Obliterate();
                 }
             }
-            return combinedIngredientValue;
-        }
-        public static double GetIngedientsValueInDrams(string Ingredients, GameObject Vendor = null)
-        {
-            return GetIngedientsValueInDrams(Ingredients?.CachedCommaExpansion().ToList(), Vendor);
+            return ingredientValue;
         }
 
         public static GameObject GetBitScrapItem(string Bit)
@@ -298,13 +299,30 @@ namespace UD_Tinkering_Bytes
             return scrapItem;
         }
 
-        public double GetIngredientsValue()
+        public static double GetIngredientsValueInDrams(GameObject Ingredient, GameObject Vendor = null)
         {
-            if (!GetIngredientList().IsNullOrEmpty() && VendorSuppliesIngredients && IngredientsValue == 0)
+            return TradeUI.GetValue(Ingredient, Vendor != null);
+        }
+        public static double GetIngredientsValueInDrams(string Blueprint, GameObject Vendor = null)
+        {
+            double valueInDrams = 0;
+            if (GameObject.CreateSample(Blueprint) is GameObject ingredient)
             {
-                IngredientsValue = Math.Round(GetIngedientsValueInDrams(GetIngredientList()), 2);
+                valueInDrams = TradeUI.GetValue(ingredient, Vendor != null);
+                ingredient.Obliterate();
             }
-            return IngredientsValue;
+            return valueInDrams;
+        }
+
+        public double GetIngredientValue()
+        {
+            if (IngredientValue == 0
+                && VendorSuppliesIngredients
+                && GetSelectedIngredient() is GameObject selectedIngredient)
+            {
+                IngredientValue = Math.Round(GetIngredientsValueInDrams(selectedIngredient, Vendor), 2);
+            }
+            return IngredientValue;
         }
 
         public static double GetBitsValueInDrams(string BitCost, GameObject Vendor = null)
@@ -341,7 +359,7 @@ namespace UD_Tinkering_Bytes
 
         public double GetMaterialsValue()
         {
-            return Math.Round(GetIngredientsValue() + GetBitsValue(), 2);
+            return Math.Round(GetIngredientValue() + GetBitsValue(), 2);
         }
 
         public int GetTotalCost()
@@ -368,7 +386,7 @@ namespace UD_Tinkering_Bytes
                 {
                     if (!VendorSuppliesIngredients)
                     {
-                        TotalCost -= GetIngredientsValue();
+                        TotalCost -= GetIngredientValue();
                     }
 
                     if (!VendorSuppliesBits)
@@ -383,9 +401,9 @@ namespace UD_Tinkering_Bytes
         public int GetDepositCost()
         {
             if (Service == BUILD
-                && (GetIngredientList().IsNullOrEmpty() || GetIngredientsValue() > 0)
-                && GetBitsValue() > 0
-                && DepositCost == 0)
+                && DepositCost == 0
+                && GetIngredientValue() > 0
+                && GetBitsValue() > 0)
             {
                 DepositCost = GetTotalCost() - GetItemValue();
             }
@@ -409,33 +427,39 @@ namespace UD_Tinkering_Bytes
 
             bool isItemValueIrrelevant = !VendorSuppliesBits || !VendorSuppliesIngredients;
 
+            string itemName = GetItemName();
+            string dividerLineK = DividerLine().Color("K");
+
             // Description
             if (Service == BUILD)
             {
-                SB.Append("Description: Tinker ").Append($"{NumberMade}x ").Append(GetItemName()).AppendLine();
+                SB.Append("Description: Tinker ").Append($"{NumberMade}x ").Append(itemName).AppendLine();
             }
             else
             if (Service == MOD)
             {
                 SB.Append("Description: Apply ").Append(Recipe.DisplayName.Color("y"));
-                SB.Append(" to ").Append(GetItemName()).AppendLine();
+                SB.Append(" to ").Append(itemName).AppendLine();
             }
             else
             if (Service == REPAIR)
             {
-                SB.Append("Description: Repair ").Append(GetItemName()).AppendLine();
+                SB.Append("Description: Repair ").Append(itemName).AppendLine();
             }
             else
             if (Service == RECHARGE)
             {
-                SB.Append("Description: Recharge ").Append(GetItemName()).AppendLine();
+                SB.Append("Description: Recharge ").Append(itemName).AppendLine();
             }
-            SB.Append(DividerLine().Color("K")).AppendLine();
+            SB.Append(dividerLineK).AppendLine();
 
             // Item or Material Cost
-            if (!isItemValueIrrelevant && GetItemValue() > GetMaterialsValue() && Service == BUILD)
+            double itemValue = GetItemValue();
+            double materialsValue = GetMaterialsValue();
+            bool isItemWorthMore = itemValue > materialsValue;
+            if (!isItemValueIrrelevant && isItemWorthMore && Service == BUILD)
             {
-                SB.Append("Item Value: ").AppendColored("C", GetItemValue().Things("dram")).AppendLine();
+                SB.Append("Item Value: ").AppendColored("C", itemValue.Things("dram")).AppendLine();
                 if (GetLabourValue() > -1)
                 {
                     SB.Append("Labour: ").AppendColored("C", GetLabourValue().Things("dram")).AppendLine();
@@ -459,14 +483,16 @@ namespace UD_Tinkering_Bytes
                 SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
             }
 
-            // Ingredients
-            if (!GetIngredientList().IsNullOrEmpty())
+            // Ingredient
+            double ingredientValue = GetIngredientValue();
+            if (GetSelectedIngredient() is GameObject selectedIngredient)
             {
-                SB.Append($"{GetIngredientList().Count.Things("Ingredient")}: ");
+                string ingredientDisplayName = selectedIngredient.GetDisplayName(Context: nameof(TinkerInvoice), Short: true);
+                SB.Append("Ingredient (").Append(ingredientDisplayName).Append("): ");
                 if (VendorSuppliesIngredients)
                 {
-                    SB.AppendColored("C", GetIngredientsValue().Things("dram"));
-                    if (GetItemValue() > GetMaterialsValue())
+                    SB.AppendColored("C", ingredientValue.Things("dram"));
+                    if (isItemWorthMore)
                     {
                         SB.Append(" (").AppendColored("K", "included in item value").Append(")");
                     }
@@ -476,21 +502,17 @@ namespace UD_Tinkering_Bytes
                     SB.Append($"Provided by {player?.t(Short: true)}");
                 }
                 SB.AppendLine();
-                foreach (string ingredient in GetIngredientList())
-                {
-                    string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(ingredient)?.DisplayName();
-                    SB.AppendColored("K", "\u0007").Append($" {ingredientDisplayName}\n").AppendLine();
-                }
             }
 
             // Bits
+            double bitsValue = GetBitsValue();
             if (!BitCost.IsNullOrEmpty())
             {
                 SB.Append($"Bits <{BitCost}>: ");
                 if (VendorSuppliesBits)
                 {
-                    SB.AppendColored("C", GetBitsValue().Things("dram"));
-                    if (GetItemValue() > GetMaterialsValue())
+                    SB.AppendColored("C", bitsValue.Things("dram"));
+                    if (isItemWorthMore)
                     {
                         SB.Append(" (").AppendColored("K", "included in item value").Append(")");
                     }
@@ -503,6 +525,7 @@ namespace UD_Tinkering_Bytes
             }
 
             // Total Cost
+            int totalCost = GetTotalCost();
             if (VendorSuppliesIngredients || VendorSuppliesBits)
             {
                 string performServiceOn = Service switch
@@ -513,7 +536,7 @@ namespace UD_Tinkering_Bytes
                     MOD => "tinker",
                     _ => "tinker",
                 };
-                SB.Append($"Total cost to {performServiceOn} item: ").AppendColored("C", GetTotalCost().Things("dram"));
+                SB.Append($"Total cost to {performServiceOn} item: ").AppendColored("C", totalCost.Things("dram"));
                 if (Besties)
                 {
                     if (Vendor.HasEffect<Lovesick>())
@@ -535,13 +558,14 @@ namespace UD_Tinkering_Bytes
             }
 
             // Deposit
+            int depositCost = GetDepositCost();
             if (!Besties
-                && GetDepositCost() > 0
-                && GetDepositCost() < GetTotalCost()
-                && player.GetFreeDrams() < GetTotalCost())
+                && depositCost > 0
+                && depositCost < totalCost
+                && player.GetFreeDrams() < totalCost)
             {
-                SB.Append(DividerLine().Color("K")).AppendLine();
-                SB.Append("Will tinker and hold item for desposit of ").AppendColored("C", GetDepositCost().Things("dram")).AppendLine();
+                SB.Append(dividerLineK).AppendLine();
+                SB.Append("Will tinker and hold item for desposit of ").AppendColored("C", depositCost.Things("dram")).AppendLine();
             }
 
             return Event.FinalizeString(SB);
@@ -594,8 +618,8 @@ namespace UD_Tinkering_Bytes
                 SB.Append(nameof(NumberMade)).Append(",");
                 SB.Append(nameof(ItemValue)).Append(",");
                 SB.Append(nameof(GetExpertiseValue).Replace("Get", "")).Append(",");
-                SB.Append(nameof(IngredientList)).Append("Count").Append(",");
-                SB.Append(nameof(IngredientsValue)).Append(",");
+                SB.Append(nameof(SelectedIngredient)).Append(",");
+                SB.Append(nameof(IngredientValue)).Append(",");
                 SB.Append(nameof(BitCost)).Append(",");
                 SB.Append(nameof(BitsValue)).Append(",");
                 SB.Append(nameof(GetMaterialsValue).Replace("Get", "")).Append(",");
@@ -651,8 +675,8 @@ namespace UD_Tinkering_Bytes
             SB.Append(NumberMade).Append(",");
             SB.Append(GetItemValue()).Append(",");
             SB.Append(GetExpertiseValue()).Append(",");
-            SB.Append(GetIngredientList().IsNullOrEmpty() ? 0 : GetIngredientList().Count).Append(",");
-            SB.Append(GetIngredientsValue()).Append(",");
+            SB.Append(GetSelectedIngredient()).Append(",");
+            SB.Append(GetIngredientValue()).Append(",");
             SB.Append(BitCost?.ToString()?.Strip() ?? NULL).Append(",");
             SB.Append(GetBitsValue()).Append(",");
             SB.Append(GetMaterialsValue()).Append(",");
@@ -707,10 +731,30 @@ namespace UD_Tinkering_Bytes
                         bitCost = new();
                         bitCost.Import(TinkerItem.GetBitCostFor(buildRecipe.Blueprint));
 
-                        tinkerInvoice = new(sampleBep, buildRecipe, bitCost, true);
+                        if (buildRecipe.Ingredient.IsNullOrEmpty())
+                        {
+                            tinkerInvoice = new(sampleBep, buildRecipe, bitCost, true);
 
-                        Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
-                        tinkerInvoice?.Clear();
+                            Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
+                            tinkerInvoice?.Clear();
+                        }
+                        else
+                        {
+                            foreach (string ingredient in buildRecipe.Ingredient.CachedCommaExpansion())
+                            {
+                                if (GameObject.CreateSample(ingredient) is GameObject ingredientObject)
+                                {
+                                    tinkerInvoice = new(sampleBep, buildRecipe, ingredientObject, bitCost, true);
+
+                                    Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
+                                    tinkerInvoice?.Clear();
+                                    if (GameObject.Validate(ingredientObject))
+                                    {
+                                        ingredientObject.Obliterate();
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 else
@@ -773,10 +817,30 @@ namespace UD_Tinkering_Bytes
                                 bitCost.Increment(BitType.TierBits[recipeTier]);
                                 bitCost.Increment(BitType.TierBits[existingModsTier]);
 
-                                tinkerInvoice = new(sampleBep, modRecipe, bitCost, true, sampleItem);
+                                if (modRecipe.Ingredient.IsNullOrEmpty())
+                                {
+                                    tinkerInvoice = new(sampleBep, modRecipe, bitCost, true, sampleItem);
 
-                                Debug.Entry(4, tinkerInvoice.DebugString(), Indent: 0, Toggle: true);
-                                tinkerInvoice?.Clear();
+                                    Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
+                                    tinkerInvoice?.Clear();
+                                }
+                                else
+                                {
+                                    foreach (string ingredient in modRecipe.Ingredient.CachedCommaExpansion())
+                                    {
+                                        if (GameObject.CreateSample(ingredient) is GameObject ingredientObject)
+                                        {
+                                            tinkerInvoice = new(sampleBep, modRecipe, ingredientObject, bitCost, true, sampleItem);
+
+                                            Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
+                                            tinkerInvoice?.Clear();
+                                            if (GameObject.Validate(ingredientObject))
+                                            {
+                                                ingredientObject.Obliterate();
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         finally
@@ -843,7 +907,7 @@ namespace UD_Tinkering_Bytes
 
                             bitCost = new(Tinkering_Repair.GetRepairCost(sampleItem));
 
-                            tinkerInvoice = new(sampleBep, REPAIR, bitCost, sampleItem)
+                            tinkerInvoice = new(sampleBep, REPAIR, null, bitCost, sampleItem)
                             {
                                 VendorSuppliesBits = true,
                             };
@@ -920,7 +984,7 @@ namespace UD_Tinkering_Bytes
 
                             bitCost = new(Tinkering_Repair.GetRepairCost(sampleItem));
 
-                            tinkerInvoice = new(sampleBep, REPAIR, bitCost, sampleItem)
+                            tinkerInvoice = new(sampleBep, REPAIR, null, bitCost, sampleItem)
                             {
                                 VendorSuppliesBits = true,
                             };

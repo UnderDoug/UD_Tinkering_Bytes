@@ -23,6 +23,7 @@ using UD_Vendor_Actions;
 using static XRL.World.Parts.Skill.Tinkering;
 
 using UD_Tinkering_Bytes;
+using Utils = UD_Tinkering_Bytes.Utils;
 
 namespace XRL.World.Parts
 {
@@ -709,6 +710,15 @@ namespace XRL.World.Parts
             return IsModApplicableAndNotAlreadyInDictionary(ParentObject, ApplicableItem, ModData, ExistingRecipes, InstalledRecipes);
         }
 
+        public static GameObject FindIngredientInInventory(GameObject IngredientSupplier, string Blueprint, Predicate<GameObject> Filter = null)
+        {
+            return IngredientSupplier?.Inventory?.FindObjectByBlueprint(Blueprint, Filter);
+        }
+        public static GameObject FindRealIngredient(GameObject IngredientSupplier, string Blueprint)
+        {
+            return IngredientSupplier?.Inventory?.FindObjectByBlueprint(Blueprint, Temporary.IsNotTemporary);
+        }
+
         private static void AddNextHotkey(ref List<char> Hotkeys)
         {
             Hotkeys ??= new();
@@ -803,10 +813,11 @@ namespace XRL.World.Parts
             GameObject ForObject,
             TinkerData TinkerData,
             out GameObject RecipeIngredientSupplier,
-            out List<string> AvailableIngredients)
+            out GameObject SelectedIngredient,
+            string Context = null)
         {
             RecipeIngredientSupplier = Vendor;
-            AvailableIngredients = null;
+            SelectedIngredient = null;
 
             string itemOrMod = TinkerData.Type == "Build" ? "item" : "mod";
             string craftOrApply = TinkerData.Type == "Build" ? "tinker" : "apply";
@@ -826,26 +837,36 @@ namespace XRL.World.Parts
                     numberMadePrefix = $"{Grammar.Cardinal(tinkerItem.NumberMade)} ";
                 }
 
+                string title = modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n";
+                title += "| 1 Ingredient Required |".Color("Y") + "\n";
+
                 List<string> recipeIngredientBlueprints = TinkerData.Ingredient.CachedCommaExpansion().ToList();
 
-                string ingredientsMessage = "Any one of the following:\n";
-                foreach (string recipeIngredient in recipeIngredientBlueprints)
+                for (int i = 0; i < recipeIngredientBlueprints.Count; i++)
                 {
-                    string ingredientDisplayName = GameObjectFactory.Factory?.GetBlueprint(recipeIngredient)?.DisplayName();
+                    if (i > 0)
+                    {
+                        title += "-or-".Color("Y") + "\n";
+                    }
+
+                    string ingredientDisplayName = Utils.GetGameObjectBlueprint(recipeIngredientBlueprints[i])?.DisplayName();
+                    if (GameObject.CreateSample(recipeIngredientBlueprints[i]) is GameObject sampleIngredient)
+                    {
+                        ingredientDisplayName = sampleIngredient.GetDisplayName(Context: Context, Short: true);
+                        sampleIngredient.Obliterate();
+                    }
+                    
                     if (!ingredientDisplayName.IsNullOrEmpty())
                     {
-                        ingredientsMessage += $"\u0007".Color("K") + $" {ingredientDisplayName}" + "\n";
+                        title += ingredientDisplayName + "\n";
                     }
                 }
-
-                string title = modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n";
-                title += "| Ingredient Required |".Color("Y") + "\n";
+                title += ":::".Color("Y");
 
                 RecipeIngredientSupplier = PickASupplier(
                     Vendor: Vendor,
                     ForObject: ForObject,
-                    Title: title,
-                    Message: ingredientsMessage);
+                    Title: title);
 
                 if (RecipeIngredientSupplier == null)
                 {
@@ -853,12 +874,12 @@ namespace XRL.World.Parts
                 }
                 foreach (string recipeIngredient in recipeIngredientBlueprints)
                 {
-                    ingredientObject = RecipeIngredientSupplier.Inventory.FindObjectByBlueprint(recipeIngredient, Temporary.IsNotTemporary);
+                    ingredientObject = FindRealIngredient(RecipeIngredientSupplier, recipeIngredient);
                     if (ingredientObject != null)
                     {
                         break;
                     }
-                    temporaryIngredientObject ??= RecipeIngredientSupplier.Inventory.FindObjectByBlueprint(recipeIngredient);
+                    temporaryIngredientObject ??= FindIngredientInInventory(RecipeIngredientSupplier, recipeIngredient);
                 }
                 if (ingredientObject == null)
                 {
@@ -883,13 +904,24 @@ namespace XRL.World.Parts
                     }
                     return false;
                 }
-                AvailableIngredients = new();
+                List<string> availableIngredients = new();
                 foreach (string recipeIngredient in recipeIngredientBlueprints)
                 {
                     if (RecipeIngredientSupplier.HasObjectInInventory(GO => GO.Blueprint == recipeIngredient))
                     {
-                        AvailableIngredients.Add(recipeIngredient);
+                        availableIngredients.Add(recipeIngredient);
                     }
+                }
+
+                if (!PickRecipeIngredient(
+                    RecipeIngredientSupplier: RecipeIngredientSupplier,
+                    Item: ForObject,
+                    VendorSuppliesIngredients: RecipeIngredientSupplier == Vendor,
+                    AvailableIngredients: availableIngredients,
+                    SelectedIngredient: out SelectedIngredient,
+                    Context: Context))
+                {
+                    return false;
                 }
             }
             return true;
@@ -898,14 +930,16 @@ namespace XRL.World.Parts
             GameObject ForObject, 
             TinkerData TinkerData, 
             out GameObject RecipeIngredientSupplier,
-            out List<string> AvailableIngredients)
+            out GameObject SelectedIngredient,
+            string Context = null)
         {
             return PickRecipeIngredientSupplier(
                 Vendor: ParentObject,
                 ForObject: ForObject,
                 TinkerData: TinkerData, 
                 RecipeIngredientSupplier: out RecipeIngredientSupplier,
-                AvailableIngredients: out AvailableIngredients);
+                SelectedIngredient: out SelectedIngredient,
+                Context: Context);
         }
 
         public static bool PickRecipeBitsSupplier(
@@ -929,12 +963,15 @@ namespace XRL.World.Parts
                 numberMadePrefix = Grammar.Cardinal(tinkerItem.NumberMade) + " ";
             }
 
+            string title = modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n"
+                + "| Bit Cost |".Color("y") + "\n"
+                + "<" + BitCost + ">" + "\n"
+                + ":::".Color("Y");
+
             RecipeBitSupplier = PickASupplier(
                 Vendor: Vendor,
                 ForObject: ForObject,
-                Title: modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n"
-                + $"| Bit Cost |".Color("y") + "\n"
-                + "<" + BitCost + ">" + "\n",
+                Title: title,
                 CenterIntro: true,
                 BitCost: BitCost);
 
@@ -965,9 +1002,94 @@ namespace XRL.World.Parts
 
             return true;
         }
-        public bool PickRecipeBitsSupplier(GameObject ForObject, TinkerData TinkerData, BitCost BitCost, out GameObject RecipeBitSupplier, out BitLocker BitSupplierBitLocker)
+        public bool PickRecipeBitsSupplier(
+            GameObject ForObject,
+            TinkerData TinkerData,
+            BitCost BitCost,
+            out GameObject RecipeBitSupplier,
+            out BitLocker BitSupplierBitLocker)
         {
-            return PickRecipeBitsSupplier(ParentObject, ForObject, TinkerData, BitCost, out RecipeBitSupplier, out BitSupplierBitLocker);
+            return PickRecipeBitsSupplier(
+                Vendor: ParentObject,
+                ForObject: ForObject,
+                TinkerData: TinkerData,
+                BitCost: BitCost,
+                RecipeBitSupplier: out RecipeBitSupplier,
+                BitSupplierBitLocker: out BitSupplierBitLocker);
+        }
+
+        public static bool PickRecipeIngredient(
+            GameObject RecipeIngredientSupplier,
+            GameObject Item,
+            bool VendorSuppliesIngredients,
+            List<string> AvailableIngredients,
+            out GameObject SelectedIngredient,
+            string Context = null)
+        {
+            SelectedIngredient = null;
+            int selectedOption = 0;
+            if (AvailableIngredients.Count > 1)
+            {
+                List<char> hotkeys = new();
+                List<string> lineItems = new();
+                List<IRenderable> lineIcons = new();
+                foreach (string availableIngredient in AvailableIngredients)
+                {
+                    if (GameObject.CreateSample(availableIngredient) is GameObject availableIngredientObject)
+                    {
+                        TinkeringHelpers.StripForTinkering(availableIngredientObject);
+                        AddNextHotkey(ref hotkeys);
+                        double ingredientValue = 0;
+                        if (VendorSuppliesIngredients)
+                        {
+                            ingredientValue = Math.Round(TradeUI.GetValue(availableIngredientObject, VendorSuppliesIngredients), 2);
+                        }
+                        string contextualRefname = availableIngredientObject?.GetReferenceDisplayName(Context: Context, Short: true);
+                        string lineItem = "=contextualRefname=";
+                        if (ingredientValue > 0)
+                        {
+                            lineItem += " (worth {{C|=ingredientValue= " + (ingredientValue == 1 ? "dram" : "drams") + "}})";
+                        }
+                        lineItems.Add(lineItem
+                            .StartReplace()
+                            .AddExplicit(contextualRefname, "contextualRefname")
+                            .AddExplicit(ingredientValue.ToString(), "ingredientValue")
+                            .ToString());
+                        lineIcons.Add(availableIngredientObject.RenderForUI("PickIngredientObject"));
+                        if (GameObject.Validate(ref availableIngredientObject))
+                        {
+                            availableIngredientObject?.Obliterate();
+                        }
+                    }
+                    else
+                    {
+                        string potentialErrorMsg = nameof(UD_VendorTinkering) + "." + nameof(PickRecipeIngredient);
+                        MetricsManager.LogPotentialModError(
+                            Mod: UD_Tinkering_Bytes.Utils.ThisMod,
+                            Message: potentialErrorMsg + " failed to create sample from blueprint " + availableIngredient);
+                    }
+                }
+                if (!hotkeys.IsNullOrEmpty() && !lineItems.IsNullOrEmpty() && !lineIcons.IsNullOrEmpty())
+                {
+                    selectedOption = Popup.PickOption(
+                        Title: $"select which ingrediant to use",
+                        Sound: "Sounds/UI/ui_notification",
+                        Options: lineItems.ToArray(),
+                        Hotkeys: hotkeys.ToArray(),
+                        Icons: lineIcons,
+                        Context: Item,
+                        IntroIcon: Item.RenderForUI(),
+                        AllowEscape: true,
+                        PopupID: "VendorTinkeringSelectBuildIngredient:" + (Item?.IDIfAssigned ?? "(noid)"));
+                    if (selectedOption < 0)
+                    {
+                        return false;
+                    }
+                }
+            }
+            SelectedIngredient = FindRealIngredient(RecipeIngredientSupplier, AvailableIngredients[selectedOption]);
+            SelectedIngredient.SplitStack(1, RecipeIngredientSupplier);
+            return SelectedIngredient != null;
         }
 
         public static bool TryGetApplicableRecipes(
@@ -1125,14 +1247,10 @@ namespace XRL.World.Parts
                 {
                     return false;
                 }
-                GameObject ingredientObject = null;
+                
                 if (!tinkerDatum.Ingredient.IsNullOrEmpty())
                 {
-                    foreach (string ingredientBlueprint in TinkerInvoice.IngredientList)
-                    {
-
-                    }
-                    ingredientObject.SplitStack(1, RecipeIngredientSupplier);
+                    GameObject ingredientObject = TinkerInvoice.SelectedIngredient;
                     if (!RecipeIngredientSupplier.RemoveFromInventory(ingredientObject))
                     {
                         string unableToUseIngredientMsg = "=subject.T= cannot use =object.t= as an ingredient!="
@@ -1140,8 +1258,7 @@ namespace XRL.World.Parts
                             .AddObject(Vendor)
                             .AddObject(ingredientObject)
                             .ToString();
-                        RecipeIngredientSupplier.Fail(unableToUseIngredientMsg);
-                        ingredientObject.CheckStack();
+                        Vendor.Fail(unableToUseIngredientMsg);
                         return false;
                     }
                 }
@@ -1369,7 +1486,7 @@ namespace XRL.World.Parts
                 bitCost.Clear();
                 bitCost.Add(rechargeBit, chosenBitsToUse);
 
-                TinkerInvoice tinkerInvoice = new(Vendor, TinkerInvoice.RECHARGE, bitCost, item)
+                TinkerInvoice tinkerInvoice = new(Vendor, TinkerInvoice.RECHARGE, null, bitCost, item)
                 {
                     VendorSuppliesBits = vendorSuppliesBits,
                 };
@@ -1833,75 +1950,12 @@ namespace XRL.World.Parts
                                 ForObject: sampleItem,
                                 TinkerData: tinkerRecipe,
                                 RecipeIngredientSupplier: out GameObject recipeIngredientSupplier,
-                                AvailableIngredients: out List<string> availableIngredients))
+                                SelectedIngredient: out GameObject selectedIngredient,
+                                Context: E.Command))
                             {
                                 return false;
                             }
                             bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
-
-                            string selectedIngredient = null;
-                            if (availableIngredients.Count > 1)
-                            {
-                                List<char> hotkeys = new();
-                                List<string> lineItems = new();
-                                List<IRenderable> lineIcons = new();
-                                foreach (string availableIngredient in availableIngredients)
-                                {
-                                    if (GameObject.CreateSample(availableIngredient) is GameObject availableIngredientObject)
-                                    {
-                                        TinkeringHelpers.StripForTinkering(availableIngredientObject);
-                                        AddNextHotkey(ref hotkeys);
-                                        double ingredientValue = 0;
-                                        if (vendorSuppliesIngredients)
-                                        {
-                                            ingredientValue = Math.Round(TradeUI.GetValue(availableIngredientObject, vendorSuppliesIngredients), 2);
-                                        }
-                                        string contextualRefname = availableIngredientObject?.GetReferenceDisplayName(Context: COMMAND_BUILD);
-                                        string lineItem = "=contextualRefname=";
-                                        if (ingredientValue > 0)
-                                        {
-                                            lineItem += " (worth {{C|=ingredientValue= " + (ingredientValue == 1 ? "dram" : "drams") + "}})";
-                                        }
-                                        lineItems.Add(lineItem
-                                            .StartReplace()
-                                            .AddExplicit(contextualRefname, "contextualRefname")
-                                            .AddExplicit(ingredientValue.ToString(), "ingredientValue")
-                                            .ToString());
-                                        lineIcons.Add(availableIngredientObject.RenderForUI("PickIngredientObject"));
-                                        if (GameObject.Validate(ref availableIngredientObject))
-                                        {
-                                            availableIngredientObject?.Obliterate();
-                                        }
-                                    }
-                                    else
-                                    {
-                                        string potentialErrorMsg =
-                                            nameof(UD_VendorTinkering) + "." + nameof(HandleEvent) + ".(" +
-                                            nameof(UD_VendorActionEvent) + "E.Command" + E.Command + ") ";
-                                        MetricsManager.LogPotentialModError(
-                                            Mod: UD_Tinkering_Bytes.Utils.ThisMod,
-                                            Message: potentialErrorMsg + "failed to create sample from blueprint " + availableIngredient);
-                                    }
-                                }
-                                if (!hotkeys.IsNullOrEmpty() && !lineItems.IsNullOrEmpty() && !lineIcons.IsNullOrEmpty())
-                                {
-                                    int selectedOption = Popup.PickOption(
-                                        Title: $"select which ingrediant to use",
-                                        Sound: "Sounds/UI/ui_notification",
-                                        Options: lineItems.ToArray(),
-                                        Hotkeys: hotkeys.ToArray(),
-                                        Icons: lineIcons,
-                                        Context: E.Item,
-                                        IntroIcon: E.Item.RenderForUI(),
-                                        AllowEscape: true,
-                                        PopupID: "VendorTinkeringSelectBuildIngredient:" + (E.Item?.IDIfAssigned ?? "(noid)"));
-                                    if (selectedOption < 0)
-                                    {
-                                        return false;
-                                    }
-                                    selectedIngredient = availableIngredients[selectedOption];
-                                }
-                            }
 
                             BitCost bitCost = new();
                             bitCost.Import(TinkerItem.GetBitCostFor(tinkerRecipe.Blueprint));
@@ -1917,7 +1971,7 @@ namespace XRL.World.Parts
                             }
                             bool vendorSuppliesBits = recipeBitSupplier == vendor;
 
-                            tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe)
+                            tinkerInvoice = new(vendor, tinkerRecipe, selectedIngredient, bitCost, vendorsRecipe)
                             {
                                 VendorSuppliesIngredients = vendorSuppliesIngredients,
                                 VendorSuppliesBits = vendorSuppliesBits,
@@ -1978,6 +2032,9 @@ namespace XRL.World.Parts
                                 sampleItem.Obliterate();
                             }
                             tinkerInvoice?.Clear();
+
+                            player?.Inventory?.CheckStacks();
+                            vendor?.Inventory?.CheckStacks();
                         }
                     }
                     else
@@ -2122,12 +2179,16 @@ namespace XRL.World.Parts
                                     return false;
                                 }
 
-                                bool vendorSuppliesIngredients = false;
-                                if (!PickRecipeIngredientSupplier(selectedObject, tinkerRecipe, out GameObject recipeIngredientSupplier))
+                                if (!PickRecipeIngredientSupplier(
+                                    ForObject: selectedObject,
+                                    TinkerData: tinkerRecipe,
+                                    RecipeIngredientSupplier: out GameObject recipeIngredientSupplier,
+                                    SelectedIngredient: out GameObject selectedIngredient,
+                                    Context: E.Command))
                                 {
                                     return false;
                                 }
-                                vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
+                                bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
 
                                 BitCost bitCost = new();
                                 int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
@@ -2380,7 +2441,7 @@ namespace XRL.World.Parts
                         return false;
                     }
 
-                    tinkerInvoice = new(vendor, TinkerInvoice.REPAIR, bitCost, repairableItem)
+                    tinkerInvoice = new(vendor, TinkerInvoice.REPAIR, null, bitCost, repairableItem)
                     {
                         VendorSuppliesBits = vendorSuppliesBits,
                     };
