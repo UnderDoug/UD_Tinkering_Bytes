@@ -120,8 +120,8 @@ namespace UD_Tinkering_Bytes
 
             int currentDisassembly = CurrentDisassembly;
 
-            StringBuilder SB = Event.NewStringBuilder();
-            ReplaceBuilder RB = GameText.StartReplace(SB);
+            var SB = Event.NewStringBuilder();
+            var RB = GameText.StartReplace(SB);
             RB.AddObject(Disassembler, "vendor");
             RB.AddObject(Item, "item");
             RB.AddObject(The.Player, "player");
@@ -583,7 +583,7 @@ namespace UD_Tinkering_Bytes
             if (Disassembly.TotalNumberDone > 0)
             {
                 VendorDisassemblyProcessDisassemblingWhat(Disassembly);
-                StringBuilder SB = Event.NewStringBuilder();
+                var SB = Event.NewStringBuilder();
                 SB.Append("=subject.T= disassembled ");
                 if (Disassembly.DisassembledWhats.IsNullOrEmpty())
                 {

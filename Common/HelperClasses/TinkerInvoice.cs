@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 using Qud.API;
 
@@ -20,7 +21,6 @@ using UD_Modding_Toolbox;
 
 using static UD_Modding_Toolbox.Const;
 using static UD_Tinkering_Bytes.Utils;
-using System.Linq;
 
 namespace UD_Tinkering_Bytes
 {
@@ -405,7 +405,7 @@ namespace UD_Tinkering_Bytes
         public override string ToString()
         {
             GameObject player = The.Player;
-            StringBuilder SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
+            var SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
 
             bool isItemValueIrrelevant = !VendorSuppliesBits || !VendorSuppliesIngredients;
 
@@ -560,7 +560,7 @@ namespace UD_Tinkering_Bytes
             string itemValue = GetItemValue().Things("dram").Color("C") + " of fresh water";
             string restocks = "2 restocks".Color("g");
 
-            StringBuilder SB = Event.NewStringBuilder();
+            var SB = Event.NewStringBuilder();
 
             SB.Append(player.T()).Append(player.GetVerb("do")).Append(" not have the required ").Append(totalCost);
             SB.Append(" for ").Append(Vendor.T()).Append(" to tinker ").Append(thisTheseItems).Append(".");
@@ -584,7 +584,7 @@ namespace UD_Tinkering_Bytes
             }
             else
             {
-                StringBuilder SB = Event.NewStringBuilder();
+                var SB = Event.NewStringBuilder();
                 SB.Append(nameof(Recipe)).Append(",");
                 SB.Append(nameof(TinkerInvoice.Recipe.Type)).Append(",");
                 SB.Append(nameof(TinkerInvoice.Recipe.Tier)).Append(",");
@@ -613,7 +613,7 @@ namespace UD_Tinkering_Bytes
         }
         public string DebugString()
         {
-            StringBuilder SB = Event.NewStringBuilder();
+            var SB = Event.NewStringBuilder();
 
             bool armorStatsOnlyWhenEquipped = Item.HasPropertyOrTag("DisplayArmorStatsOnlyWhenEquipped");
             if (!armorStatsOnlyWhenEquipped)

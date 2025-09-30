@@ -826,7 +826,7 @@ namespace XRL.World.Parts
                     numberMadePrefix = $"{Grammar.Cardinal(tinkerItem.NumberMade)} ";
                 }
 
-                List<string> recipeIngredientBlueprints = TinkerData.Ingredient.CachedCommaExpansion();
+                List<string> recipeIngredientBlueprints = TinkerData.Ingredient.CachedCommaExpansion().ToList();
 
                 string ingredientsMessage = "Any one of the following:\n";
                 foreach (string recipeIngredient in recipeIngredientBlueprints)
@@ -955,8 +955,8 @@ namespace XRL.World.Parts
                     "=BitLockerContents=")
                     .StartReplace()
                     .AddObject(RecipeBitSupplier)
-                    .AddExplicit(BitCost.ToString(), "BitCost")
-                    .AddExplicit(BitSupplierBitLocker.GetBitsString(), "=BitLockerContents=")
+                    .AddArgument(BitCost.ToString(), "BitCost")
+                    .AddArgument(BitSupplierBitLocker.GetBitsString(), "BitLockerContents")
                     .ToString();
 
                 Popup.ShowFail(Message: missingRequiredBitsMsg);
@@ -1864,8 +1864,8 @@ namespace XRL.World.Parts
                                         }
                                         lineItems.Add(lineItem
                                             .StartReplace()
-                                            .AddExplicit(contextualRefname, "contextualRefname")
-                                            .AddExplicit(ingredientValue, "ingredientValue")
+                                            .AddArgument(contextualRefname, "contextualRefname")
+                                            .AddArgument(ingredientValue, "ingredientValue")
                                             .ToString());
                                         lineIcons.Add(availableIngredientObject.RenderForUI("PickIngredientObject"));
                                         if (GameObject.Validate(ref availableIngredientObject))
@@ -2051,7 +2051,7 @@ namespace XRL.World.Parts
 
                                 List<char> hotkeys = new();
                                 List<string> lineItems = new();
-                                List<RenderEvent> lineIcons = new();
+                                List<IRenderable> lineIcons = new();
                                 char nextHotkey = 'a';
                                 BitCost recipeBitCost = new();
                                 foreach (GameObject applicableObject in applicableObjects)
