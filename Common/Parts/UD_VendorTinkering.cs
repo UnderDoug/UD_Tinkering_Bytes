@@ -955,8 +955,8 @@ namespace XRL.World.Parts
                     "=BitLockerContents=")
                     .StartReplace()
                     .AddObject(RecipeBitSupplier)
-                    .AddArgument(BitCost.ToString(), "BitCost")
-                    .AddArgument(BitSupplierBitLocker.GetBitsString(), "BitLockerContents")
+                    .AddExplicit(BitCost.ToString(), "BitCost")
+                    .AddExplicit(BitSupplierBitLocker.GetBitsString(), "BitLockerContents")
                     .ToString();
 
                 Popup.ShowFail(Message: missingRequiredBitsMsg);
@@ -1864,8 +1864,8 @@ namespace XRL.World.Parts
                                         }
                                         lineItems.Add(lineItem
                                             .StartReplace()
-                                            .AddArgument(contextualRefname, "contextualRefname")
-                                            .AddArgument(ingredientValue, "ingredientValue")
+                                            .AddExplicit(contextualRefname, "contextualRefname")
+                                            .AddExplicit(ingredientValue.ToString(), "ingredientValue")
                                             .ToString());
                                         lineIcons.Add(availableIngredientObject.RenderForUI("PickIngredientObject"));
                                         if (GameObject.Validate(ref availableIngredientObject))
