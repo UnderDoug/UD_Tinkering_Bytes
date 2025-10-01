@@ -21,8 +21,10 @@ using XRL.Rules;
 
 namespace UD_Tinkering_Bytes
 {
-    public class UD_SyncedDisassembly : OngoingAction 
+    public class UD_SyncedDisassembly : OngoingAction
     {
+        private static bool doDebug = true;
+
         public Disassembly Disassembly => Disassembler?.GetPart<UD_VendorDisassembly>()?.Disassembly;
 
         public GameObject Disassembler;
@@ -205,8 +207,8 @@ namespace UD_Tinkering_Bytes
                 List<TinkerData> knownRecipes = new(KnownRecipes);
                 if (Disassembler.HasSkill(nameof(Tinkering_ReverseEngineer))
                     && TinkerData.TinkerRecipes.Any(datum =>
-                        (Item.HasPart(datum.PartName) && !knownRecipes.Contains(datum))
-                        || (datum.Blueprint == Item.Blueprint && !knownRecipes.Contains(datum))))
+                        (Item.HasPart(datum.PartName) && !knownRecipes.Any(r => r.IsSameDatumAs(datum)))
+                        || (activeBlueprint == datum.Blueprint && !knownRecipes.Any(r => r.IsSameDatumAs(datum)))))
                 {
                     Debug.Entry(4,
                         $"Processing {Skills.GetGenericSkill(nameof(Tinkering_ReverseEngineer))?.DisplayName ?? nameof(Tinkering_ReverseEngineer)}",
@@ -500,7 +502,7 @@ namespace UD_Tinkering_Bytes
             if (Disassembler.TryGetPart(out UD_VendorDisassembly vendorDisassembly))
             {
                 CurrentDisassembly = 0;
-                vendorDisassembly.ResetDisassembly();
+                // vendorDisassembly.ResetDisassembly();
             }
         }
 

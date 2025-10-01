@@ -167,10 +167,8 @@ namespace XRL.World.Parts
                 {
                     if (VendorDoDisassembly(Vendor, Item, tinkerItem, RealCostPerItem))
                     {
-                        ResetDisassembly();
                         return true;
                     }
-                    ResetDisassembly();
                 }
                 if (!E.Second)
                 {
@@ -182,17 +180,17 @@ namespace XRL.World.Parts
                     string thisThese = multipleItems ? ("these " + itemCount.Things("item")) : "this item";
                     if (player.GetFreeDrams() < totalCost)
                     {
-                        SB.Append("=object.T= =verb:do:afterpronoun= not have the required ");
-                        SB.AppendColored("C", totalCost).Append((totalCost == 1) ? "dram" : "drams");
-                        SB.Append(thisThese).Append(".");
+                        SB.Append("=object.T=" + player.GetVerb("do") + " not have the required ");
+                        SB.AppendColored("C", totalCost).Append(" ").Append((totalCost == 1) ? "dram" : "drams");
+                        SB.Append(" to have =subject.t= disassemble ").Append(thisThese).Append(".");
 
                         Popup.ShowFail(RB.ToString());
                     }
                     else
                     {
-                        SB.Append("=object.T= may have =object.t= disassemble ").Append(thisThese).Append(" for ");
-                        SB.AppendColored("C", totalCost).Append((totalCost == 1) ? "dram" : "drams").Append(" of fresh water.");
-                        SB.AppendLines(2).Append("Note: this will close the trade window, ending the conversation that opened it.");
+                        SB.Append("=object.T= may have =subject.t= disassemble ").Append(thisThese).Append(" for ");
+                        SB.AppendColored("C", totalCost).Append(" ").Append((totalCost == 1) ? "dram" : "drams").Append(" of fresh water.");
+                        SB.AppendLines(2).Append("Note: the trade window will be closed, ending the conversation that opened it.");
 
                         if (Popup.ShowYesNo(RB.ToString()) == DialogResult.Yes)
                         {
@@ -274,6 +272,7 @@ namespace XRL.World.Parts
                             return true;
                         }
                     }
+                    ReplaceBuilder.Return(RB);
                     E.RequestCancelSecond();
                 }
                 return false;

@@ -760,10 +760,12 @@ namespace XRL.World.Parts
                 ModifyBitCostEvent.Process(The.Player, playerBitCost, "Build");
                 ModifyBitCostEvent.Process(Vendor, vendorBitCost, "Build");
             }
+            string playerSupplies = "Use my own if I have " + (playerBitCost != null ? ("the required <" + playerBitCost + "> bits") : itThem) + ".";
+            string vendorSupplies = askPay + " =subject.t= to supply " + (vendorBitCost != null ? ("the required <" + vendorBitCost + "> bits") : itThem) + ".";
             List<string> supplyOptions = new()
             {
-                "Use my own if I have " + (playerBitCost != null ? ("the required <" + playerBitCost + "> bits") : itThem) +".",
-                askPay + " =subject.t= to supply " + (vendorBitCost != null ? ("the required <" + vendorBitCost + "> bits") : itThem) + ".",
+                playerSupplies,
+                vendorSupplies.StartReplace().AddObject(Vendor).ToString(),
             };
             List<char> supplyHotkeys = new()
             {
@@ -848,20 +850,17 @@ namespace XRL.World.Parts
                     {
                         title += "-or-".Color("Y") + "\n";
                     }
-
                     string ingredientDisplayName = Utils.GetGameObjectBlueprint(recipeIngredientBlueprints[i])?.DisplayName();
                     if (GameObject.CreateSample(recipeIngredientBlueprints[i]) is GameObject sampleIngredient)
                     {
                         ingredientDisplayName = sampleIngredient.GetDisplayName(Context: Context, Short: true);
                         sampleIngredient.Obliterate();
                     }
-                    
                     if (!ingredientDisplayName.IsNullOrEmpty())
                     {
                         title += ingredientDisplayName + "\n";
                     }
                 }
-                title += ":::".Color("Y");
 
                 RecipeIngredientSupplier = PickASupplier(
                     Vendor: Vendor,
@@ -915,11 +914,11 @@ namespace XRL.World.Parts
 
                 if (!PickRecipeIngredient(
                     RecipeIngredientSupplier: RecipeIngredientSupplier,
-                    Item: ForObject,
+                    ForObject: ForObject,
                     VendorSuppliesIngredients: RecipeIngredientSupplier == Vendor,
                     AvailableIngredients: availableIngredients,
                     SelectedIngredient: out SelectedIngredient,
-                    Context: Context))
+                    Title: title))
                 {
                     return false;
                 }
@@ -965,8 +964,7 @@ namespace XRL.World.Parts
 
             string title = modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n"
                 + "| Bit Cost |".Color("y") + "\n"
-                + "<" + BitCost + ">" + "\n"
-                + ":::".Color("Y");
+                + "<" + BitCost + ">" + "\n";
 
             RecipeBitSupplier = PickASupplier(
                 Vendor: Vendor,
@@ -987,13 +985,11 @@ namespace XRL.World.Parts
             if (!BitSupplierBitLocker.HasBits(BitCost))
             {
                 string missingRequiredBitsMsg = 
-                    ("=subject.T= =verb:do:afterpronoun= not have the required <=BitCost=> bits!\n\n" +
+                    ("=subject.T= =verb:do:afterpronoun= not have the required <" + BitCost.ToString() + "> bits!\n\n" +
                     "=subject.Subjective= =verb:have:afterpronoun=:\n" +
-                    "=BitLockerContents=")
+                    BitSupplierBitLocker.GetBitsString())
                     .StartReplace()
                     .AddObject(RecipeBitSupplier)
-                    .AddExplicit(BitCost.ToString(), "BitCost")
-                    .AddExplicit(BitSupplierBitLocker.GetBitsString(), "BitLockerContents")
                     .ToString();
 
                 Popup.ShowFail(Message: missingRequiredBitsMsg);
@@ -1020,11 +1016,11 @@ namespace XRL.World.Parts
 
         public static bool PickRecipeIngredient(
             GameObject RecipeIngredientSupplier,
-            GameObject Item,
+            GameObject ForObject,
             bool VendorSuppliesIngredients,
             List<string> AvailableIngredients,
             out GameObject SelectedIngredient,
-            string Context = null)
+            string Title = null)
         {
             SelectedIngredient = null;
             int selectedOption = 0;
@@ -1044,17 +1040,12 @@ namespace XRL.World.Parts
                         {
                             ingredientValue = Math.Round(TradeUI.GetValue(availableIngredientObject, VendorSuppliesIngredients), 2);
                         }
-                        string contextualRefname = availableIngredientObject?.GetReferenceDisplayName(Context: Context, Short: true);
-                        string lineItem = "=contextualRefname=";
+                        string lineItem = "Use =subject.a= =subject.refname=.".Color("y");
                         if (ingredientValue > 0)
                         {
-                            lineItem += " (worth {{C|=ingredientValue= " + (ingredientValue == 1 ? "dram" : "drams") + "}})";
+                            // lineItem += " (worth {{C|" + ingredientValue + " " + (ingredientValue == 1 ? "dram" : "drams") + "}})";
                         }
-                        lineItems.Add(lineItem
-                            .StartReplace()
-                            .AddExplicit(contextualRefname, "contextualRefname")
-                            .AddExplicit(ingredientValue.ToString(), "ingredientValue")
-                            .ToString());
+                        lineItems.Add(lineItem.StartReplace().AddObject(availableIngredientObject).ToString());
                         lineIcons.Add(availableIngredientObject.RenderForUI("PickIngredientObject"));
                         if (GameObject.Validate(ref availableIngredientObject))
                         {
@@ -1065,22 +1056,23 @@ namespace XRL.World.Parts
                     {
                         string potentialErrorMsg = nameof(UD_VendorTinkering) + "." + nameof(PickRecipeIngredient);
                         MetricsManager.LogPotentialModError(
-                            Mod: UD_Tinkering_Bytes.Utils.ThisMod,
+                            Mod: Utils.ThisMod,
                             Message: potentialErrorMsg + " failed to create sample from blueprint " + availableIngredient);
                     }
                 }
                 if (!hotkeys.IsNullOrEmpty() && !lineItems.IsNullOrEmpty() && !lineIcons.IsNullOrEmpty())
                 {
                     selectedOption = Popup.PickOption(
-                        Title: $"select which ingrediant to use",
+                        Title: Title ?? TinkeringHelpers.TinkeredItemDisplayName(ForObject.Blueprint) ?? ForObject.GetReferenceDisplayName(),
+                        // Intro: "select which ingrediant to use",
                         Sound: "Sounds/UI/ui_notification",
                         Options: lineItems.ToArray(),
                         Hotkeys: hotkeys.ToArray(),
                         Icons: lineIcons,
-                        Context: Item,
-                        IntroIcon: Item.RenderForUI(),
+                        Context: ForObject,
+                        IntroIcon: ForObject.RenderForUI(),
                         AllowEscape: true,
-                        PopupID: "VendorTinkeringSelectBuildIngredient:" + (Item?.IDIfAssigned ?? "(noid)"));
+                        PopupID: "VendorTinkeringSelectBuildIngredient:" + (ForObject?.IDIfAssigned ?? "(noid)"));
                     if (selectedOption < 0)
                     {
                         return false;

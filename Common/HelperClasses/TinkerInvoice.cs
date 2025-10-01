@@ -457,12 +457,14 @@ namespace UD_Tinkering_Bytes
             double itemValue = GetItemValue();
             double materialsValue = GetMaterialsValue();
             bool isItemWorthMore = itemValue > materialsValue;
+            bool vendorSuppliesAll = VendorSuppliesIngredients && VendorSuppliesBits;
+            double labourValue = GetLabourValue();
             if (!isItemValueIrrelevant && isItemWorthMore && Service == BUILD)
             {
                 SB.Append("Item Value: ").AppendColored("C", itemValue.Things("dram")).AppendLine();
-                if (GetLabourValue() > -1)
+                if (labourValue > -1)
                 {
-                    SB.Append("Labour: ").AppendColored("C", GetLabourValue().Things("dram")).AppendLine();
+                    SB.Append("Labour: ").AppendColored("C", labourValue.Things("dram")).AppendLine();
                 }
             }
             else
@@ -479,7 +481,7 @@ namespace UD_Tinkering_Bytes
             // Item ID.
             if (Service == BUILD && !Item.Understood())
             {
-                SB.Append("Identification of Item: ").AppendColored("y", GetLabourValue().Things("dram"));
+                SB.Append("Identification of Item: ").AppendColored("y", labourValue.Things("dram"));
                 SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
             }
 
@@ -488,18 +490,19 @@ namespace UD_Tinkering_Bytes
             if (GetSelectedIngredient() is GameObject selectedIngredient)
             {
                 string ingredientDisplayName = selectedIngredient.GetDisplayName(Context: nameof(TinkerInvoice), Short: true);
-                SB.Append("Ingredient (").Append(ingredientDisplayName).Append("): ");
+                SB.Append("Ingredient, ").Append(ingredientDisplayName).Append(": ");
                 if (VendorSuppliesIngredients)
                 {
                     SB.AppendColored("C", ingredientValue.Things("dram"));
-                    if (isItemWorthMore)
+                    if (isItemWorthMore && vendorSuppliesAll)
                     {
                         SB.Append(" (").AppendColored("K", "included in item value").Append(")");
                     }
                 }
                 else
                 {
-                    SB.Append($"Provided by {player?.t(Short: true)}");
+                    SB.AppendColored("C", 0.Things("dram"));
+                    SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
                 }
                 SB.AppendLine();
             }
@@ -512,14 +515,15 @@ namespace UD_Tinkering_Bytes
                 if (VendorSuppliesBits)
                 {
                     SB.AppendColored("C", bitsValue.Things("dram"));
-                    if (isItemWorthMore)
+                    if (isItemWorthMore && vendorSuppliesAll)
                     {
                         SB.Append(" (").AppendColored("K", "included in item value").Append(")");
                     }
                 }
                 else
                 {
-                    SB.Append($"Provided by {player?.t(Short: true)}");
+                    SB.AppendColored("C", 0.Things("dram"));
+                    SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
                 }
                 SB.AppendLine();
             }
