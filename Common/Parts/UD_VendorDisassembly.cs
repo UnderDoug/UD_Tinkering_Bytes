@@ -172,34 +172,46 @@ namespace XRL.World.Parts
                 }
                 if (!E.Second)
                 {
-                    var SB = Event.NewStringBuilder();
-                    ReplaceBuilder RB = GameText.StartReplace(SB);
-                    RB.AddObject(Vendor);
-                    RB.AddObject(player);
-
                     string thisThese = multipleItems ? ("these " + itemCount.Things("item")) : "this item";
+                    string dramsCost = (totalCost + " " + (totalCost == 1 ? "dram" : "drams")).Color("C");
+
                     if (player.GetFreeDrams() < totalCost)
                     {
-                        SB.Append("=object.T=" + player.GetVerb("do") + " not have the required ");
-                        SB.AppendColored("C", totalCost).Append(" ").Append((totalCost == 1) ? "dram" : "drams");
-                        SB.Append(" to have =subject.t= disassemble ").Append(thisThese).Append(".");
+                        string tooExpensiveMsg =
+                            ("=subject.T= =verb:don't:afterpronoun= have the required " +
+                            dramsCost + " to have =object.t= disassemble " + "item".ThisTheseN(itemCount, multipleItems))
+                                .StartReplace()
+                                .AddObject(player)
+                                .AddObject(Vendor)
+                                .ToString();
 
-                        Popup.ShowFail(RB.ToString());
+                        Popup.ShowFail(tooExpensiveMsg);
                     }
                     else
                     {
-                        SB.Append("=object.T= may have =subject.t= disassemble ").Append(thisThese).Append(" for ");
-                        SB.AppendColored("C", totalCost).Append(" ").Append((totalCost == 1) ? "dram" : "drams").Append(" of fresh water.");
-                        SB.AppendLines(2).Append("Note: the trade window will be closed, ending the conversation that opened it.");
+                        string confirmDisassembleMsg =
+                            ("=subject.T= may have =object.t= disassemble " + thisThese +
+                            " for " + dramsCost + " of fresh water.\n\n" +
+                            "Note: the trade window will be closed, ending the conversation that opened it.")
+                                .StartReplace()
+                                .AddObject(player)
+                                .AddObject(Vendor)
+                                .ToString();
 
-                        if (Popup.ShowYesNo(RB.ToString()) == DialogResult.Yes)
+                        if (Popup.ShowYesNo(confirmDisassembleMsg) == DialogResult.Yes)
                         {
                             List<Action<GameObject>> broadcastActions = null;
 
-                            if (multipleItems && (AutoAct.ShouldHostilesInterrupt("o") || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
+                            if (multipleItems 
+                                && (AutoAct.ShouldHostilesInterrupt("o") 
+                                    || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
                             {
-                                string hostilesMessage = "=subject.T= cannot disassemble so many items at once with hostiles nearby.";
-                                Popup.ShowFail(hostilesMessage.StartReplace().AddObject(Vendor).ToString());
+                                string hostilesMessage = "=subject.T= cannot disassemble so many items at once with hostiles nearby."
+                                    .StartReplace()
+                                    .AddObject(Vendor)
+                                    .ToString();
+
+                                Popup.ShowFail(hostilesMessage);
                                 E.RequestCancelSecond();
                                 return false;
                             }
@@ -215,14 +227,21 @@ namespace XRL.World.Parts
 
                             if (TinkerItem.ConfirmBeforeDisassembling(Item))
                             {
-                                string pluralItems = "=object.t=";
+                                string pluralItems = "=item.t=";
                                 if (multipleItems)
                                 {
                                     pluralItems = "all the ";
                                     pluralItems += Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName);
                                 }
-                                string confirmDisassemble = "Are you sure you want =subject.t= to disassemble " + pluralItems + "?";
-                                if (Popup.ShowYesNoCancel(confirmDisassemble.StartReplace().AddObject(Vendor).AddObject(Item).ToString()) != DialogResult.Yes)
+                                string confirmDisassemble = 
+                                    ("=verb:Is:afterpronoun= =subject.t= sure =subject.t= " +
+                                    "=verb:want:afterpronoun= =object.t= to disassemble " + pluralItems + "?")
+                                        .StartReplace()
+                                        .AddObject(player)
+                                        .AddObject(Vendor)
+                                        .AddObject(Item, "item")
+                                        .ToString();
+                                if (Popup.ShowYesNoCancel(confirmDisassemble) != DialogResult.Yes)
                                 {
                                     E.RequestCancelSecond();
                                     return false;
@@ -231,10 +250,26 @@ namespace XRL.World.Parts
 
                             if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
                             {
-                                string themIt = multipleItems ? "them" : Item.them;
-                                string confirmOwnerMsg = "=object.T= =verb:are:afterpronoun= not owned by you. ";
-                                confirmOwnerMsg += "Are you sure you want =subject.t= to disassemble " + themIt + "?";
-                                if (Popup.ShowYesNoCancel(confirmOwnerMsg.StartReplace().AddObject(Vendor).AddObject(Item).ToString()) != DialogResult.Yes)
+                                string notItemOwnerMsg = "=subject.T= =verb:isn't:afterpronoun= owned by =object.t=."
+                                    .StartReplace()
+                                    .AddObject(Item)
+                                    .AddObject(player)
+                                    .ToString();
+
+                                string themIt = multipleItems ? "them" : "=subject.objective="
+                                        .StartReplace()
+                                        .AddObject(Item)
+                                        .ToString();
+
+                                string confirmNotOwnedMsg = 
+                                    ("=verb:Is:afterpronoun= =subject.subjective= sure =subject.subjective= " +
+                                    "=verb:want:afterpronoun= =object.t= to disassemble " + themIt + "?")
+                                        .StartReplace()
+                                        .AddObject(player)
+                                        .AddObject(Vendor)
+                                        .ToString();
+
+                                if (Popup.ShowYesNoCancel(notItemOwnerMsg + " " + confirmNotOwnedMsg) != DialogResult.Yes)
                                 {
                                     E.RequestCancelSecond();
                                     return false;
@@ -249,10 +284,31 @@ namespace XRL.World.Parts
                                 && container.Owner != Item.Owner 
                                 && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
                             {
-                                string itemsAnItem = multipleItems ? "items" : Item.an();
-                                string confirmContainerMsg = "=object.T= =verb:are:afterpronoun= not owned by you. ";
-                                confirmContainerMsg += "Are you sure you want =subject.t= to disassemble " + itemsAnItem + "?";
-                                if (Popup.ShowYesNoCancel(confirmContainerMsg.StartReplace().AddObject(Vendor).AddObject(container).ToString()) != DialogResult.Yes)
+                                string notContainerOwnerMsg = "=subject.T= =verb:isn't:afterpronoun= owned by =object.t=."
+                                    .StartReplace()
+                                    .AddObject(Item)
+                                    .AddObject(player)
+                                    .ToString();
+
+                                string itemsAnItem = multipleItems ? "items" : "=subject.a= =subject.t="
+                                    .StartReplace()
+                                    .AddObject(Item)
+                                    .ToString();
+                                string containerIt = "=subject.objective="
+                                    .StartReplace()
+                                    .AddObject(container)
+                                    .ToString();
+
+                                string confirmContainerMsg =
+                                    ("=verb:Is:afterpronoun= =subject.subjective= sure =subject.subjective= " +
+                                    "=verb:want:afterpronoun= =object.t= to disassemble " + itemsAnItem + 
+                                    " inside " + containerIt + "?")
+                                        .StartReplace()
+                                        .AddObject(player)
+                                        .AddObject(Vendor)
+                                        .ToString();
+
+                                if (Popup.ShowYesNoCancel(notContainerOwnerMsg + " " + confirmContainerMsg) != DialogResult.Yes)
                                 {
                                     E.RequestCancelSecond();
                                     return false;
@@ -272,7 +328,6 @@ namespace XRL.World.Parts
                             return true;
                         }
                     }
-                    ReplaceBuilder.Return(RB);
                     E.RequestCancelSecond();
                 }
                 return false;

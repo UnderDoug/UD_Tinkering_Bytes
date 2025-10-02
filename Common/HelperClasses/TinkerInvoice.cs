@@ -55,6 +55,7 @@ namespace UD_Tinkering_Bytes
         public GameObject SelectedIngredient = null;
         public double IngredientValue = 0;
         public bool VendorSuppliesIngredients = true;
+        public bool IngredientUsed = false;
 
         public BitCost BitCost = null;
         public double BitsValue = 0;
@@ -195,6 +196,10 @@ namespace UD_Tinkering_Bytes
             }
             return value;
         }
+        public double GetExamineCost()
+        {
+            return GetExamineCost(Item, GetPerformance());
+        }
 
         public double GetExpertiseValue()
         {
@@ -273,6 +278,27 @@ namespace UD_Tinkering_Bytes
                 }
             }
             return ingredientValue;
+        }
+
+        public static bool UseSelectedIngredient(GameObject Vendor, TinkerInvoice TinkerInvoice, GameObject RecipeIngredientSupplier)
+        {
+            if (TinkerInvoice.SelectedIngredient != null 
+                && !RecipeIngredientSupplier.RemoveFromInventory(TinkerInvoice.SelectedIngredient))
+            {
+                string invalidIngredientMsg = "=subject.T= cannot use =object.t= as an ingredient!="
+                    .StartReplace()
+                    .AddObject(Vendor)
+                    .AddObject(TinkerInvoice.SelectedIngredient)
+                    .ToString();
+
+                Vendor.Fail(invalidIngredientMsg);
+                return false;
+            }
+            return true;
+        }
+        public bool UseSelectedIngredient(GameObject RecipeIngredientSupplier)
+        {
+            return UseSelectedIngredient(Vendor, this, RecipeIngredientSupplier);
         }
 
         public static GameObject GetBitScrapItem(string Bit)

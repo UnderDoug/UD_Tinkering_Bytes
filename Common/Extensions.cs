@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UD_Modding_Toolbox;
+using XRL;
 using XRL.World;
 using XRL.World.Parts;
 using XRL.World.Tinkering;
@@ -48,15 +49,15 @@ namespace UD_Tinkering_Bytes
             return SB.AppendLines(null, Lines, null);
         }
 
-        public static string ThemIt(this GameObject Object)
+        public static string ThemIt(this GameObject Object, bool ForcePlural = false)
         {
-            bool multipleItems = Object.IsPlural || Object.Count > 1;
+            bool multipleItems = ForcePlural || Object.IsPlural || Object.Count > 1;
             return multipleItems ? "Them" : Object.Them;
         }
 
-        public static string themIt(this GameObject Object)
+        public static string themIt(this GameObject Object, bool ForcePlural = false)
         {
-            bool multipleItems = Object.IsPlural || Object.Count > 1;
+            bool multipleItems = ForcePlural || Object.IsPlural || Object.Count > 1;
             return multipleItems ? "them" : Object.them;
         }
 
@@ -246,6 +247,11 @@ namespace UD_Tinkering_Bytes
                 && Actor.Inventory != null
                 && Item != null
                 && Actor.Inventory.FireEvent(Event.New("CommandRemoveObject", "Object", Item));
+        }
+
+        public static string ThisTheseN(this string Noun, int Count, bool ForceMultiple = false)
+        {
+            return (ForceMultiple || Count > 1) ? ("these " + Count.Things(Noun)) : ("this " + Noun);
         }
     }
 }

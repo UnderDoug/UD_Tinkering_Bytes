@@ -690,16 +690,40 @@ namespace XRL.World.Parts
             GenerateKnownRecipeDisplayItems(ParentObject, GetKnownRecipes(), InstalledRecipes);
         }
 
-        public static bool CanTinkerRecipe(GameObject Vendor, TinkerData Recipe, List<TinkerData> InstalledRecipes = null)
+        public static bool CanTinkerRecipe(
+            GameObject Vendor, 
+            TinkerData Recipe, 
+            List<TinkerData> InstalledRecipes = null, 
+            bool Silent = false)
         {
-            return Vendor.HasSkill(DataDisk.GetRequiredSkill(Recipe.Tier))
-                || (InstalledRecipes != null && InstalledRecipes.Contains(Recipe));
+            if (!Vendor.HasSkill(DataDisk.GetRequiredSkill(Recipe.Tier))
+                && !(InstalledRecipes != null && InstalledRecipes.Contains(Recipe)))
+            {
+                if (!Silent)
+                {
+                    string requiredSkillName = DataDisk.GetRequiredSkillHumanReadable(Recipe.Tier);
+                    string skillFailMsg = "=subject.T= =verb:don't= have the required skill: " + requiredSkillName + "!"
+                        .StartReplace()
+                        .AddObject(Vendor)
+                        .ToString();
+
+                    Popup.ShowFail(skillFailMsg);
+                }
+                return false;
+            }
+            return true;
         }
-        public bool CanTinkerRecipe(TinkerData Recipe)
+        public bool CanTinkerRecipe(TinkerData Recipe, bool Silent = false)
         {
-            return CanTinkerRecipe(ParentObject, Recipe, InstalledRecipes);
+            return CanTinkerRecipe(ParentObject, Recipe, InstalledRecipes, Silent);
         }
-        public static bool IsModApplicableAndNotAlreadyInDictionary(GameObject Vendor, GameObject ApplicableItem, TinkerData ModData, Dictionary<TinkerData, string> ExistingRecipes, List<TinkerData> InstalledRecipes = null)
+
+        public static bool IsModApplicableAndNotAlreadyInDictionary(
+            GameObject Vendor, 
+            GameObject ApplicableItem, 
+            TinkerData ModData, 
+            Dictionary<TinkerData, string> ExistingRecipes, 
+            List<TinkerData> InstalledRecipes = null)
         {
             return ItemModding.ModAppropriate(ApplicableItem, ModData)
                 && CanTinkerRecipe(Vendor, ModData, InstalledRecipes)
@@ -708,6 +732,31 @@ namespace XRL.World.Parts
         public bool IsModApplicableAndNotAlreadyInDictionary(GameObject ApplicableItem, TinkerData ModData, Dictionary<TinkerData, string> ExistingRecipes)
         {
             return IsModApplicableAndNotAlreadyInDictionary(ParentObject, ApplicableItem, ModData, ExistingRecipes, InstalledRecipes);
+        }
+
+        public static bool PhaseMatches(GameObject Vendor, GameObject Item, bool Silent = false)
+        {
+            if (Vendor.CurrentCell != null && !Vendor.PhaseMatches(Item))
+            {
+                if (!Silent)
+                {
+                    string phaseMissmatchMsg =
+                        ("=subject.T= =verb:is:afterpronoun= out of phase with =object.t= " +
+                        "and can't repair " + Item.themIt())
+                            .StartReplace()
+                            .AddObject(Vendor)
+                            .AddObject(Item)
+                            .ToString();
+
+                    Popup.ShowFail(phaseMissmatchMsg);
+                }
+                return false;
+            }
+            return true;
+        }
+        public bool PhaseMatches(GameObject Item, bool Silent = false)
+        {
+            return PhaseMatches(ParentObject, Item, Silent);
         }
 
         public static GameObject FindIngredientInInventory(GameObject IngredientSupplier, string Blueprint, Predicate<GameObject> Filter = null)
@@ -1283,15 +1332,25 @@ namespace XRL.World.Parts
                     ? $"{Grammar.Cardinal(tinkerItem.NumberMade)} {Grammar.Pluralize(singleShortKnownDisplayName)}"
                     : $"{tinkeredItem.an()}";
 
+
+                string itemTinkeredMsg = ("=subject.T= =verb:tinker:afterpronoun= up " + whatWasTinkeredUp + "!")
+                            .StartReplace()
+                            .AddObject(Vendor)
+                            .ToString();
+
                 string comeBackToPickItUp = "";
                 if (VendorKeepsItem)
                 {
                     string themIt = $"{(tinkerItem.NumberMade > 1 || sampleItem.IsPlural ? "them" : sampleItem.it)}";
                     comeBackToPickItUp += "\n\n"
-                        + $"Once you have the drams for {themIt}, come back to pick {themIt} up!";
+                        + $"Once =subject.t= =verb:has:afterpronoun= the drams for {themIt}, come back to pick {themIt} up!"
+                            .StartReplace()
+                            .AddObject(player)
+                            .ToString();
                 }
+
                 SoundManager.PlayUISound("sfx_ability_buildRecipeItem");
-                Popup.Show($"{Vendor.T()}{Vendor.GetVerb("tinker")} up {whatWasTinkeredUp}!{comeBackToPickItUp}");
+                Popup.Show(itemTinkeredMsg + comeBackToPickItUp);
             }
             finally
             {
@@ -1327,31 +1386,28 @@ namespace XRL.World.Parts
                     @event.SetParameter("EnergyCost", 0);
                     @event.SetParameter("Context", "Tinkering");
                     @event.SetFlag("NoStack", State: true);
+
                     if (!player.FireEvent(@event))
                     {
-                        Popup.ShowFail($"You can't unequip {Item.t()}.");
+                        string noUnequipMsg = "=subject.T= can't unequip =object.t=."
+                            .StartReplace()
+                            .AddObject(player)
+                            .AddObject(Item)
+                            .ToString();
+
+                        Popup.ShowFail(noUnequipMsg);
                         return false;
                     }
                 }
 
-                if (TinkerInvoice.SelectedIngredient != null)
+                if (!TinkerInvoice.UseSelectedIngredient(RecipeIngredientSupplier))
                 {
-                    GameObject ingredientObject = TinkerInvoice.SelectedIngredient;
-                    if (!RecipeIngredientSupplier.RemoveFromInventory(ingredientObject))
-                    {
-                        string invalidIngredientMsg = "=subject.T= cannot use =object.t= as an ingredient!="
-                            .StartReplace()
-                            .AddObject(Vendor)
-                            .AddObject(ingredientObject)
-                            .ToString();
-                        Vendor.Fail(invalidIngredientMsg);
-                        return false;
-                    }
+                    return false;
                 }
 
                 GameObject modItem = Item.SplitFromStack();
                 int itemTier = modItem.GetTier();
-                string itemNameBeforeMod = modItem.t(Single: true, Stripped: true);
+                string itemNameBeforeMod = modItem.t(Single: true, Stripped: true); // This will need updated with lang branch
 
                 didMod = ItemModding.ApplyModification(
                     Object: modItem,
@@ -1968,7 +2024,12 @@ namespace XRL.World.Parts
                 {
                     if (vendor.AreHostilesNearby() && vendor.FireEvent("CombatPreventsTinkering"))
                     {
-                        Popup.ShowFail($"{vendor.T()} can't tinker with hostiles nearby!");
+                        string hostileFailMsg = "=subject.T= can't tinker with hostiles nearby!"
+                            .StartReplace()
+                            .AddObject(vendor)
+                            .ToString();
+
+                        Popup.ShowFail(hostileFailMsg);
                         return false;
                     }
                     if (!vendor.CanMoveExtremities("Tinker", ShowMessage: true, AllowTelekinetic: true))
@@ -1988,9 +2049,8 @@ namespace XRL.World.Parts
                         TinkeringHelpers.StripForTinkering(sampleItem);
                         TinkeringHelpers.ForceToBePowered(sampleItem);
 
-                        if (!CanTinkerRecipe(tinkerRecipe))
+                        if (!CanTinkerRecipe(tinkerRecipe, Silent: false))
                         {
-                            Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
                             return false;
                         }
                         try
@@ -2032,12 +2092,21 @@ namespace XRL.World.Parts
 
                             bool vendorHoldsItem = false;
 
-                            if (player.GetFreeDrams() < totalDramsCost && (depositDramCost == 0 || player.GetFreeDrams() < depositDramCost))
+                            string dramsCostString = totalDramsCost.Things("dram").Color("C");
+
+                            if (player.GetFreeDrams() < totalDramsCost 
+                                && (depositDramCost == 0 || player.GetFreeDrams() < depositDramCost))
                             {
-                                Popup.ShowFail(
-                                    $"{player.T()}{player.GetVerb("do")} not have the required " +
-                                    $"{totalDramsCost.Things("dram").Color("C")} to have " +
-                                    $"{vendor.t()} tinker this item.");
+                                int numberMade = tinkerInvoice.NumberMade;
+                                string tooExpensiveMsg =
+                                    ("=subject.T= =verb:don't:afterpronoun= have the required " +
+                                    dramsCostString + " to have =object.t= tinker " + "item".ThisTheseN(numberMade) + ".")
+                                        .StartReplace()
+                                        .AddObject(player)
+                                        .AddObject(vendor)
+                                        .ToString();
+
+                                Popup.ShowFail(tooExpensiveMsg);
                                 Popup.Show(tinkerInvoice, "Invoice");
                                 return false;
                             }
@@ -2054,10 +2123,12 @@ namespace XRL.World.Parts
                                     return false;
                                 }
                             }
-                            if (!vendorHoldsItem
-                                && Popup.ShowYesNo($"{vendor.T()} will tinker this item for " +
-                                    $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
-                                    $"\n\n{tinkerInvoice}") != DialogResult.Yes)
+
+                            string confirmTinkerMsg = ("=subject.T= will tinker this recipe for " + dramsCostString + " of fresh water.")
+                                .StartReplace()
+                                .AddObject(vendor)
+                                .ToString();
+                            if (!vendorHoldsItem && Popup.ShowYesNo(confirmTinkerMsg) != DialogResult.Yes)
                             {
                                 return false;
                             }
@@ -2099,9 +2170,8 @@ namespace XRL.World.Parts
                             {
                                 selectedObject = E.Item;
 
-                                if (vendor.CurrentCell != null && !vendor.PhaseMatches(selectedObject))
+                                if (!PhaseMatches(selectedObject, Silent: false))
                                 {
-                                    vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {selectedObject.t()} and cannot repair {selectedObject.themIt()}.");
                                     return false;
                                 }
 
@@ -2116,7 +2186,6 @@ namespace XRL.World.Parts
 
                                 int selectedOption = Popup.PickOption(
                                     Title: $"select which item mod to apply",
-                                    Sound: "Sounds/UI/ui_notification",
                                     Options: lineItems.ToArray(),
                                     Hotkeys: hotkeys.ToArray(),
                                     Icons: lineIcons,
@@ -2124,6 +2193,7 @@ namespace XRL.World.Parts
                                     IntroIcon: selectedObject.RenderForUI(),
                                     AllowEscape: true,
                                     PopupID: "VendorTinkeringApplyModMenu:" + (selectedObject?.IDIfAssigned ?? "(noid)"));
+
                                 if (selectedOption < 0)
                                 {
                                     return false;
@@ -2136,9 +2206,9 @@ namespace XRL.World.Parts
                             {
                                 vendorsRecipe = E.Item.InInventory != player;
                                 tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
-                                if (!CanTinkerRecipe(tinkerRecipe))
+
+                                if (!CanTinkerRecipe(tinkerRecipe, Silent: false))
                                 {
-                                    Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("do")} not have the required skill: {DataDisk.GetRequiredSkillHumanReadable(tinkerRecipe.Tier)}!");
                                     return false;
                                 }
                                 modName = $"{tinkerRecipe.DisplayName}";
@@ -2151,14 +2221,20 @@ namespace XRL.World.Parts
 
                                 if (applicableObjects.IsNullOrEmpty())
                                 {
-                                    Popup.ShowFail($"{player.T()}{player.GetVerb("do")} not have any items that can be modified with {modName}.");
+                                    string noApplicableItemsMsg = 
+                                        ("=subject.t= =verb:don't:afterpronoun= have any items " +
+                                        "that can be modified with " + modName + ".")
+                                            .StartReplace()
+                                            .AddObject(player)
+                                            .ToString();
+
+                                    Popup.ShowFail(noApplicableItemsMsg);
                                     return false;
                                 }
 
                                 List<char> hotkeys = new();
                                 List<string> lineItems = new();
                                 List<IRenderable> lineIcons = new();
-                                char nextHotkey = 'a';
                                 BitCost recipeBitCost = new();
                                 foreach (GameObject applicableObject in applicableObjects)
                                 {
@@ -2173,19 +2249,12 @@ namespace XRL.World.Parts
                                     recipeBitCost.Increment(BitType.TierBits[recipeTier]);
                                     recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
 
-                                    if (nextHotkey == ' ' || hotkeys.Contains('z'))
-                                    {
-                                        nextHotkey = ' ';
-                                        hotkeys.Add(nextHotkey);
-                                    }
-                                    else
-                                    {
-                                        hotkeys.Add(nextHotkey++);
-                                    }
+                                    AddNextHotkey(ref hotkeys);
+
                                     string context = "";
                                     if (applicableObject.Equipped == player)
                                     {
-                                        context = $" [{"Equipped".Color("K")}]";
+                                        context = " [" + "Equipped".Color("K") + "]";
                                     }
                                     string singleShortDisplayName = applicableObject.GetDisplayName(Single: true, Short: true);
                                     string lineItem = $"<{recipeBitCost}> {singleShortDisplayName}{context}";
@@ -2193,8 +2262,9 @@ namespace XRL.World.Parts
 
                                     lineIcons.Add(applicableObject.RenderForUI());
                                 }
+
                                 int selectedOption = Popup.PickOption(
-                                    Title: $"select an item to apply {modName} to",
+                                    Title: $"select an item to apply " + modName + " to",
                                     Sound: "Sounds/UI/ui_notification",
                                     Options: lineItems.ToArray(),
                                     Hotkeys: hotkeys.ToArray(),
@@ -2217,14 +2287,18 @@ namespace XRL.World.Parts
 
                             if (selectedObject != null && tinkerRecipe != null)
                             {
-                                if (vendor.CurrentCell != null && !vendor.PhaseMatches(selectedObject))
+                                if (!PhaseMatches(selectedObject, Silent: false))
                                 {
-                                    vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {selectedObject.t()} and cannot repair {selectedObject.themIt()}.");
                                     return false;
                                 }
+
                                 if (!ItemModding.ModificationApplicable(tinkerRecipe.PartName, selectedObject))
                                 {
-                                    Popup.ShowFail($"{selectedObject.T(Single: true)} can not have {modName} applied.");
+                                    string modInapplicableMsg = "=sunbject.T= can't have " + modName + " applied to " + selectedObject.themIt()
+                                        .StartReplace()
+                                        .AddObject(selectedObject)
+                                        .ToString();
+                                    Popup.ShowFail(modInapplicableMsg);
                                     return false;
                                 }
 
@@ -2250,7 +2324,12 @@ namespace XRL.World.Parts
                                 bitCost.Increment(BitType.TierBits[recipeTier]);
                                 bitCost.Increment(BitType.TierBits[existingModsTier]);
 
-                                if (!PickRecipeBitsSupplier(selectedObject, tinkerRecipe, bitCost, out GameObject recipeBitSupplier, out BitLocker bitSupplierBitLocker))
+                                if (!PickRecipeBitsSupplier(
+                                    ForObject: selectedObject, 
+                                    TinkerData: tinkerRecipe, 
+                                    BitCost: bitCost,
+                                    RecipeBitSupplier: out GameObject recipeBitSupplier,
+                                    BitSupplierBitLocker: out BitLocker bitSupplierBitLocker))
                                 {
                                     return false;
                                 }
@@ -2263,19 +2342,31 @@ namespace XRL.World.Parts
                                 };
 
                                 int totalDramsCost = tinkerInvoice.GetTotalCost();
+                                string dramsCostString = totalDramsCost.Things("dram").Color("C");
 
                                 if (player.GetFreeDrams() < totalDramsCost)
                                 {
-                                    Popup.ShowFail(
-                                        $"You do not have the required {totalDramsCost.Things("dram").Color("C")} " +
-                                        $"to have {vendor.t()} mod this item.");
+                                    string tooExpensiveMsg =
+                                    ("=subject.T= =verb:don't:afterpronoun= have the required " +
+                                    dramsCostString + " to have =object.t= mod this item.")
+                                        .StartReplace()
+                                        .AddObject(player)
+                                        .AddObject(vendor)
+                                        .ToString();
+
+                                    Popup.ShowFail(tooExpensiveMsg);
                                     Popup.Show(tinkerInvoice, "Invoice");
                                     return false;
                                 }
 
-                                if (Popup.ShowYesNo($"{vendor.T()} will mod this item for " +
-                                    $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
-                                    $"\n\n{tinkerInvoice}") == DialogResult.Yes)
+                                string confirmModMsg = 
+                                    ("=subject.T= will mod this item for " + dramsCostString + 
+                                    "of fresh water" + "\n\n" + tinkerInvoice)
+                                        .StartReplace()
+                                        .AddObject(vendor)
+                                        .ToString();
+
+                                if (Popup.ShowYesNo(confirmModMsg) == DialogResult.Yes)
                                 {
                                     if (VendorDoMod(vendor, selectedObject, tinkerInvoice, recipeIngredientSupplier))
                                     {
@@ -2326,7 +2417,7 @@ namespace XRL.World.Parts
                                     Popup.ShowFail($"The tinker recipe on this data disk is too complex for {vendor.t(Stripped: true)} to explain.");
                                     return false;
                                 }
-                                int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
+                                int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
                                 if (dramsCost > 0 && player.GetFreeDrams() < dramsCost)
                                 {
                                     Popup.ShowFail(
@@ -2389,7 +2480,7 @@ namespace XRL.World.Parts
                                 Popup.ShowFail($"This item is too complex for {vendor.t(Stripped: true)} to identify.");
                                 return false;
                             }
-                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(unknownItem, GetTradePerformanceEvent.GetFor(player, vendor));
+                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
                             if (player.GetFreeDrams() < dramsCost)
                             {
                                 Popup.ShowFail(
@@ -2433,12 +2524,12 @@ namespace XRL.World.Parts
                     }
                     if (vendor.GetTotalConfusion() > 0)
                     {
-                        vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("'re")} too confused to repair {repairableItem.t(Single: true)}.");
+                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("'re")} too confused to repair {repairableItem.t(Single: true)}.");
                         return false;
                     }
                     if (vendor.CurrentCell != null && !vendor.PhaseMatches(repairableItem))
                     {
-                        vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {repairableItem.t()} and cannot repair {repairableItem.themIt()}.");
+                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {repairableItem.t()} and cannot repair {repairableItem.themIt()}.");
                         return false;
                     }
                     if (vendor.AreHostilesNearby() && vendor.FireEvent("CombatPreventsRepair"))
@@ -2534,7 +2625,7 @@ namespace XRL.World.Parts
                 {
                     if (vendor.CurrentCell != null && !vendor.PhaseMatches(rechargeableItem))
                     {
-                        vendor.ShowFailure($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {rechargeableItem.t()} and cannot repair {rechargeableItem.themIt()}.");
+                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {rechargeableItem.t()} and cannot repair {rechargeableItem.themIt()}.");
                         return false;
                     }
                     if (!vendor.CanMoveExtremities("Recharge", ShowMessage: true))
