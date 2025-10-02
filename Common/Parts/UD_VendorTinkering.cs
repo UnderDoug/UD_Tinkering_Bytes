@@ -1239,18 +1239,18 @@ namespace XRL.World.Parts
                 {
                     return false;
                 }
-                
-                if (!tinkerDatum.Ingredient.IsNullOrEmpty())
+
+                if (TinkerInvoice.SelectedIngredient != null)
                 {
                     GameObject ingredientObject = TinkerInvoice.SelectedIngredient;
                     if (!RecipeIngredientSupplier.RemoveFromInventory(ingredientObject))
                     {
-                        string unableToUseIngredientMsg = "=subject.T= cannot use =object.t= as an ingredient!="
+                        string invalidIngredientMsg = "=subject.T= cannot use =object.t= as an ingredient!="
                             .StartReplace()
                             .AddObject(Vendor)
                             .AddObject(ingredientObject)
                             .ToString();
-                        Vendor.Fail(unableToUseIngredientMsg);
+                        Vendor.Fail(invalidIngredientMsg);
                         return false;
                     }
                 }
@@ -1302,13 +1302,14 @@ namespace XRL.World.Parts
             }
             return true;
         }
-        public static bool VendorDoMod(GameObject Vendor, GameObject Item, TinkerData TinkerData, GameObject RecipeIngredientSupplier)
+        public static bool VendorDoMod(GameObject Vendor, GameObject Item, TinkerInvoice TinkerInvoice, GameObject RecipeIngredientSupplier)
         {
-            if (Vendor == null || Item == null || TinkerData == null)
+            if (Vendor == null || Item == null || TinkerInvoice.Recipe == null)
             {
                 Popup.ShowFail($"That trader, item, or recipe doesn't exist (this is an error).");
                 return false;
             }
+            TinkerData tinkerData = TinkerInvoice.Recipe;
             GameObject player = The.Player;
             BodyPart bodyPart = player.FindEquippedObject(Item);
             bool didMod = false;
@@ -1332,14 +1333,18 @@ namespace XRL.World.Parts
                         return false;
                     }
                 }
-                GameObject ingredientObject = null;
-                if (!TinkerData.Ingredient.IsNullOrEmpty())
+
+                if (TinkerInvoice.SelectedIngredient != null)
                 {
-                    ingredientObject.SplitStack(1, RecipeIngredientSupplier);
-                    if (!RecipeIngredientSupplier.Inventory.FireEvent(Event.New("CommandRemoveObject", "Object", ingredientObject)))
+                    GameObject ingredientObject = TinkerInvoice.SelectedIngredient;
+                    if (!RecipeIngredientSupplier.RemoveFromInventory(ingredientObject))
                     {
-                        RecipeIngredientSupplier.Fail($"{Vendor.T()} cannot use {ingredientObject.t()} as an ingredient!");
-                        ingredientObject.CheckStack();
+                        string invalidIngredientMsg = "=subject.T= cannot use =object.t= as an ingredient!="
+                            .StartReplace()
+                            .AddObject(Vendor)
+                            .AddObject(ingredientObject)
+                            .ToString();
+                        Vendor.Fail(invalidIngredientMsg);
                         return false;
                     }
                 }
@@ -1350,7 +1355,7 @@ namespace XRL.World.Parts
 
                 didMod = ItemModding.ApplyModification(
                     Object: modItem,
-                    ModPartName: TinkerData.PartName,
+                    ModPartName: tinkerData.PartName,
                     ModPart: out IModification ModPart,
                     Tier: itemTier,
                     DoRegistration: true,
@@ -1362,9 +1367,15 @@ namespace XRL.World.Parts
                 {
                     modItem.MakeUnderstood();
                     SoundManager.PlayUISound("Sounds/Abilities/sfx_ability_tinkerModItem");
-                    Popup.Show(
-                        $"{Vendor.T()}{Vendor.GetVerb("mod")} {itemNameBeforeMod} to be " +
-                        $"{(ModPart.GetModificationDisplayName() ?? TinkerData.DisplayName).Color("C")}");
+
+                    string didModMsg = 
+                        ("=subject.T= =verb:mod:afterpronoun= " + itemNameBeforeMod + " to be " +
+                        (ModPart.GetModificationDisplayName() ?? tinkerData.DisplayName).Color("C"))
+                            .StartReplace()
+                            .AddObject(Vendor)
+                            .ToString();
+
+                    Popup.Show(didModMsg);
 
                     if (modItem.Equipped == null && modItem.InInventory == null)
                     {
@@ -1403,25 +1414,22 @@ namespace XRL.World.Parts
             bool AnyParts = false;
             bool AnyRechargeable = false;
             bool AnyRecharged = false;
-            Predicate<IRechargeable> proc = delegate (IRechargeable rcg)
+            foreach (var rechargablePart in Item.GetPartsDescendedFrom<IRechargeable>())
             {
-                GameObject item = rcg.ParentObject;
-
                 AnyParts = true;
-                if (!rcg.CanBeRecharged())
+                if (!rechargablePart.CanBeRecharged())
                 {
-                    return true;
+                    continue;
                 }
 
                 AnyRechargeable = true;
-                int rechargeAmount = rcg.GetRechargeAmount();
+                int rechargeAmount = rechargablePart.GetRechargeAmount();
                 if (rechargeAmount <= 0)
                 {
-                    return true;
+                    continue;
                 }
-
-                char rechargeBit = rcg.GetRechargeBit();
-                int rechargeValue = rcg.GetRechargeValue();
+                char rechargeBit = rechargablePart.GetRechargeBit();
+                int rechargeValue = rechargablePart.GetRechargeValue();
                 string bits = rechargeBit.GetString();
 
                 int bitsToRechargeFully = rechargeAmount / rechargeValue;
@@ -1432,18 +1440,27 @@ namespace XRL.World.Parts
 
                 BitCost bitCost = new(bits);
 
+                Item.SplitStack(1, Item.InInventory);
+
+                string title =
+                    ("Recharge =subject.t= \n" +
+                    "| Bit Cost |".Color("y") + "\n" +
+                    "<" + bitCost + ">")
+                        .StartReplace()
+                        .AddObject(Item)
+                        .ToString();
                 GameObject rechargeBitSupplier = PickASupplier(
-                Vendor: Vendor,
-                ForObject: item,
-                Title: $"Recharge {item.t(Single: true)}" + "\n"
-                + $"| Bit Cost |".Color("y") + "\n"
-                + $"<{bitCost}>" + "\n",
-                CenterIntro: true,
-                BitCost: bitCost);
+                    Vendor: Vendor,
+                    ForObject: Item,
+                    Title: title,
+                    CenterIntro: true,
+                    BitCost: bitCost);
 
                 if (rechargeBitSupplier == null)
                 {
-                    return false;
+                    AnyParts = false;
+                    AnyRechargeable = false;
+                    continue;
                 }
                 bool vendorSuppliesBits = rechargeBitSupplier == Vendor;
 
@@ -1453,89 +1470,129 @@ namespace XRL.World.Parts
 
                 if (bitCount == 0)
                 {
-                    string noBitsMessage = GameText.VariableReplace(
-                        $"{rechargeBitSupplier.T()}{rechargeBitSupplier.GetVerb("do")} not have any {BitType.GetString(bits)} bits," +
-                        $" which are required for recharging. " +
-                        $"{rechargeBitSupplier.It} =verb:have:afterpronoun=:\n\n " +
-                        $"{bitSupplierBitLocker.GetBitsString()}", rechargeBitSupplier);
-                    Popup.ShowFail(Message: noBitsMessage);
-                    return false;
+                    string noBitsMsg =
+                        ("=subject.T= =verb:don't:afterpronoun= have any " + BitType.GetString(bits) + " bits," +
+                        " which are required for recharging =object.t=.\n\n" +
+                        "=subject.Subjective= =verb:have:afterpronoun=:\n" +
+                        bitSupplierBitLocker.GetBitsString())
+                            .StartReplace()
+                            .AddObject(rechargeBitSupplier)
+                            .AddObject(Item)
+                            .ToString();
+
+                    Popup.ShowFail(Message: noBitsMsg);
+
+                    AnyParts = false;
+                    AnyRechargeable = false;
+                    continue;
                 }
 
                 int availableBitsToRecharge = Math.Min(bitCount, bitsToRechargeFully);
-                string howManyBitsMessage = GameText.VariableReplace(
-                    $"It would take {bitsToRechargeFully.Things($"{BitType.GetString(bits)} bit").Color("C")} " +
-                    $"to fully recharge {item.t(Single: true)}. " +
-                    $"{rechargeBitSupplier.T()} =verb:have:afterpronoun= {bitCount.Color("C")}. " +
-                    $"How many do you want to use?", rechargeBitSupplier);
-                int chosenBitsToUse = Popup.AskNumber(Message: howManyBitsMessage, "Sounds/UI/ui_notification", "", availableBitsToRecharge, 0, availableBitsToRecharge).GetValueOrDefault();
+
+                string howManyBitsMsg =
+                    ("It would take " + bitsToRechargeFully.Things($"{BitType.GetString(bits)} bit").Color("C") +
+                    " to fully recharge =object.t=. =subject.T= =verb:have:afterpronoun=" + bitCount.Color("C") + ". " +
+                    "How many do you want to use?")
+                        .StartReplace()
+                        .AddObject(rechargeBitSupplier)
+                        .AddObject(Item)
+                        .ToString();
+
+                int chosenBitsToUse = Popup.AskNumber(Message: howManyBitsMsg, "Sounds/UI/ui_notification", "", availableBitsToRecharge, 0, availableBitsToRecharge).GetValueOrDefault();
 
                 if (chosenBitsToUse < 1)
                 {
-                    return false;
+                    AnyParts = false;
+                    AnyRechargeable = false;
+                    continue;
                 }
 
                 bitCost.Clear();
                 bitCost.Add(rechargeBit, chosenBitsToUse);
 
-                TinkerInvoice tinkerInvoice = new(Vendor, TinkerInvoice.RECHARGE, null, bitCost, item)
+                TinkerInvoice tinkerInvoice = new(Vendor, TinkerInvoice.RECHARGE, null, bitCost, Item)
                 {
                     VendorSuppliesBits = vendorSuppliesBits,
                 };
                 int totalDramsCost = tinkerInvoice.GetTotalCost();
 
-
                 if (player.GetFreeDrams() < totalDramsCost)
                 {
-                    Popup.ShowFail(
-                        $"You do not have the required {totalDramsCost.Things("dram").Color("C")} " +
-                        $"to have {Vendor.t()} recharge this item.");
+                    string tooExpensiveMsg =
+                        ("=subject.T= =verb:don't:afterpronoun= have the required " +
+                        totalDramsCost.Things("dram").Color("C") +
+                        " to have =object.t= recharge this item.")
+                            .StartReplace()
+                            .AddObject(player)
+                            .AddObject(Vendor)
+                            .ToString();
+
+                    Popup.ShowFail(tooExpensiveMsg);
                     Popup.Show(tinkerInvoice, "Invoice");
-                    return false;
+                    AnyParts = false;
+                    AnyRechargeable = false;
+                    continue;
                 }
-                if (Popup.ShowYesNo($"{Vendor.T()} will recharge this item for " +
-                    $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
-                    $"\n\n{tinkerInvoice}") == DialogResult.Yes)
+                string wantToRechargeMsg =
+                    ("=object.T= will recharge this item for " +
+                    totalDramsCost.Things("dram").Color("C") +
+                    " of fresh water." +
+                    "\n\n" + tinkerInvoice)
+                        .StartReplace()
+                        .AddObject(player)
+                        .AddObject(Vendor)
+                        .ToString();
+
+                if (Popup.ShowYesNo(wantToRechargeMsg) == DialogResult.Yes)
                 {
                     bitSupplierBitLocker.UseBits(bitCost);
 
                     player.UseDrams(totalDramsCost);
                     Vendor.GiveDrams(totalDramsCost);
 
-                    Item.SplitFromStack();
-
-                    rcg.AddCharge((chosenBitsToUse < bitsToRechargeFully) ? (chosenBitsToUse * rechargeValue) : rechargeAmount);
+                    rechargablePart.AddCharge((chosenBitsToUse < bitsToRechargeFully) ? (chosenBitsToUse * rechargeValue) : rechargeAmount);
 
                     PlayUISound("Sounds/Abilities/sfx_ability_energyCell_recharge");
 
-                    string partially = ((chosenBitsToUse < bitsToRechargeFully) ? "partially " : "");
-                    string rechargedMessage = GameText.VariableReplace($"{Vendor.T()} {partially}recharged {item.t(Single: true)}.", Vendor);
+                    string partiallyOrFully = ((chosenBitsToUse < bitsToRechargeFully) ? "partially " : "");
+                    string endMark = (!partiallyOrFully.IsNullOrEmpty() ? "!" : ".");
+                    string rechargedMsg = ("=subject.T= " + partiallyOrFully + "recharged =object.t=" + endMark)
+                        .StartReplace()
+                        .AddObject(Vendor)
+                        .AddObject(Item)
+                        .ToString();
 
-                    Popup.Show(rechargedMessage);
-                    Item.CheckStack();
+                    Popup.Show(rechargedMsg);
 
                     AnyRecharged = true;
-
-                    return true;
+                    break;
                 }
-                return false;
-            };
-            if (Item.ForeachPartDescendedFrom(proc))
+            }
+            if (AnyRecharged)
+            {
+                player.UseEnergy(1000, "Trade Tinkering Recharge");
+                Vendor.UseEnergy(1000, "Skill Tinkering Recharge");
+            }
+            else
             {
                 if (!AnyParts)
                 {
-                    Popup.ShowFail("That isn't an energy cell and does not have a rechargeable capacitor.");
+                    Popup.ShowFail("=subject.T= =verb:isn't:afterpronoun= an energy cell and does not have a rechargeable capacitor."
+                        .StartReplace()
+                        .AddObject(Item)
+                        .ToString());
                 }
-                else if (!AnyRechargeable)
+                else
+                if (!AnyRechargeable)
                 {
-                    Popup.ShowFail($"{Item.T()} can't be recharged that way.");
-                }
-                if (AnyRecharged)
-                {
-                    player.UseEnergy(1000, "Trade Tinkering Recharge");
-                    Vendor.UseEnergy(1000, "Skill Tinkering Recharge");
+                    Popup.ShowFail("=subject.T= can't be recharged that way."
+                        .StartReplace()
+                        .AddObject(Item)
+                        .ToString());
                 }
             }
+            Item.CheckStack();
+            Item.InInventory.CheckStacks();
             return AnyRecharged;
         }
 
@@ -2220,7 +2277,7 @@ namespace XRL.World.Parts
                                     $"{totalDramsCost.Things("dram").Color("C")} of fresh water." +
                                     $"\n\n{tinkerInvoice}") == DialogResult.Yes)
                                 {
-                                    if (VendorDoMod(vendor, selectedObject, tinkerRecipe, recipeIngredientSupplier))
+                                    if (VendorDoMod(vendor, selectedObject, tinkerInvoice, recipeIngredientSupplier))
                                     {
                                         bitSupplierBitLocker.UseBits(bitCost);
 
