@@ -539,16 +539,13 @@ namespace UD_Tinkering_Bytes
             string reverseEngineerMessage = "";
             if (learnedBuildRecipe != null)
             {
-                sampleObject = GameObject.CreateSample(learnedBuildRecipe.Blueprint);
+                sampleObject = TinkerInvoice.CreateTinkerSample(learnedBuildRecipe.Blueprint);
 
                 string objectDisplayName = sampleObject.IsPlural
                     ? sampleObject.DisplayNameOnlyDirect
                     : sampleObject.GetPluralName(AsIfKnown: true, NoConfusion: true, Stripped: false, BaseOnly: true);
 
-                if (GameObject.Validate(ref sampleObject))
-                {
-                    sampleObject.Obliterate();
-                }
+                TinkerInvoice.ScrapTinkerSample(ref sampleObject);
 
                 reverseEngineerMessage = "build " + objectDisplayName;
             }

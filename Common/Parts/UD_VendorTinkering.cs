@@ -4,25 +4,26 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-using XRL.Language;
-using XRL.Rules;
 using XRL.UI;
 using XRL.Wish;
+using XRL.Rules;
+using XRL.Language;
+using XRL.World.Tinkering;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
 using XRL.World.Parts.Mutation;
 using XRL.World.Parts.Skill;
-using XRL.World.Tinkering;
 
-using static UD_Modding_Toolbox.Const;
-using static UD_Tinkering_Bytes.Options;
+using static XRL.World.Parts.Skill.Tinkering;
 
 using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
-using static XRL.World.Parts.Skill.Tinkering;
-
 using UD_Tinkering_Bytes;
+
+using static UD_Modding_Toolbox.Const;
+
+using static UD_Tinkering_Bytes.Options;
 using Utils = UD_Tinkering_Bytes.Utils;
 
 namespace XRL.World.Parts
@@ -643,9 +644,12 @@ namespace XRL.World.Parts
 
         public static void ClearBitLockerDisplayItem(GameObject Vendor)
         {
-            foreach (GameObject item in Vendor.GetInventoryAndEquipment(GO => GO.HasPart<UD_BitLocker_Display>()))
+            foreach (GameObject bitlockerDisplayItem in Vendor.GetInventoryAndEquipment(static GO => GO.HasPart<UD_BitLocker_Display>()))
             {
-                item.Obliterate();
+                if (GameObject.Validate(bitlockerDisplayItem))
+                {
+                    bitlockerDisplayItem.Obliterate();
+                }
             }
         }
         public void ClearBitLockerDisplayItem()
@@ -732,31 +736,6 @@ namespace XRL.World.Parts
         public bool IsModApplicableAndNotAlreadyInDictionary(GameObject ApplicableItem, TinkerData ModData, Dictionary<TinkerData, string> ExistingRecipes)
         {
             return IsModApplicableAndNotAlreadyInDictionary(ParentObject, ApplicableItem, ModData, ExistingRecipes, InstalledRecipes);
-        }
-
-        public static bool PhaseMatches(GameObject Vendor, GameObject Item, bool Silent = false)
-        {
-            if (Vendor.CurrentCell != null && !Vendor.PhaseMatches(Item))
-            {
-                if (!Silent)
-                {
-                    string phaseMissmatchMsg =
-                        ("=subject.T= =verb:is:afterpronoun= out of phase with =object.t= " +
-                        "and can't repair " + Item.themIt())
-                            .StartReplace()
-                            .AddObject(Vendor)
-                            .AddObject(Item)
-                            .ToString();
-
-                    Popup.ShowFail(phaseMissmatchMsg);
-                }
-                return false;
-            }
-            return true;
-        }
-        public bool PhaseMatches(GameObject Item, bool Silent = false)
-        {
-            return PhaseMatches(ParentObject, Item, Silent);
         }
 
         public static GameObject FindIngredientInInventory(GameObject IngredientSupplier, string Blueprint, Predicate<GameObject> Filter = null)
@@ -900,10 +879,10 @@ namespace XRL.World.Parts
                         title += "-or-".Color("Y") + "\n";
                     }
                     string ingredientDisplayName = Utils.GetGameObjectBlueprint(recipeIngredientBlueprints[i])?.DisplayName();
-                    if (GameObject.CreateSample(recipeIngredientBlueprints[i]) is GameObject sampleIngredient)
+                    if (TinkerInvoice.CreateTinkerSample(recipeIngredientBlueprints[i]) is GameObject sampleIngredient)
                     {
                         ingredientDisplayName = sampleIngredient.GetDisplayName(Context: Context, Short: true);
-                        sampleIngredient.Obliterate();
+                        TinkerInvoice.ScrapTinkerSample(ref sampleIngredient);
                     }
                     if (!ingredientDisplayName.IsNullOrEmpty())
                     {
@@ -1080,7 +1059,7 @@ namespace XRL.World.Parts
                 List<IRenderable> lineIcons = new();
                 foreach (string availableIngredient in AvailableIngredients)
                 {
-                    if (GameObject.CreateSample(availableIngredient) is GameObject availableIngredientObject)
+                    if (TinkerInvoice.CreateTinkerSample(availableIngredient) is GameObject availableIngredientObject)
                     {
                         TinkeringHelpers.StripForTinkering(availableIngredientObject);
                         AddNextHotkey(ref hotkeys);
@@ -1096,10 +1075,7 @@ namespace XRL.World.Parts
                         }
                         lineItems.Add(lineItem.StartReplace().AddObject(availableIngredientObject).ToString());
                         lineIcons.Add(availableIngredientObject.RenderForUI("PickIngredientObject"));
-                        if (GameObject.Validate(ref availableIngredientObject))
-                        {
-                            availableIngredientObject?.Obliterate();
-                        }
+                        TinkerInvoice.ScrapTinkerSample(ref availableIngredientObject);
                     }
                     else
                     {
@@ -1133,6 +1109,69 @@ namespace XRL.World.Parts
             return SelectedIngredient != null;
         }
 
+        public static bool TryGetApplicableItems(
+            GameObject Actor,
+            TinkerData ApplicableRecipe,
+            out List<string> LineItems,
+            out List<char> Hotkeys,
+            out List<IRenderable> LineIcons,
+            out List<GameObject> ApplicableItems)
+        {
+            string modName = ApplicableRecipe.DisplayName;
+
+            LineItems = new();
+            Hotkeys = new();
+            LineIcons = new();
+            ApplicableItems = Actor?.GetInventoryAndEquipment(GO => ItemModding.ModAppropriate(GO, ApplicableRecipe) && GO.Understood());
+
+            if (ApplicableItems.IsNullOrEmpty())
+            {
+                string noApplicableItemsMsg =
+                    ("=subject.t= =verb:don't:afterpronoun= have any items " +
+                    "that can be modified with " + modName + ".")
+                        .StartReplace()
+                        .AddObject(Actor)
+                        .ToString();
+
+                Popup.ShowFail(noApplicableItemsMsg);
+
+                LineItems = null;
+                Hotkeys = null;
+                LineIcons = null;
+                ApplicableItems = null;
+                return false;
+            }
+
+            BitCost recipeBitCost = new();
+            foreach (GameObject applicableObject in ApplicableItems)
+            {
+                recipeBitCost = new();
+                int recipeTier = Tier.Constrain(ApplicableRecipe.Tier);
+
+                int modSlotsUsed = applicableObject.GetModificationSlotsUsed();
+                int noCostMods = applicableObject.GetIntProperty("NoCostMods");
+
+                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + applicableObject.GetTechTier());
+
+                recipeBitCost.Increment(BitType.TierBits[recipeTier]);
+                recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
+
+                AddNextHotkey(ref Hotkeys);
+
+                string context = "";
+                if (applicableObject.Equipped == Actor)
+                {
+                    context = " [" + "Equipped".Color("K") + "]";
+                }
+                string singleShortDisplayName = applicableObject.GetDisplayName(Single: true, Short: true);
+                string lineItem = $"<{recipeBitCost}> {singleShortDisplayName}{context}";
+                LineItems.Add(lineItem);
+
+                LineIcons.Add(applicableObject.RenderForUI());
+            }
+            return true;
+        }
+
         public static bool TryGetApplicableRecipes(
             GameObject Vendor,
             GameObject ApplicableItem,
@@ -1140,12 +1179,12 @@ namespace XRL.World.Parts
             out List<string> LineItems,
             out List<char> Hotkeys,
             out List<IRenderable> LineIcons,
-            out List<TinkerData> Recipes)
+            out List<TinkerData> ApplicableRecipes)
         {
             LineItems = new();
             Hotkeys = new();
             LineIcons = new();
-            Recipes = new();
+            ApplicableRecipes = new();
             GameObject player = The.Player;
             List<GameObject> vendorHeldRecipeObjects = Vendor?.Inventory?.GetObjectsViaEventList(
                 GO => GO.TryGetPart(out UD_VendorKnownRecipe VKR)
@@ -1169,6 +1208,11 @@ namespace XRL.World.Parts
                     .ToString();
 
                 Popup.ShowFail(noModsKnownMsg);
+
+                LineItems = null;
+                Hotkeys = null;
+                LineIcons = null;
+                ApplicableRecipes = null;
                 return false;
             }
             Dictionary<TinkerData, string> applicableRecipes = new();
@@ -1179,7 +1223,7 @@ namespace XRL.World.Parts
                     if (playerHeldDataDiskObject.TryGetPart(out DataDisk playerHeldDataDisk)
                         && IsModApplicableAndNotAlreadyInDictionary(Vendor, ApplicableItem, playerHeldDataDisk.Data, applicableRecipes, InstalledRecipes))
                     {
-                        applicableRecipes.Add(playerHeldDataDisk.Data, "your inventory");
+                        applicableRecipes.Add(playerHeldDataDisk.Data, "=subject.t's= inventory".StartReplace().AddObject(player).ToString());
                     }
                 }
             }
@@ -1214,6 +1258,11 @@ namespace XRL.World.Parts
                     .ToString();
 
                 Popup.ShowFail(noModsKnownForItemMsg);
+
+                LineItems = null;
+                Hotkeys = null;
+                LineIcons = null;
+                ApplicableRecipes = null;
                 return false;
             }
             char nextHotkey = 'a';
@@ -1242,16 +1291,13 @@ namespace XRL.World.Parts
                 }
                 string lineItem = $"{applicableRecipe.DisplayName} <{recipeBitCost}> [{context.Color("K")}]";
                 LineItems.Add(lineItem);
-                Recipes.Add(applicableRecipe);
+                ApplicableRecipes.Add(applicableRecipe);
 
                 sampleDiskObject = TinkerData.createDataDisk(applicableRecipe);
 
                 LineIcons.Add(sampleDiskObject.RenderForUI());
             }
-            if (GameObject.Validate(ref sampleDiskObject))
-            {
-                sampleDiskObject.Obliterate();
-            }
+            TinkerInvoice.ScrapTinkerSample(ref sampleDiskObject);
             return true;
         }
         public bool TryGetApplicableRecipes(
@@ -1259,7 +1305,7 @@ namespace XRL.World.Parts
             out List<string> LineItems,
             out List<char> Hotkeys,
             out List<IRenderable> LineIcons,
-            out List<TinkerData> Recipes)
+            out List<TinkerData> ApplicableRecipes)
         {
             return TryGetApplicableRecipes(
                 Vendor: ParentObject, 
@@ -1268,7 +1314,7 @@ namespace XRL.World.Parts
                 LineItems: out LineItems,
                 Hotkeys: out Hotkeys,
                 LineIcons: out LineIcons,
-                Recipes: out Recipes);
+                ApplicableRecipes: out ApplicableRecipes);
         }
 
         public static bool VendorDoBuild(GameObject Vendor, TinkerInvoice TinkerInvoice, GameObject RecipeIngredientSupplier, bool VendorKeepsItem)
@@ -1278,12 +1324,12 @@ namespace XRL.World.Parts
                 Popup.ShowFail("That trader or recipe doesn't exist (this is an error).");
                 return false;
             }
-            GameObject sampleItem = GameObject.CreateSample(tinkerDatum.Blueprint);
+            GameObject tinkerSampleItem = TinkerInvoice.CreateTinkerSample(tinkerDatum.Blueprint);
             try
             {
                 GameObject player = The.Player;
                 bool Interrupt = false;
-                int tinkeringBonus = GetTinkeringBonusEvent.GetFor(Vendor, sampleItem, "BonusMod", 0, 0, ref Interrupt);
+                int tinkeringBonus = GetTinkeringBonusEvent.GetFor(Vendor, tinkerSampleItem, "BonusMod", 0, 0, ref Interrupt);
                 if (Interrupt)
                 {
                     return false;
@@ -1304,11 +1350,14 @@ namespace XRL.World.Parts
                     }
                 }
                 Inventory inventory = VendorKeepsItem ? Vendor.Inventory : player.Inventory;
-                TinkerItem tinkerItem = sampleItem.GetPart<TinkerItem>();
+                TinkerItem tinkerItem = tinkerSampleItem.GetPart<TinkerItem>();
                 GameObject tinkeredItem = null;
                 for (int i = 0; i < Math.Max(tinkerItem.NumberMade, 1); i++)
                 {
-                    tinkeredItem = GameObject.Create(tinkerDatum.Blueprint, 0, tinkeringBonus.in100() ? 1 : 0, null, null, null, "Tinkering");
+                    tinkeredItem = GameObject.Create(
+                        Blueprint: tinkerDatum.Blueprint,
+                        SetModNumber: tinkeringBonus.in100() ? 1 : 0, 
+                        Context: "Tinkering");
 
                     TinkeringHelpers.StripForTinkering(tinkeredItem);
                     tinkeredItem.MakeUnderstood();
@@ -1327,23 +1376,25 @@ namespace XRL.World.Parts
                     }
                 }
 
-                string singleShortKnownDisplayName = sampleItem.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
+                string singleShortKnownDisplayName = tinkerSampleItem.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
                 string whatWasTinkeredUp = tinkerItem.NumberMade > 1
-                    ? $"{Grammar.Cardinal(tinkerItem.NumberMade)} {Grammar.Pluralize(singleShortKnownDisplayName)}"
-                    : $"{tinkeredItem.an()}";
+                    ? (Grammar.Cardinal(tinkerItem.NumberMade) + " " + Grammar.Pluralize(singleShortKnownDisplayName))
+                    : "=object.a= " + singleShortKnownDisplayName;
 
 
                 string itemTinkeredMsg = ("=subject.T= =verb:tinker:afterpronoun= up " + whatWasTinkeredUp + "!")
-                            .StartReplace()
-                            .AddObject(Vendor)
-                            .ToString();
+                    .StartReplace()
+                    .AddObject(Vendor)
+                    .AddObject(tinkerSampleItem)
+                    .ToString();
 
                 string comeBackToPickItUp = "";
                 if (VendorKeepsItem)
                 {
-                    string themIt = $"{(tinkerItem.NumberMade > 1 || sampleItem.IsPlural ? "them" : sampleItem.it)}";
-                    comeBackToPickItUp += "\n\n"
-                        + $"Once =subject.t= =verb:has:afterpronoun= the drams for {themIt}, come back to pick {themIt} up!"
+                    string themIt = tinkerSampleItem.themIt();
+                    comeBackToPickItUp += 
+                        ("\n\n" + "Once =subject.t= =verb:has:afterpronoun= the drams for " 
+                        + themIt + ", come back to pick " + themIt + " up!")
                             .StartReplace()
                             .AddObject(player)
                             .ToString();
@@ -1354,10 +1405,7 @@ namespace XRL.World.Parts
             }
             finally
             {
-                if (GameObject.Validate(ref sampleItem))
-                {
-                    sampleItem.Obliterate();
-                }
+                TinkerInvoice.ScrapTinkerSample(ref tinkerSampleItem);
             }
             return true;
         }
@@ -1934,9 +1982,11 @@ namespace XRL.World.Parts
                     else
                     if (dataDisk?.Data?.Type == "Build"
                         && The.Player != null
-                        && GameObject.CreateSample(dataDisk?.Data.Blueprint) is GameObject sampleObject)
+                        && TinkerInvoice.CreateTinkerSample(dataDisk?.Data.Blueprint) is GameObject sampleObject)
                     {
-                        if (sampleObject.Understood() || The.Player.HasSkill(nameof(Skill.Tinkering)) || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))
+                        if (sampleObject.Understood()
+                            || The.Player.HasSkill(nameof(Skill.Tinkering))
+                            || Scanning.HasScanningFor(The.Player, Scanning.Scan.Tech))
                         {
                             E.AddAction(
                                 Name: "Build Data Disk",
@@ -1959,10 +2009,7 @@ namespace XRL.World.Parts
                                 Priority: 8,
                                 ClearAndSetUpTradeUI: true);
                         }
-                        if (GameObject.Validate(ref sampleObject))
-                        {
-                            sampleObject.Obliterate();
-                        }
+                        TinkerInvoice.ScrapTinkerSample(ref sampleObject);
                     }
                 }
                 else
@@ -2016,6 +2063,7 @@ namespace XRL.World.Parts
         public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
             if (E.Vendor != null && E.Vendor == ParentObject
+                && E.Item != null
                 && E.Vendor is GameObject vendor
                 && The.Player is GameObject player)
             {
@@ -2036,19 +2084,20 @@ namespace XRL.World.Parts
                     {
                         return false;
                     }
-
+                    GameObject recipeObject = null;
                     UD_VendorKnownRecipe knownRecipePart = null;
                     if (E.Command == COMMAND_BUILD
-                        && E.Item != null
-                        && (E.Item.TryGetPart(out DataDisk dataDisk) || E.Item.TryGetPart(out knownRecipePart)))
+                        && (E.Item.TryGetPart(out DataDisk dataDiskPart) || E.Item.TryGetPart(out knownRecipePart)))
                     {
-                        GameObject recipeObject = E.Item;
-                        TinkerData tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
-                        bool vendorsRecipe = E.Item.InInventory != player;
-                        GameObject sampleItem = GameObject.CreateSample(tinkerRecipe.Blueprint);
-                        TinkeringHelpers.StripForTinkering(sampleItem);
-                        TinkeringHelpers.ForceToBePowered(sampleItem);
+                        recipeObject = E.Item;
+                        TinkerData tinkerRecipe = dataDiskPart?.Data ?? knownRecipePart?.Data;
+                        bool vendorsRecipe = recipeObject.InInventory != player;
 
+                        if (TinkerInvoice.CreateTinkerSample(tinkerRecipe.Blueprint) is not GameObject sampleItem)
+                        {
+                            MetricsManager.LogModError(Utils.ThisMod, tinkerRecipe);
+                            return false;
+                        }
                         if (!CanTinkerRecipe(tinkerRecipe, Silent: false))
                         {
                             return false;
@@ -2066,8 +2115,7 @@ namespace XRL.World.Parts
                             }
                             bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
 
-                            BitCost bitCost = new();
-                            bitCost.Import(TinkerItem.GetBitCostFor(tinkerRecipe.Blueprint));
+                            BitCost bitCost = TinkerInvoice.GetBuildBitCost(tinkerRecipe);
 
                             if (!PickRecipeBitsSupplier(
                                 ForObject: sampleItem, 
@@ -2113,12 +2161,8 @@ namespace XRL.World.Parts
                             if (player.GetFreeDrams() < totalDramsCost
                                 && (depositDramCost > 0 && player.GetFreeDrams() > depositDramCost))
                             {
-                                DialogResult takeDeposit = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage());
-                                if (takeDeposit == DialogResult.Yes)
-                                {
-                                    vendorHoldsItem = true;
-                                }
-                                else
+                                vendorHoldsItem = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage()) == DialogResult.Yes;
+                                if (!vendorHoldsItem)
                                 {
                                     return false;
                                 }
@@ -2128,6 +2172,7 @@ namespace XRL.World.Parts
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .ToString();
+
                             if (!vendorHoldsItem && Popup.ShowYesNo(confirmTinkerMsg) != DialogResult.Yes)
                             {
                                 return false;
@@ -2147,10 +2192,7 @@ namespace XRL.World.Parts
                         }
                         finally
                         {
-                            if (GameObject.Validate(ref sampleItem))
-                            {
-                                sampleItem.Obliterate();
-                            }
+                            TinkerInvoice.ScrapTinkerSample(ref sampleItem);
                             tinkerInvoice?.Clear();
 
                             player?.Inventory?.CheckStacks();
@@ -2163,17 +2205,12 @@ namespace XRL.World.Parts
                         GameObject selectedObject = null;
                         TinkerData tinkerRecipe = null;
                         string modName = null;
-                        bool vendorsRecipe = true;
+                        bool isVendorsRecipe = true;
                         try
                         {
-                            if (!E.Item.TryGetPart(out dataDisk) && !E.Item.TryGetPart(out knownRecipePart))
+                            if (!E.Item.TryGetPart(out dataDiskPart) && !E.Item.TryGetPart(out knownRecipePart))
                             {
                                 selectedObject = E.Item;
-
-                                if (!PhaseMatches(selectedObject, Silent: false))
-                                {
-                                    return false;
-                                }
 
                                 if (!TryGetApplicableRecipes(selectedObject, 
                                     out List<string> lineItems, 
@@ -2200,67 +2237,29 @@ namespace XRL.World.Parts
                                 }
                                 tinkerRecipe = recipes[selectedOption];
                                 modName = $"{tinkerRecipe.DisplayName}";
-                                vendorsRecipe = !lineItems[selectedOption].Contains("your inventory");
+                                isVendorsRecipe = !lineItems[selectedOption].Contains("=subject.t's=".StartReplace().AddObject(player).ToString());
                             }
                             else
                             {
-                                vendorsRecipe = E.Item.InInventory != player;
-                                tinkerRecipe = dataDisk?.Data ?? knownRecipePart?.Data;
+                                recipeObject = E.Item;
+                                tinkerRecipe = dataDiskPart?.Data ?? knownRecipePart?.Data;
+                                isVendorsRecipe = recipeObject.InInventory != player;
 
                                 if (!CanTinkerRecipe(tinkerRecipe, Silent: false))
                                 {
                                     return false;
                                 }
-                                modName = $"{tinkerRecipe.DisplayName}";
+                                modName = tinkerRecipe.DisplayName;
 
-                                List<GameObject> applicableObjects = Event.NewGameObjectList(List:
-                                    player?.GetInventoryAndEquipment(
-                                        GO => ItemModding.ModAppropriate(GO, tinkerRecipe)
-                                        && GO.Understood())
-                                    );
-
-                                if (applicableObjects.IsNullOrEmpty())
+                                if (!TryGetApplicableItems(
+                                    Actor: player,
+                                    ApplicableRecipe: tinkerRecipe,
+                                    LineItems: out List<string> lineItems,
+                                    Hotkeys: out List<char> hotkeys,
+                                    LineIcons: out List<IRenderable> lineIcons,
+                                    ApplicableItems: out List<GameObject> applicableItems))
                                 {
-                                    string noApplicableItemsMsg = 
-                                        ("=subject.t= =verb:don't:afterpronoun= have any items " +
-                                        "that can be modified with " + modName + ".")
-                                            .StartReplace()
-                                            .AddObject(player)
-                                            .ToString();
-
-                                    Popup.ShowFail(noApplicableItemsMsg);
                                     return false;
-                                }
-
-                                List<char> hotkeys = new();
-                                List<string> lineItems = new();
-                                List<IRenderable> lineIcons = new();
-                                BitCost recipeBitCost = new();
-                                foreach (GameObject applicableObject in applicableObjects)
-                                {
-                                    recipeBitCost = new();
-                                    int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
-
-                                    int modSlotsUsed = applicableObject.GetModificationSlotsUsed();
-                                    int noCostMods = applicableObject.GetIntProperty("NoCostMods");
-
-                                    int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + applicableObject.GetTechTier());
-
-                                    recipeBitCost.Increment(BitType.TierBits[recipeTier]);
-                                    recipeBitCost.Increment(BitType.TierBits[existingModsTier]);
-
-                                    AddNextHotkey(ref hotkeys);
-
-                                    string context = "";
-                                    if (applicableObject.Equipped == player)
-                                    {
-                                        context = " [" + "Equipped".Color("K") + "]";
-                                    }
-                                    string singleShortDisplayName = applicableObject.GetDisplayName(Single: true, Short: true);
-                                    string lineItem = $"<{recipeBitCost}> {singleShortDisplayName}{context}";
-                                    lineItems.Add(lineItem);
-
-                                    lineIcons.Add(applicableObject.RenderForUI());
                                 }
 
                                 int selectedOption = Popup.PickOption(
@@ -2269,15 +2268,15 @@ namespace XRL.World.Parts
                                     Options: lineItems.ToArray(),
                                     Hotkeys: hotkeys.ToArray(),
                                     Icons: lineIcons,
-                                    Context: E.Item,
-                                    IntroIcon: E.Item.RenderForUI(),
+                                    Context: recipeObject,
+                                    IntroIcon: recipeObject.RenderForUI(),
                                     AllowEscape: true,
-                                    PopupID: "VendorTinkeringApplyModMenu:" + (E.Item?.IDIfAssigned ?? "(noid)"));
+                                    PopupID: "VendorTinkeringApplyModMenu:" + (recipeObject?.IDIfAssigned ?? "(noid)"));
                                 if (selectedOption < 0)
                                 {
                                     return false;
                                 }
-                                selectedObject = applicableObjects[selectedOption];
+                                selectedObject = applicableItems[selectedOption];
 
                                 if (selectedObject == null)
                                 {
@@ -2287,17 +2286,13 @@ namespace XRL.World.Parts
 
                             if (selectedObject != null && tinkerRecipe != null)
                             {
-                                if (!PhaseMatches(selectedObject, Silent: false))
-                                {
-                                    return false;
-                                }
-
                                 if (!ItemModding.ModificationApplicable(tinkerRecipe.PartName, selectedObject))
                                 {
                                     string modInapplicableMsg = "=sunbject.T= can't have " + modName + " applied to " + selectedObject.themIt()
                                         .StartReplace()
                                         .AddObject(selectedObject)
                                         .ToString();
+
                                     Popup.ShowFail(modInapplicableMsg);
                                     return false;
                                 }
@@ -2313,17 +2308,8 @@ namespace XRL.World.Parts
                                 }
                                 bool vendorSuppliesIngredients = recipeIngredientSupplier == vendor;
 
-                                BitCost bitCost = new();
-                                int recipeTier = Tier.Constrain(tinkerRecipe.Tier);
-
-                                int modSlotsUsed = selectedObject.GetModificationSlotsUsed();
-                                int noCostMods = selectedObject.GetIntProperty("NoCostMods");
-
-                                int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + selectedObject.GetTechTier());
-
-                                bitCost.Increment(BitType.TierBits[recipeTier]);
-                                bitCost.Increment(BitType.TierBits[existingModsTier]);
-
+                                BitCost bitCost = TinkerInvoice.GetModBitCostForObject(tinkerRecipe, selectedObject);
+                                
                                 if (!PickRecipeBitsSupplier(
                                     ForObject: selectedObject, 
                                     TinkerData: tinkerRecipe, 
@@ -2335,7 +2321,7 @@ namespace XRL.World.Parts
                                 }
                                 bool vendorSuppliesBits = recipeBitSupplier == vendor;
 
-                                tinkerInvoice = new(vendor, tinkerRecipe, bitCost, vendorsRecipe, selectedObject)
+                                tinkerInvoice = new(vendor, tinkerRecipe, bitCost, isVendorsRecipe, selectedObject)
                                 {
                                     VendorSuppliesIngredients = vendorSuppliesIngredients,
                                     VendorSuppliesBits = vendorSuppliesBits,
@@ -2392,21 +2378,22 @@ namespace XRL.World.Parts
                 }
                 else
                 if (E.Command == COMMAND_IDENTIFY_BY_DATADISK
-                    && E.Vendor != null && E.Vendor == ParentObject
-                    && E.Item != null && E.Item.TryGetPart(out DataDisk dataDisk))
+                    && E.Item is GameObject dataDiskObject
+                    && dataDiskObject.TryGetPart(out DataDisk dataDiskPart)
+                    && dataDiskPart.Data is TinkerData diskDatum)
                 {
                     int identifyLevel = GetIdentifyLevel(vendor);
-                    bool diskIsBuild = dataDisk.Data.Type == "Build";
+                    bool diskIsBuild = diskDatum.Type == "Build";
                     if (identifyLevel > 0 
                         && diskIsBuild
-                        && GameObject.CreateSample(dataDisk.Data.Blueprint) is GameObject item)
+                        && TinkerInvoice.CreateTinkerSample(diskDatum.Blueprint) is GameObject sampleItem)
                     {
                         try
                         {
-                            if (!item.Understood())
+                            if (!sampleItem.Understood())
                             {
-                                int complexity = item.GetComplexity();
-                                int examineDifficulty = item.GetExamineDifficulty();
+                                int complexity = sampleItem.GetComplexity();
+                                int examineDifficulty = sampleItem.GetExamineDifficulty();
                                 if (player.HasPart<Dystechnia>())
                                 {
                                     Popup.ShowFail($"You can't understand {Grammar.MakePossessive(vendor.t(Stripped: true))} explanation.");
@@ -2432,9 +2419,9 @@ namespace XRL.World.Parts
                                     player.UseDrams(dramsCost);
                                     vendor.GiveDrams(dramsCost);
                                     Popup.Show(
-                                        $"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()}" +
-                                        $" as {item.an(AsIfKnown: true)}.");
-                                    item.MakeUnderstood();
+                                        $"{vendor.does("identify", Stripped: true)} {sampleItem.the} {sampleItem.GetDisplayName()}" +
+                                        $" as {sampleItem.an(AsIfKnown: true)}.");
+                                    sampleItem.MakeUnderstood();
                                     return true;
                                 }
                             }
@@ -2446,10 +2433,7 @@ namespace XRL.World.Parts
                         }
                         finally
                         {
-                            if (GameObject.Validate(ref item))
-                            {
-                                item.Obliterate();
-                            }
+                            TinkerInvoice.ScrapTinkerSample(ref sampleItem);
                         }
                     }
                     else
@@ -2460,7 +2444,6 @@ namespace XRL.World.Parts
                 }
                 else
                 if (E.Command == COMMAND_IDENTIFY_SCALING
-                    && E.Vendor != null && E.Vendor == ParentObject
                     && E.Item is GameObject unknownItem)
                 {
                     int identifyLevel = GetIdentifyLevel(vendor);
@@ -2513,7 +2496,6 @@ namespace XRL.World.Parts
                 }
                 else
                 if (E.Command == COMMAND_REPAIR_SCALING
-                    && E.Vendor != null && E.Vendor == ParentObject
                     && E.Vendor.TryGetPart(out Tinkering_Repair vendorRepairSkill)
                     && E.Item is GameObject repairableItem)
                 {
@@ -2525,11 +2507,6 @@ namespace XRL.World.Parts
                     if (vendor.GetTotalConfusion() > 0)
                     {
                         Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("'re")} too confused to repair {repairableItem.t(Single: true)}.");
-                        return false;
-                    }
-                    if (vendor.CurrentCell != null && !vendor.PhaseMatches(repairableItem))
-                    {
-                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {repairableItem.t()} and cannot repair {repairableItem.themIt()}.");
                         return false;
                     }
                     if (vendor.AreHostilesNearby() && vendor.FireEvent("CombatPreventsRepair"))
@@ -2620,14 +2597,8 @@ namespace XRL.World.Parts
                 }
                 else
                 if (E.Command == COMMAND_RECHARGE_SCALING
-                    && E.Vendor != null && E.Vendor == ParentObject
                     && E.Item is GameObject rechargeableItem)
                 {
-                    if (vendor.CurrentCell != null && !vendor.PhaseMatches(rechargeableItem))
-                    {
-                        Popup.ShowFail($"{vendor.T()}{vendor.GetVerb("are")} out of phase with {rechargeableItem.t()} and cannot repair {rechargeableItem.themIt()}.");
-                        return false;
-                    }
                     if (!vendor.CanMoveExtremities("Recharge", ShowMessage: true))
                     {
                         return false;

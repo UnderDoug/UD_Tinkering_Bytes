@@ -110,12 +110,27 @@ namespace UD_Tinkering_Bytes
 
         public void Clear()
         {
-            if (IsItemSample && GameObject.Validate(ref Item))
+            if (IsItemSample)
             {
-                Item?.Obliterate();
+                ScrapTinkerSample(ref Item);
             }
             Vendor = null;
             Recipe = null;
+        }
+
+        public static GameObject CreateTinkerSample(string Blueprint)
+        {
+            GameObject tinkerSample = GameObject.CreateSample(Blueprint);
+            TinkeringHelpers.StripForTinkering(tinkerSample);
+            TinkeringHelpers.ForceToBePowered(tinkerSample);
+            return tinkerSample;
+        }
+        public static void ScrapTinkerSample(ref GameObject TinkerSample)
+        {
+            if (GameObject.Validate(ref TinkerSample))
+            {
+                TinkerSample.Obliterate();
+            }
         }
 
         public string GetItemName()
@@ -188,11 +203,11 @@ namespace UD_Tinkering_Bytes
         }
         public static double GetExamineCost(string Item, double Performance = 1.0)
         {
-            GameObject sampleObject = GameObject.CreateSample(Item);
-            double value = GetExamineCost(sampleObject, Performance);
-            if (GameObject.Validate(ref sampleObject))
+            double value = 0.0;
+            if (CreateTinkerSample(Item) is GameObject tinkerSampleItem)
             {
-                sampleObject.Obliterate();
+                value = GetExamineCost(tinkerSampleItem, Performance);
+                ScrapTinkerSample(ref tinkerSampleItem);
             }
             return value;
         }
@@ -212,14 +227,11 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    GameObject sampleDataDiskObject = TinkerData.createDataDisk(Recipe);
-                    if (sampleDataDiskObject.TryGetPart(out DataDisk dataDisk) && dataDisk.Data == Recipe)
+                    if (TinkerData.createDataDisk(Recipe) is GameObject sampleDataDiskObject 
+                        && sampleDataDiskObject.TryGetPart(out DataDisk dataDisk) && dataDisk.Data == Recipe)
                     {
                         ExpertiseValue = Math.Round(Math.Max(2, TradeUI.GetValue(sampleDataDiskObject, true) / 3), 2);
-                    }
-                    if (GameObject.Validate(ref sampleDataDiskObject))
-                    {
-                        sampleDataDiskObject.Obliterate();
+                        ScrapTinkerSample(ref sampleDataDiskObject);
                     }
                 }
             }
@@ -269,13 +281,10 @@ namespace UD_Tinkering_Bytes
         public static double GetIngedientValueInDrams(string Ingredient, GameObject Vendor = null)
         {
             double ingredientValue = 0;
-            if (GameObject.CreateSample(Ingredient) is GameObject ingredientObject)
+            if (CreateTinkerSample(Ingredient) is GameObject sampleIngredientObject)
             {
-                ingredientValue += TradeUI.GetValue(ingredientObject, Vendor != null);
-                if (GameObject.Validate(ref ingredientObject))
-                {
-                    ingredientObject?.Obliterate();
-                }
+                ingredientValue = TradeUI.GetValue(sampleIngredientObject, Vendor != null);
+                ScrapTinkerSample(ref sampleIngredientObject);
             }
             return ingredientValue;
         }
@@ -319,7 +328,7 @@ namespace UD_Tinkering_Bytes
                 string scrapBlueprint = GetScrapBlueprintFromBit(bit);
                 if (!scrapBlueprint.IsNullOrEmpty())
                 {
-                    scrapItem = GameObject.CreateSample(scrapBlueprint);
+                    scrapItem = CreateTinkerSample(scrapBlueprint);
                 }
             }
             return scrapItem;
@@ -329,13 +338,13 @@ namespace UD_Tinkering_Bytes
         {
             return TradeUI.GetValue(Ingredient, Vendor != null);
         }
-        public static double GetIngredientsValueInDrams(string Blueprint, GameObject Vendor = null)
+        public static double GetIngredientsValueInDrams(string Ingredient, GameObject Vendor = null)
         {
             double valueInDrams = 0;
-            if (GameObject.CreateSample(Blueprint) is GameObject ingredient)
+            if (CreateTinkerSample(Ingredient) is GameObject sampleIngredientObject)
             {
-                valueInDrams = TradeUI.GetValue(ingredient, Vendor != null);
-                ingredient.Obliterate();
+                valueInDrams = TradeUI.GetValue(sampleIngredientObject, Vendor != null);
+                ScrapTinkerSample(ref sampleIngredientObject);
             }
             return valueInDrams;
         }
@@ -351,19 +360,65 @@ namespace UD_Tinkering_Bytes
             return IngredientValue;
         }
 
+        public static BitCost GetBuildBitCost(TinkerData TinkerData)
+        {
+            if (TinkerData.Type != "Build")
+            {
+                return null;
+            }
+            BitCost bitCost = new();
+            bitCost.Import(TinkerItem.GetBitCostFor(TinkerData.Blueprint));
+            return bitCost;
+        }
+        public BitCost GetBuildBitCost()
+        {
+            if (Service != BUILD)
+            {
+                return null;
+            }
+            return GetBuildBitCost(Recipe);
+        }
+
+        public static BitCost GetModBitCostForObject(TinkerData TinkerData, GameObject Object)
+        {
+            if (TinkerData.Type != "Mod")
+            {
+                return null;
+            }
+            int recipeTier = Tier.Constrain(TinkerData.Tier);
+
+            int modSlotsUsed = Object.GetModificationSlotsUsed();
+            int noCostMods = Object.GetIntProperty("NoCostMods");
+
+            int existingModsTier = Tier.Constrain(modSlotsUsed - noCostMods + Object.GetTechTier());
+
+            BitCost bitCost = new();
+            bitCost.Increment(BitType.TierBits[recipeTier]);
+            bitCost.Increment(BitType.TierBits[existingModsTier]);
+            return bitCost;
+        }
+        public BitCost GetModBitCostForObject()
+        {
+            if (Service != MOD)
+            {
+                return null;
+            }
+            return GetModBitCostForObject(Recipe, Item);
+        }
+
         public static double GetBitsValueInDrams(string BitCost, GameObject Vendor = null)
         {
             double totalValue = 0;
             if (!BitCost.IsNullOrEmpty())
             {
-                GameObject scrap = null;
+                GameObject sampleScrap = null;
                 foreach (char bit in BitCost)
                 {
-                    scrap = GetBitScrapItem(bit);
-                    if (GameObject.Validate(ref scrap))
+                    sampleScrap = GetBitScrapItem(bit);
+                    if (GameObject.Validate(ref sampleScrap))
                     {
-                        totalValue += TradeUI.GetValue(scrap, Vendor != null ? true : null);
-                        scrap.Obliterate();
+                        totalValue += TradeUI.GetValue(sampleScrap, Vendor != null ? true : null);
+                        ScrapTinkerSample(ref sampleScrap);
                     }
                 }
             }
@@ -772,16 +827,13 @@ namespace UD_Tinkering_Bytes
                         {
                             foreach (string ingredient in buildRecipe.Ingredient.CachedCommaExpansion())
                             {
-                                if (GameObject.CreateSample(ingredient) is GameObject ingredientObject)
+                                if (CreateTinkerSample(ingredient) is GameObject sampleIngredientObject)
                                 {
-                                    tinkerInvoice = new(sampleBep, buildRecipe, ingredientObject, bitCost, true);
+                                    tinkerInvoice = new(sampleBep, buildRecipe, sampleIngredientObject, bitCost, true);
 
                                     Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
                                     tinkerInvoice?.Clear();
-                                    if (GameObject.Validate(ingredientObject))
-                                    {
-                                        ingredientObject.Obliterate();
-                                    }
+                                    ScrapTinkerSample(ref sampleIngredientObject);
                                 }
                             }
                         }
@@ -858,16 +910,13 @@ namespace UD_Tinkering_Bytes
                                 {
                                     foreach (string ingredient in modRecipe.Ingredient.CachedCommaExpansion())
                                     {
-                                        if (GameObject.CreateSample(ingredient) is GameObject ingredientObject)
+                                        if (CreateTinkerSample(ingredient) is GameObject sampleIngredientObject)
                                         {
-                                            tinkerInvoice = new(sampleBep, modRecipe, ingredientObject, bitCost, true, sampleItem);
+                                            tinkerInvoice = new(sampleBep, modRecipe, sampleIngredientObject, bitCost, true, sampleItem);
 
                                             Debug.Entry(4, tinkerInvoice?.DebugString(), Indent: 0, Toggle: true);
                                             tinkerInvoice?.Clear();
-                                            if (GameObject.Validate(ingredientObject))
-                                            {
-                                                ingredientObject.Obliterate();
-                                            }
+                                            ScrapTinkerSample(ref sampleIngredientObject);
                                         }
                                     }
                                 }
@@ -875,10 +924,7 @@ namespace UD_Tinkering_Bytes
                         }
                         finally
                         {
-                            if (GameObject.Validate(ref sampleItem))
-                            {
-                                sampleItem.Obliterate();
-                            }
+                            ScrapTinkerSample(ref sampleItem);
                         }
                     }
                 }
@@ -911,8 +957,7 @@ namespace UD_Tinkering_Bytes
                                 $"{gameObjectBlueprint?.DisplayName()?.Strip()} is irreparable...");
                             continue;
                         }
-                        sampleItem = GameObject.CreateSample(gameObjectBlueprint.Name);
-                        TinkeringHelpers.StripForTinkering(sampleItem);
+                        sampleItem = CreateTinkerSample(gameObjectBlueprint.Name);
                         string sampleItemDisplayName = sampleItem?.GetDisplayName(AsIfKnown: true, Short: true, Stripped: true) ?? NULL;
                         try
                         {
@@ -920,6 +965,10 @@ namespace UD_Tinkering_Bytes
                                 $"{progress} of {totalProgress} | " +
                                 $"{sampleItemDisplayName}...");
 
+                            if (sampleItem == null)
+                            {
+                                continue;
+                            }
                             bool lowHP = false;
                             if (sampleItem.GetStat("Hitpoints") is Statistic hitpoints)
                             {
@@ -947,10 +996,7 @@ namespace UD_Tinkering_Bytes
                         }
                         finally
                         {
-                            if (GameObject.Validate(ref sampleItem))
-                            {
-                                sampleItem.Obliterate();
-                            }
+                            ScrapTinkerSample(ref sampleItem);
                         }
                     }
                 }
@@ -1024,10 +1070,7 @@ namespace UD_Tinkering_Bytes
                         }
                         finally
                         {
-                            if (GameObject.Validate(ref sampleItem))
-                            {
-                                sampleItem.Obliterate();
-                            }
+                            ScrapTinkerSample(ref sampleItem);
                         }
                     }
                 }
@@ -1039,14 +1082,8 @@ namespace UD_Tinkering_Bytes
             finally
             {
                 Loading.SetLoadingStatus(null);
-                if (GameObject.Validate(ref sampleBep))
-                {
-                    sampleBep?.Obliterate();
-                }
-                if (GameObject.Validate(ref sampleItem))
-                {
-                    sampleItem?.Obliterate();
-                }
+                ScrapTinkerSample(ref sampleBep);
+                ScrapTinkerSample(ref sampleItem);
                 tinkerInvoice?.Clear();
             }
         }

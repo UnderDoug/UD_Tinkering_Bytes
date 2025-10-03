@@ -49,7 +49,26 @@ namespace XRL.World.Parts
         {
             if (Vendor == null || Item == null || TinkerItem == null || !Vendor.HasPart<UD_VendorDisassembly>())
             {
-                Popup.ShowFail($"That trader or item doesn't exist, the trader is unable to disassemble or the item can't be disassembled (this is an error).");
+                Popup.ShowFail(
+                    "That trader or item doesn't exist, the item can't be disassembled, " +
+                    "or the trader is unable to disassemble (this is an error)." +
+                    "\n" + UD_Tinkering_Bytes.Utils.TellModAuthor);
+                if (Vendor == null)
+                {
+                    MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, "Passed null " + nameof(Vendor));
+                }
+                if (Item == null)
+                {
+                    MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, "Passed null " + nameof(Item));
+                }
+                if (TinkerItem == null)
+                {
+                    MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, "Passed null " + nameof(TinkerItem));
+                }
+                if (!Vendor.HasPart<UD_VendorDisassembly>())
+                {
+                    MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, nameof(Vendor) + " lacks " + nameof(UD_VendorDisassembly));
+                }
                 return false;
             }
 

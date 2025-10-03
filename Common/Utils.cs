@@ -17,6 +17,12 @@ namespace UD_Tinkering_Bytes
     {
         public static ModInfo ThisMod => ModManager.GetMod("UD_Tinkering_Bytes");
 
+        public static string ModAuthor => ThisMod?.Manifest?.Author;
+        public static string ModAuthorStripped => ModAuthor?.Strip();
+
+        public static string TellModAuthor => ModAuthor.IsNullOrEmpty() ? null : "Let " + ModAuthor + " know on the steam workshop discussion for this mod.";
+        public static string TellModAuthorStripped => ModAuthorStripped.IsNullOrEmpty() ? null : "Let " + ModAuthorStripped + " know on the steam workshop discussion for this mod.";
+
         public static GameObjectBlueprint GetGameObjectBlueprint(string Blueprint)
         {
             return GameObjectFactory.Factory.GetBlueprintIfExists(Blueprint);
