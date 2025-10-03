@@ -471,7 +471,17 @@ namespace UD_Tinkering_Bytes
 
             if (DebugSpawnSnapjawWhileVendorDisassembles && currentDisassembly % 25 == 0)
             {
-                (The.Player.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic() ?? Disassembler.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic())?.AddObject("Snapjaw Scavenger");
+                (The.Player.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic() ?? Disassembler.CurrentCell?.GetEmptyAdjacentCells()?.GetRandomElementCosmetic())?.AddObject("Snapjaw Scavenger", delegate(GameObject snapjaw)
+                {
+                    snapjaw.GiveProperName("Jofo Qudwufo".Color("w"));
+
+                    var snapjawTitles = snapjaw.RequirePart<DisplayNameAdjectives>();
+                    snapjawTitles.AddAdjective("The");
+
+                    var snapjawEpithets = snapjaw.RequirePart<Epithets>();
+                    snapjawEpithets.EpithetList = null;
+                    snapjawEpithets.AddEpithet(", \"" + "protagonist".Color("w") + "\" of hugo award winning \"" + "Caves of Qud".Color("g") + "\"");
+                });
             }
 
             Debug.LastIndent = indent;

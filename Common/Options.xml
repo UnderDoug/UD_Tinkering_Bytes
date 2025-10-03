@@ -82,7 +82,7 @@
         Type="Checkbox"
         Default="No" >
     <helptext>
-      When enabled, during vendor disassembly a snapjaw scavenger will spawn after the 25th item has been disassembled with &quot;disassemble all.&quot;.
+      When enabled, during vendor disassembly a snapjaw scavenger will spawn after the 25th item has been disassembled with &quot;disassemble all&quot;.
       
       This is designed to test whether or not hostile creatrues will successfully interrupt a vendor while they're tinkering.
 

@@ -75,6 +75,7 @@ namespace XRL.World.Parts
             UD_SyncedDisassembly syncedDisassembly = new(Vendor, CostPerItem);
 
             AutoAct.Action = syncedDisassembly;
+            AutoAct.Setting = "o";
             Vendor.ForfeitTurn(EnergyNeutral: true);
             The.Player.ForfeitTurn(EnergyNeutral: true);
 
@@ -142,7 +143,8 @@ namespace XRL.World.Parts
                 && Item.TryGetPart(out TinkerItem tinkerItem))
             {
                 int itemCount = Item.Count;
-                bool multipleItems = E.Command == COMMAND_DISASSEMBLE_ALL && itemCount > 1;
+                int amountToDisassemble = itemCount;
+                bool multipleItems = E.Command == COMMAND_DISASSEMBLE_ALL && amountToDisassemble > 1;
 
                 string bits = tinkerItem.Bits;
                 int numberOfBits = bits.Length;
@@ -171,9 +173,9 @@ namespace XRL.World.Parts
                 {
                     costPerItem = valueOverride;
                 }
-                totalCost = (int)Math.Max(minCost, multipleItems ? itemCount * costPerItem : costPerItem);
-                int RealCostPerItem = multipleItems ? totalCost / itemCount : totalCost;
-                totalCost = multipleItems ? itemCount * RealCostPerItem : RealCostPerItem;
+                totalCost = (int)Math.Max(minCost, multipleItems ? amountToDisassemble * costPerItem : costPerItem);
+                int RealCostPerItem = multipleItems ? totalCost / amountToDisassemble : totalCost;
+                totalCost = multipleItems ? amountToDisassemble * RealCostPerItem : RealCostPerItem;
 
                 if (Vendor.IsPlayerLed())
                 {
@@ -191,22 +193,54 @@ namespace XRL.World.Parts
                 }
                 if (!E.Second)
                 {
-                    string thisThese = multipleItems ? ("these " + itemCount.Things("item")) : "this item";
-                    string dramsCost = (totalCost + " " + (totalCost == 1 ? "dram" : "drams")).Color("C");
+                    int costToDisassemble = totalCost;
 
-                    if (player.GetFreeDrams() < totalCost)
+                    string thisThese = multipleItems ? ("these " + amountToDisassemble.Things("item")) : "this item";
+                    string dramsCost = costToDisassemble.Things("dram").Color("C");
+
+                    bool tooExpensive = player.GetFreeDrams() < costToDisassemble;
+                    if (tooExpensive)
                     {
                         string tooExpensiveMsg =
                             ("=subject.T= =verb:don't:afterpronoun= have the required " +
-                            dramsCost + " to have =object.t= disassemble " + "item".ThisTheseN(itemCount, multipleItems))
+                            dramsCost + " to have =object.t= disassemble " + "item".ThisTheseN(amountToDisassemble, multipleItems))
                                 .StartReplace()
                                 .AddObject(player)
                                 .AddObject(Vendor)
                                 .ToString();
 
-                        Popup.ShowFail(tooExpensiveMsg);
+                        if (player.GetFreeDrams() > RealCostPerItem)
+                        {
+                            int maxAffordable = (int)Math.Floor(player.GetFreeDrams() / (double)RealCostPerItem);
+                            string realCostPerItemString = RealCostPerItem.Things("dram").Color("C");
+                            string disassembleSomeMsg =
+                                ("\n\n" + "How many of the " + maxAffordable.ToString().Color("C") + " =subject.t= =verb:can:afterpronoun= " +
+                                "afford would =subject.subjective= like =object.t= to disassemble?\n\n" +
+                                "It costs " + realCostPerItemString + " of fresh water each to disassemble these items.")
+                                    .StartReplace()
+                                    .AddObject(player)
+                                    .AddObject(Vendor)
+                                    .ToString();
+
+                            amountToDisassemble = (int)Popup.AskNumber(
+                                Message: tooExpensiveMsg + disassembleSomeMsg,
+                                Start: maxAffordable,
+                                Max: maxAffordable);
+                        }
+                        else
+                        {
+                            Popup.ShowFail(tooExpensiveMsg);
+                        }
                     }
-                    else
+
+                    if (amountToDisassemble > 0)
+                    {
+                        costToDisassemble = amountToDisassemble * RealCostPerItem;
+                        dramsCost = costToDisassemble.Things("dram").Color("C");
+                        thisThese = multipleItems ? ("these " + amountToDisassemble.Things("item")) : "this item";
+                        tooExpensive = player.GetFreeDrams() < costToDisassemble;
+                    }
+                    if (!tooExpensive)
                     {
                         string confirmDisassembleMsg =
                             ("=subject.T= may have =object.t= disassemble " + thisThese +
@@ -343,7 +377,7 @@ namespace XRL.World.Parts
                                 }
                             }
 
-                            Disassembly = new(E.Item, multipleItems ? itemCount : 1, EnergyCostPer: 0);
+                            Disassembly = new(E.Item, multipleItems ? amountToDisassemble : 1, EnergyCostPer: 0);
                             return true;
                         }
                     }

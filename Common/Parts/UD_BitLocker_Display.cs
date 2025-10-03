@@ -48,6 +48,21 @@ namespace XRL.World.Parts
             return true;
         }
 
+        public static IEnumerable<GameObject> GetBitLockerDisplayObjects(Inventory Inventory)
+        {
+            if (Inventory == null)
+            {
+                yield break;
+            }
+            foreach (GameObject item in Inventory.Objects)
+            {
+                if (item.HasPart<UD_BitLocker_Display>())
+                {
+                    yield return item;
+                }
+            }
+        }
+
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)

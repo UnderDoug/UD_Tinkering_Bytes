@@ -483,7 +483,7 @@ namespace UD_Tinkering_Bytes
         {
             if (Service == BUILD
                 && DepositCost == 0
-                && GetIngredientValue() > 0
+                && (SelectedIngredient == null || GetIngredientValue() > 0)
                 && GetBitsValue() > 0)
             {
                 DepositCost = GetTotalCost() - GetItemValue();
@@ -562,7 +562,7 @@ namespace UD_Tinkering_Bytes
             // Item ID.
             if (Service == BUILD && !Item.Understood())
             {
-                SB.Append("Identification of Item: ").AppendColored("y", labourValue.Things("dram"));
+                SB.Append("Identification of item: ").AppendColored("y", labourValue.Things("dram").Color("C"));
                 SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
             }
 
@@ -658,31 +658,49 @@ namespace UD_Tinkering_Bytes
 
         public string GetDepositMessage()
         {
-            GameObject player = The.Player;
-            string thisThese = Item.indicativeProximal;
-            string items = NumberMade == 1 ? "item" : "items";
-            string thisTheseItems = $"{thisThese} {items}";
-            string itThem = NumberMade == 1 ? Item.it : "them";
+            string items =  "item";
+            string itThem = Item.it;
+            if (NumberMade != 1)
+            {
+                items = Grammar.Pluralize(items);
+                itThem = "them";
+            }
+            string thisTheseItems = Item.indicativeProximal + " " + items;
 
             string totalCost = GetTotalCost().Things("dram").Color("C");
             string depositCost = GetDepositCost().Things("dram").Color("C") + " of fresh water";
-            string itemValue = GetItemValue().Things("dram").Color("C") + " of fresh water";
+            string itemValue = GetItemValue().Things("dram").Color("C");
             string restocks = "2 restocks".Color("g");
 
-            var SB = Event.NewStringBuilder();
+            string tooExpensiveMsg = 
+                ("=subject.T= =verb:don't:afterpronoun= have the required " + totalCost +
+                " to have =object.t= tinker " + thisTheseItems + ".")
+                    .StartReplace()
+                    .AddObject(The.Player)
+                    .AddObject(Vendor)
+                    .ToString();
 
-            SB.Append(player.T()).Append(player.GetVerb("do")).Append(" not have the required ").Append(totalCost);
-            SB.Append(" for ").Append(Vendor.T()).Append(" to tinker ").Append(thisTheseItems).Append(".");
-            SB.AppendLine().AppendLine();
-            SB.Append(Vendor.It).Append(" will tinker ").Append(thisTheseItems).Append(" for a deposit of ").Append(depositCost);
-            SB.Append(", however ").Append(Vendor.it).Append(" will hold onto ").Append(itThem);
-            SB.Append(" until you have the remaining ").Append(itemValue).Append(".");
-            SB.AppendLine().AppendLine();
-            SB.Append("Please note: ").Append(Vendor.T()).Append(" will only hold onto this item for ").Append(restocks).Append(".");
-            SB.AppendLine().AppendLine();
-            SB.Append(this);
+            string willTinkerForDepositMsg = 
+                ("=object.T= will tinker " + thisTheseItems + " for a deposit of " + depositCost +
+                ", however =object.subjective= will hold onto " + itThem + " until =subject.subjective= " +
+                "=verb:have:afterpronoun= the remaining " + itemValue + ".")
+                    .StartReplace()
+                    .AddObject(The.Player)
+                    .AddObject(Vendor)
+                    .ToString();
 
-            return Event.FinalizeString(SB);
+            string pleaseNoteMsg = 
+                ("Please note: =object.T= will only hold onto " + thisTheseItems + " for " + restocks + ".")
+                    .StartReplace()
+                    .AddObject(The.Player)
+                    .AddObject(Vendor)
+                    .ToString();
+
+            return tooExpensiveMsg +
+                "\n\n" +
+                willTinkerForDepositMsg +
+                "\n\n" +
+                pleaseNoteMsg;
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)
