@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UD_Modding_Toolbox;
 using XRL;
@@ -228,6 +229,35 @@ namespace UD_Tinkering_Bytes
                 }
             }
             return bits;
+        }
+        public static string GetBitDebugString(this BitLocker BitLocker)
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            string bitsCount = "";
+
+            // outputs csv to Player.log
+            //  A, B,C, D,1,  2,3, 4, 5,6,7,8   <- this is generated elsewhere
+            // 23,36,0,37,6,119,0,18,12,0,1,2   <- this is the actual output
+
+            foreach (char bit in BitType.BitOrder)
+            {
+                if (!bitsCount.IsNullOrEmpty())
+                {
+                    bitsCount += ",";
+                }
+                if (BitLocker.BitStorage.Keys.Contains(bit))
+                {
+                    bitsCount += BitLocker.BitStorage[bit];
+                }
+                else
+                {
+                    bitsCount += 0;
+                }
+            }
+            return bitsCount;
         }
 
         public static bool IsSameDatumAs(this TinkerData ContainedDatum, TinkerData QueryingDatum)

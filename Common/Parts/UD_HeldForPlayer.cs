@@ -35,6 +35,8 @@ namespace XRL.World.Parts
 
         public GameObject HeldFor;
 
+        public string VendorID;
+
         public double DepositPaid;
 
         public int RestocksLeft;
@@ -44,17 +46,10 @@ namespace XRL.World.Parts
         public UD_HeldForPlayer()
         {
             HeldFor = null;
+            VendorID = null;
             DepositPaid = 0;
             RestocksLeft = GUARANTEED_RESTOCKS;
             ExtraHoldChance = 25;
-        }
-        public UD_HeldForPlayer(GameObject HeldFor, double DepositPaid, int RestocksLeft, int ExtraHoldChance = 25)
-            : this()
-        {
-            this.HeldFor = HeldFor;
-            this.DepositPaid = DepositPaid;
-            this.RestocksLeft = RestocksLeft;
-            this.ExtraHoldChance = ExtraHoldChance;
         }
 
         public override bool AllowStaticRegistration()
@@ -101,6 +96,7 @@ namespace XRL.World.Parts
         {
             int indent = Debug.LastIndent;
             string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(CheckStillHeld);
+
             if (ParentObject?.InInventory is not GameObject holder 
                 || holder != Vendor
                 || IsHoldFulfilled()
@@ -167,15 +163,25 @@ namespace XRL.World.Parts
                 double depositPaid = Math.Round(DepositPaid, 2);
                 string depositPaidString = depositPaid.Things("dram").Color("C") + " of fresh water";
                 string heldForDescription = 
-                    ("Deposit Paid: =subject.T= =verb:are:afterpronoun= holding this " + ParentObject.GetDescriptiveCategory() + 
-                    " for =object.refname=, who had it tinkered for a deposit of " + depositPaidString + ". " +
-                    "=subject.Subjective= will hold it for " + RestocksLeft.Things("more restock") + ".")
-                    .StartReplace()
-                    .AddObject(vendor)
-                    .AddObject(HeldFor)
-                    .ToString();
+                    ("Deposit Paid: =subject.T= =verb:are:afterpronoun= holding this " + 
+                    ParentObject.GetDescriptiveCategory() + " for =object.refname=, " +
+                    "who had it tinkered for a deposit of " + depositPaidString + ".");
 
-                E.Postfix.AppendRules(heldForDescription);
+                string holdLongerDescription = 
+                    (" =subject.Subjective= will hold it for at least " + 
+                    RestocksLeft.Things("more restock") + ".");
+
+                string holdOnlyDescription =
+                    (" =subject.Subjective= will only sell it to =object.refname= until at least" +
+                    RestocksLeft.Things("more restock") + " has passed.");
+
+                string descriptionString = (heldForDescription + (HeldFor == The.Player ? holdLongerDescription : holdOnlyDescription))
+                        .StartReplace()
+                        .AddObject(vendor)
+                        .AddObject(HeldFor)
+                        .ToString();
+
+                E.Postfix.AppendRules(descriptionString);
             }
             return base.HandleEvent(E);
         }
@@ -186,9 +192,9 @@ namespace XRL.World.Parts
 
             Debug.Entry(4, 
                 methodDebug + " " +
-                nameof(E.Trader) + ": " + E.Trader?.DebugName + ", " +
-                nameof(E.Actor) + ": " + E.Actor?.DebugName + ", " +
-                nameof(HeldFor) + ": " + HeldFor?.DebugName,
+                nameof(E.Trader) + ": [" + E.Trader?.ID + "]" + E.Trader?.Render?.DisplayName + ", " +
+                nameof(E.Actor) + ": [" + E.Actor?.ID + "]" + E.Actor?.Render?.DisplayName + ", " +
+                nameof(HeldFor) + ": [" + HeldFor?.ID + "]" + HeldFor?.Render?.DisplayName,
                 Indent: indent + 1, Toggle: doDebug);
 
             if (CheckStillHeld(E.Trader, RemoveOnFalse: true)
@@ -197,12 +203,15 @@ namespace XRL.World.Parts
                 if (E.Actor != HeldFor)
                 {
                     ParentObject.SetIntProperty("TradeUI_DisplayOnly", 1);
-                    Debug.CheckNah(4, "Not " + HeldFor.them, Indent: indent + 1, Toggle: doDebug);
+                    Debug.CheckNah(4, "You're not " + HeldFor.them, Indent: indent + 2, Toggle: doDebug);
                 }
                 else
                 {
                     ParentObject.SetIntProperty("TradeUI_DisplayOnly", 0, true);
-                    Debug.CheckYeh(4, "It's " + HeldFor.them, Indent: indent + 1, Toggle: doDebug);
+                    bool secondPersonAllowed = Grammar.AllowSecondPerson;
+                    Grammar.AllowSecondPerson = false;
+                    Debug.CheckYeh(4, "You're " + HeldFor.them, Indent: indent + 2, Toggle: doDebug);
+                    Grammar.AllowSecondPerson = secondPersonAllowed;
                 }
             }
             Debug.LastIndent = indent;

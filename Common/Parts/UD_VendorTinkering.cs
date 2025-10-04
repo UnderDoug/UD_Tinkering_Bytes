@@ -25,6 +25,8 @@ using static UD_Modding_Toolbox.Const;
 
 using static UD_Tinkering_Bytes.Options;
 using Utils = UD_Tinkering_Bytes.Utils;
+using XRL.World.Skills;
+using FuzzySharp.Utils;
 
 namespace XRL.World.Parts
 {
@@ -258,9 +260,27 @@ namespace XRL.World.Parts
             return ScribeDisk(ParentObject, TinkerData);
         }
 
-        public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true)
+        public static int GetTinkerTierFromBit(char Bit)
+        {
+            int i = BitType.BitOrder.IndexOf(Bit);
+            if (i < 0)
+            {
+                return -1;
+            }
+            return (int)Math.Max(0, i + 1.0 - 4.0);
+        }
+        public static string GetTinkerSkillFromBit(char Bit)
+        {
+            return DataDisk.GetRequiredSkill(GetTinkerTierFromBit(Bit));
+        }
+        public static string GetTinkerSkillFromBitHumanReadable(char Bit)
+        {
+            return DataDisk.GetRequiredSkillHumanReadable(GetTinkerTierFromBit(Bit));
+        }
+        public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true, bool suppressDebug = false)
         {
             int indent = Debug.LastIndent;
+            bool doDebug = UD_VendorTinkering.doDebug && !suppressDebug;
             Debug.Entry(4, 
                 $"{nameof(UD_VendorTinkering)}." +
                 $"{nameof(GiveRandomBits)}(" +
@@ -286,7 +306,7 @@ namespace XRL.World.Parts
                     bitRanges.Add(bit, (0, 0));
                 }
 
-                int upperLimit = bitList.Count;
+                int upperLimit = bitList.Count - 1;
                 int firstBreakPoint = upperLimit / 3;
                 int secondBreakPoint = upperLimit - (firstBreakPoint / 2);
 
@@ -297,15 +317,15 @@ namespace XRL.World.Parts
 
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
                 {
-                    tinkeringSkill++;
+                    tinkeringSkill = 1;
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
                 {
-                    tinkeringSkill++;
+                    tinkeringSkill = 2;
                 }
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
                 {
-                    tinkeringSkill++;
+                    tinkeringSkill = 3;
                 }
 
                 Debug.LoopItem(4, $"{nameof(hasDisassemble)}", $"{hasDisassemble}",
@@ -317,13 +337,18 @@ namespace XRL.World.Parts
                 Debug.LoopItem(4, $"{tinkeringSkill}] {nameof(tinkeringSkill)}",
                     Indent: indent + 3, Toggle: doDebug);
 
-                Debug.Entry(4, $"Iterating over {nameof(bitList)}...", Indent: indent + 3, Toggle: doDebug);
-                for (int i = 0; i < upperLimit; i++)
+                Debug.Entry(4, 
+                    $"Iterating over {nameof(bitList)}, [" +
+                    $"1: {firstBreakPoint} | " +
+                    $"2: {secondBreakPoint} | " +
+                    $"U: {upperLimit}]...", 
+                    Indent: indent + 3, Toggle: doDebug);
+                for (int i = 0; i < bitList.Count; i++)
                 {
                     char bitIndex = bitList[i];
                     (int low, int high) currentRange = bitRanges[bitIndex];
 
-                    int bitTier = DataDisk.GetRequiredSkill((int)Math.Max(0, i + 1.0 - 4.0)) switch
+                    int bitTier = GetTinkerSkillFromBit(bitIndex) switch
                     {
                         nameof(Tinkering_Tinker1) => 1,
                         nameof(Tinkering_Tinker2) => 2,
@@ -332,12 +357,14 @@ namespace XRL.World.Parts
                     };
 
                     string iterationLabel = i.ToString().PadLeft(upperLimit.ToString().Length);
+
                     Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
                     Debug.LoopItem(4, 
-                        $"{iterationLabel}] " +
-                        $"{nameof(bitIndex)}: {bitIndex}, " +
-                        $"{nameof(bitTier)}: {bitTier}, " +
-                        $"Skill: {DataDisk.GetRequiredSkillHumanReadable((int)Math.Max(0, i + 1.0 - 4.0))}",
+                        iterationLabel + "] " +
+                        nameof(bitIndex) + ": " + bitIndex + " (" + 
+                        BitType.TranslateBit(bitIndex) + "), " +
+                        nameof(bitTier) + ": " + bitTier + ", " +
+                        "Skill: " + GetTinkerSkillFromBitHumanReadable(bitIndex),
                         Indent: indent + 3, Toggle: doDebug);
 
                     if (hasDisassemble || hasReverseEngineer)
@@ -352,11 +379,15 @@ namespace XRL.World.Parts
                             currentRange.low += 2;
                             currentRange.high += 4;
                         }
-                        if (i == upperLimit && !Math.Max(0, i - 4).ChanceIn(upperLimit - 3))
+                        int tierOdds = Math.Max(0, i - 4);
+                        int tierChance = upperLimit - 3;
+                        if (i < secondBreakPoint && !tierOdds.ChanceIn(tierChance))
                         {
                             currentRange.high += 1;
                         }
-                        Debug.CheckYeh(4, $"Have Ancillary Skill, {nameof(currentRange)}: {currentRange}",
+                        Debug.CheckYeh(4, 
+                            $"Have Ancillary Skill !({tierOdds} in {tierChance}), " +
+                            $"{nameof(currentRange)}: {currentRange}",
                             Indent: indent + 4, Toggle: doDebug);
                     }
                     if (hasScavenger && hasDisassemble)
@@ -376,44 +407,56 @@ namespace XRL.World.Parts
                     }
                     if (hasReverseEngineer)
                     {
-                        if (i == upperLimit && !Math.Max(0, i - 4).ChanceIn(upperLimit - 3))
+                        int tierOdds = Math.Max(0, i - 4);
+                        int tierChance = upperLimit - 3;
+                        if (tierOdds.ChanceIn(tierChance))
                         {
                             currentRange.high += 1;
                         }
-                        Debug.CheckYeh(4, $"Have Reverse Engineering, {nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 4, Toggle: doDebug);
-                    }
-                    if (bitTier < tinkeringSkill)
-                    {
-                        currentRange.low += 8;
-                        currentRange.high += 16;
-                        Debug.CheckYeh(4, 
-                            $"{nameof(bitTier)} < {nameof(tinkeringSkill)}, " +
+                        Debug.CheckYeh(4,
+                            $"Have Reverse Engineering ({tierOdds} in {tierChance}), " +
                             $"{nameof(currentRange)}: {currentRange}",
                             Indent: indent + 4, Toggle: doDebug);
                     }
-                    if (bitTier == tinkeringSkill)
+                    if (Tinker.HasSkill(GetTinkerSkillFromBit(bitIndex)))
                     {
+                        string bitTierDebug;
+                        if (i < firstBreakPoint)
+                        {
+                            currentRange.low += 8;
+                            currentRange.high += 16;
+                            bitTierDebug = nameof(i) + " < " + nameof(firstBreakPoint);
+                        }
+                        else
                         if (i < secondBreakPoint)
                         {
                             currentRange.low += 2;
                             currentRange.high += 4;
+                            bitTierDebug = nameof(i) + " < " + nameof(secondBreakPoint);
                         }
-                        else if (i < upperLimit)
+                        else
+                        if (i < upperLimit)
                         {
                             currentRange.low += 1;
                             currentRange.high += 2;
+                            bitTierDebug = nameof(i) + " < " + nameof(upperLimit);
                         }
                         else
                         {
+                            bitTierDebug = nameof(i) + " == " + nameof(upperLimit);
                             if (3.in10())
                             {
                                 currentRange.high += 1;
+                                bitTierDebug += " and 3.in10()";
+                            }
+                            else
+                            {
+                                bitTierDebug += " and not 3.in10()";
                             }
                         }
                         Debug.CheckYeh(4,
-                            $"{nameof(bitTier)} == {nameof(tinkeringSkill)}, " +
-                            $"{nameof(currentRange)}: {currentRange}",
+                            bitTierDebug + ", " +
+                            nameof(currentRange) + ": " + currentRange,
                             Indent: indent + 4, Toggle: doDebug);
                     }
 
@@ -570,7 +613,7 @@ namespace XRL.World.Parts
                 string vendorRecipeSeed = $"{The.Game.GetWorldSeed()}-{Vendor.ID}";
                 Debug.Entry(3,
                     $"Spinning up skill-based data disks for {Vendor?.DebugName ?? NULL} (" +
-                    $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0);
+                    $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0, Toggle: doDebug);
 
                 for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
                 {
@@ -1420,7 +1463,8 @@ namespace XRL.World.Parts
                             .AddObject(Vendor)
                             .AddObject(ingredientObject)
                             .ToString();
-                        Vendor.Fail(invalidIngredientMsg);
+
+                        Popup.ShowFail(invalidIngredientMsg);
                         return false;
                     }
                 }
@@ -2773,9 +2817,183 @@ namespace XRL.World.Parts
                     bitLocker.BitStorage[bit] /= 100;
                 }
             }
-            Popup.Show(bitLocker.GetBitsString());
+            Popup.Show("Average of 100 rolls for new bits:\n\n" + bitLocker.GetBitsString());
             The.Player.RemovePart(bitLocker);
             The.Player.AddPart(originalBitLocker);
+        }
+
+        [WishCommand(Command = "all random bits debug")]
+        public static void AllRandomBitsDebugWish()
+        {
+            AllRandomBitsDebug();
+        }
+        [WishCommand(Command = "random bits debug")]
+        public static void RelevantRandomBitsDebugWish()
+        {
+            AllRandomBitsDebug(true);
+        }
+        public static void AllRandomBitsDebug(bool OnlyRelevant = false)
+        {
+            GameObject sampleBep = GameObject.CreateSample("Bep");
+            BitLocker bitLocker = null;
+            List<PowerEntry> allTinkeringPowers = SkillFactory.Factory.SkillByClass[nameof(Skill.Tinkering)]?.PowerList;
+            if (OnlyRelevant)
+            {
+                allTinkeringPowers = new()
+                {
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_Disassemble)],
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_Scavenger)],
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_ReverseEngineer)],
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_Tinker1)],
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_Tinker2)],
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_Tinker3)],
+                };
+            }
+            string totalDebugOutput = null;
+            List<List<PowerEntry>> tinkeringPowerPermutations = new();
+
+            int numPermutations = (int)Math.Pow(2.0, allTinkeringPowers.Count);
+            int binaryPermutationsPadding = Convert.ToString(numPermutations - 1, 2).Length;
+            for (int i = 0; i < numPermutations; i++)
+            {
+                string feedTape = Convert.ToString(i, 2).PadLeft(binaryPermutationsPadding, '0');
+                // UnityEngine.Debug.LogError(feedTape);
+                List<PowerEntry> tinkeringPowers = new();
+                for (int j = 0; j < feedTape.Length; j++)
+                {
+                    if (feedTape[j] == '1')
+                    {
+                        continue;
+                    }
+                    tinkeringPowers.Add(allTinkeringPowers[j]);
+                }
+                if (!tinkeringPowers.IsNullOrEmpty())
+                {
+                    tinkeringPowerPermutations.Add(tinkeringPowers);
+                }
+            }
+
+            int bitLockerRerolls = 1000;
+            int totalIterations = tinkeringPowerPermutations.Count * bitLockerRerolls;
+            int currentIteration = 1;
+            bool supressPopups = Popup.Suppress;
+            bool doDebug = UD_Tinkering_Bytes.Options.doDebug;
+            int actuallyOutputLines = 0;
+            try
+            {
+                if (totalIterations > 95000 
+                    && Popup.ShowYesNoCancel(
+                        "This debug wish will attempt " + totalIterations + " BitLocker rerolls over " +
+                        tinkeringPowerPermutations.Count + " skill set permutations.\n\n" +
+                        "2,000 rerolls takes around 1 minute, so expect (very roughly) " +
+                        Math.Round(tinkeringPowerPermutations.Count / 2000.0, 1) + " minutes." + "\n\n" +
+                        "Are you sure?") != DialogResult.Yes)
+                {
+                    return;
+                }
+
+                Popup.Suppress = true;
+                UD_Tinkering_Bytes.Options.doDebug = false;
+                string debugHeader = "SkillSet";
+                foreach (char bit in BitType.BitOrder)
+                {
+                    if (!debugHeader.IsNullOrEmpty())
+                    {
+                        debugHeader += ",";
+                    }
+                    debugHeader += BitType.TranslateBit(bit);
+                }
+                totalDebugOutput = debugHeader;
+
+                int totalIterationsPadding = totalIterations.ToString().Length;
+                int rerollsPadding = bitLockerRerolls.ToString().Length;
+                int skillSetPadding = tinkeringPowerPermutations.Count.ToString().Length;
+                int skillSetCounter = 1;
+                foreach (List<PowerEntry> tinkeringPowerPermutation in tinkeringPowerPermutations)
+                {
+                    RemoveAllTinkeringPowers(sampleBep);
+                    string skillSet = "";
+                    foreach (PowerEntry tinkeringPower in tinkeringPowerPermutation)
+                    {
+                        sampleBep.AddSkill(tinkeringPower.Class);
+                        if (!skillSet.IsNullOrEmpty())
+                        {
+                            skillSet += "/";
+                        }
+                        skillSet += tinkeringPower.Class.Replace(nameof(Skill.Tinkering) + "_", "");
+                    }
+                    string debugLine = skillSet + ",";
+
+                    string skillSetPaddingString = skillSetCounter.ToString().PadLeft(skillSetPadding, ' ');
+                    for (int i = 0; i < Math.Max(1, bitLockerRerolls); i++)
+                    {
+                        bitLocker = GiveRandomBits(sampleBep, false, true);
+
+                        string interationsPaddingString = currentIteration.ToString().PadLeft(totalIterationsPadding, ' ');
+                        string iPaddingString = (i + 1).ToString().PadLeft(rerollsPadding, ' ');
+                        string iterationLoading = "Iteration " + interationsPaddingString + "/" + totalIterations;
+                        string rerollLoading = "Reroll: " + iPaddingString + "/" + bitLockerRerolls;
+                        string skillLoading = "Skill Set: " + skillSetPaddingString + "/" + tinkeringPowerPermutations.Count;
+                        string loadingString = iterationLoading + " | " + rerollLoading + " | " + skillLoading;
+                        Loading.SetLoadingStatus(loadingString);
+                        currentIteration++;
+                    }
+                    List<double> granularBitLockerOutput = new();
+                    foreach (char bit in BitType.BitOrder)
+                    {
+                        if (bitLocker.BitStorage.ContainsKey(bit))
+                        {
+                            double granularBits = Math.Round((double)bitLocker.BitStorage[bit] / Math.Max(1, bitLockerRerolls), 2);
+                            granularBitLockerOutput.Add(granularBits);
+                            bitLocker.BitStorage[bit] = (int)granularBits;
+                        }
+                    }
+                    string granularBitsDebugString = "";
+                    if (!granularBitLockerOutput.All(count => count == 0))
+                    {
+                        foreach (double count in granularBitLockerOutput)
+                        {
+                            if (!granularBitsDebugString.IsNullOrEmpty())
+                            {
+                                granularBitsDebugString += ",";
+                            }
+                            granularBitsDebugString += count;
+                        }
+                        totalDebugOutput += "\n" + debugLine + granularBitsDebugString;
+                        actuallyOutputLines++;
+                    }
+                    else
+                    if (!bitLocker.BitStorage.Values.All(count => count == 0))
+                    {
+                        totalDebugOutput += "\n" + debugLine + bitLocker.GetBitDebugString();
+                        actuallyOutputLines++;
+                    }
+                    skillSetCounter++;
+                }
+            }
+            finally
+            {
+                UnityEngine.Debug.LogError(totalDebugOutput);
+                RemoveAllTinkeringPowers(sampleBep);
+                sampleBep.Obliterate();
+                Popup.Suppress = supressPopups;
+                UD_Tinkering_Bytes.Options.doDebug = doDebug;
+                if (actuallyOutputLines > 0)
+                {
+                    Popup.Show("Finished compiling " + actuallyOutputLines.Things("debug line") + ", go check Player.log for the output.");
+                }
+                Loading.SetLoadingStatus(null);
+            }
+        }
+        private static void RemoveAllTinkeringPowers(GameObject obj)
+        {
+            foreach (PowerEntry tinkeringPower in SkillFactory.Factory.SkillByClass[nameof(Skill.Tinkering)]?.PowerList)
+            {
+                if (obj.HasSkill(tinkeringPower.Class))
+                {
+                    obj.RemoveSkill(tinkeringPower.Class);
+                }
+            }
         }
     }
 }

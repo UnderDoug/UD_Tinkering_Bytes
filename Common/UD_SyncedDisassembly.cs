@@ -210,13 +210,15 @@ namespace UD_Tinkering_Bytes
                         (Item.HasPart(datum.PartName) && !knownRecipes.Any(r => r.IsSameDatumAs(datum)))
                         || (activeBlueprint == datum.Blueprint && !knownRecipes.Any(r => r.IsSameDatumAs(datum)))))
                 {
-                    Debug.Entry(4,
-                        $"Processing {Skills.GetGenericSkill(nameof(Tinkering_ReverseEngineer))?.DisplayName ?? nameof(Tinkering_ReverseEngineer)}",
+                    Debug.Entry(4, $"Processing " + Skills.GetGenericSkill(nameof(Tinkering_ReverseEngineer))?.DisplayName,
                         Indent: indent + 2, Toggle: doDebug);
 
                     vendorTinkering = Disassembler.RequirePart<UD_VendorTinkering>();
 
-                    learnableBuildRecipe = TinkerData.TinkerRecipes.FirstOrDefault(t => t.Type == "Build" && t.Blueprint == activeBlueprint && !knownRecipes.Any(r => r.IsSameDatumAs(t)));
+                    learnableBuildRecipe = TinkerData.TinkerRecipes.FirstOrDefault(t => 
+                        t.Type == "Build" 
+                        && t.Blueprint == activeBlueprint 
+                        && !knownRecipes.Any(r => r.IsSameDatumAs(t)));
 
                     List<TinkerData> attachedMods =
                         (from mod in Item.GetPartsDescendedFrom<IModification>()
