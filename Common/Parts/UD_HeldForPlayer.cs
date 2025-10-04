@@ -27,7 +27,9 @@ namespace XRL.World.Parts
         : IScribedPart
         , I_UD_VendorActionEventHandler
     {
-        private static bool doDebug => false;
+        private static bool doDebug => true;
+
+        public const string HELD_FOR_PLAYER = "HeldForPlayer";
 
         public const int GUARANTEED_RESTOCKS = 2;
 
@@ -60,23 +62,75 @@ namespace XRL.World.Parts
             return true;
         }
 
+        public override void Attach()
+        {
+            base.Attach();
+            ParentObject.SetIntProperty("norestock", 1);
+            ParentObject.SetIntProperty("_stock", 0, true);
+        }
+
+        public override void Remove()
+        {
+            ParentObject.SetIntProperty("norestock", 0, true);
+            if (ParentObject?.InInventory != HeldFor)
+            {
+                ParentObject.SetIntProperty("_stock", 1);
+                ParentObject.SetIntProperty("TradeUI_DisplayOnly", 0, true);
+            }
+            base.Remove();
+        }
+
+        public override bool SameAs(IPart p)
+        {
+            if (p is UD_HeldForPlayer hfp)
+            {
+                return hfp.ExtraHoldChance == ExtraHoldChance
+                    && hfp.RestocksLeft == RestocksLeft
+                    && hfp.HeldFor == HeldFor
+                    && base.SameAs(p);
+            }
+            return base.SameAs(p);
+        }
+
+        public bool IsHoldFulfilled()
+        {
+            return ParentObject?.InInventory == HeldFor;
+        }
+
         public bool CheckStillHeld(GameObject Vendor, bool RemoveOnFalse = false)
         {
-            if (ParentObject?.InInventory != null && ParentObject?.InInventory != Vendor || RestocksLeft < 1)
+            int indent = Debug.LastIndent;
+            string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(CheckStillHeld);
+            if (ParentObject?.InInventory is not GameObject holder 
+                || holder != Vendor
+                || IsHoldFulfilled()
+                || RestocksLeft < 1)
             {
-                if (RemoveOnFalse)
+                if (RemoveOnFalse || IsHoldFulfilled())
                 {
                     ParentObject?.RemovePart(this);
                 }
+                Debug.CheckNah(4, methodDebug, Indent: indent + 1, Toggle: doDebug);
+                Debug.LastIndent = indent;
                 return false;
             }
+            Debug.CheckYeh(4, methodDebug, Indent: indent + 1, Toggle: doDebug);
+            Debug.LastIndent = indent;
             return true;
         }
 
         public int Restocked(GameObject Vendor)
         {
+            int indent = Debug.LastIndent;
+            string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(Restocked);
+
             --RestocksLeft;
-            CheckStillHeld(Vendor);
+
+            Debug.LoopItem(4, methodDebug, RestocksLeft.ToString(), Indent: indent + 1, Toggle: doDebug);
+
+            CheckStillHeld(Vendor, RemoveOnFalse: true);
+
+            Debug.LastIndent = indent;
             return RestocksLeft;
         }
 
@@ -85,6 +139,7 @@ namespace XRL.World.Parts
             return base.WantEvent(ID, Cascade)
                 || ID == GetDisplayNameEvent.ID
                 || ID == GetShortDescriptionEvent.ID
+                || ID == EnteredCellEvent.ID
                 || ID == StartTradeEvent.ID;
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
@@ -94,13 +149,10 @@ namespace XRL.World.Parts
             {
                 if (E.Context == nameof(TradeLine) || E.Context == nameof(UD_VendorAction.ShowVendorActionMenu))
                 {
-                    bool secondPersonAllowed = Grammar.AllowSecondPerson;
-                    Grammar.AllowSecondPerson = false;
-                    string heldForTag = "[{{C|held for =subject.name=}}]"
+                    string heldForTag = "[{{C|held for =subject.refname=}}]"
                         .StartReplace()
                         .AddObject(HeldFor)
                         .ToString();
-                    Grammar.AllowSecondPerson = secondPersonAllowed;
 
                     E.AddTag(heldForTag);
                 }
@@ -116,7 +168,7 @@ namespace XRL.World.Parts
                 string depositPaidString = depositPaid.Things("dram").Color("C") + " of fresh water";
                 string heldForDescription = 
                     ("Deposit Paid: =subject.T= =verb:are:afterpronoun= holding this " + ParentObject.GetDescriptiveCategory() + 
-                    " for =object.t=, who had it tinkered for a deposit of " + depositPaidString + ". " +
+                    " for =object.refname=, who had it tinkered for a deposit of " + depositPaidString + ". " +
                     "=subject.Subjective= will hold it for " + RestocksLeft.Things("more restock") + ".")
                     .StartReplace()
                     .AddObject(vendor)
@@ -129,19 +181,38 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(StartTradeEvent E)
         {
-            if (ParentObject?.InInventory is GameObject vendor
-                && CheckStillHeld(vendor)
-                && E.Actor is GameObject shopper)
+            int indent = Debug.LastIndent;
+            string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(HandleEvent) + "(" + nameof(StartTradeEvent) + ")";
+
+            Debug.Entry(4, 
+                methodDebug + " " +
+                nameof(E.Trader) + ": " + E.Trader?.DebugName + ", " +
+                nameof(E.Actor) + ": " + E.Actor?.DebugName + ", " +
+                nameof(HeldFor) + ": " + HeldFor?.DebugName,
+                Indent: indent + 1, Toggle: doDebug);
+
+            if (CheckStillHeld(E.Trader, RemoveOnFalse: true)
+                && E.Actor != null)
             {
-                if (shopper != HeldFor && !UD_VendorAction.ItemIsTradeUIDisplayOnly(ParentObject))
+                if (E.Actor != HeldFor)
                 {
                     ParentObject.SetIntProperty("TradeUI_DisplayOnly", 1);
+                    Debug.CheckNah(4, "Not " + HeldFor.them, Indent: indent + 1, Toggle: doDebug);
                 }
                 else
-                if (shopper == HeldFor && UD_VendorAction.ItemIsTradeUIDisplayOnly(ParentObject))
                 {
                     ParentObject.SetIntProperty("TradeUI_DisplayOnly", 0, true);
+                    Debug.CheckYeh(4, "It's " + HeldFor.them, Indent: indent + 1, Toggle: doDebug);
                 }
+            }
+            Debug.LastIndent = indent;
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(EnteredCellEvent E)
+        {
+            if (IsHoldFulfilled())
+            {
+                ParentObject.RemovePart(this);
             }
             return base.HandleEvent(E);
         }

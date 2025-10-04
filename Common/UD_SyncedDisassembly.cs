@@ -385,7 +385,7 @@ namespace UD_Tinkering_Bytes
                                 if (learnableBuildRecipe != null)
                                 {
                                     bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
-                                    if (vendorTinkering.LearnRecipe(learnableBuildRecipe, shouldScribeRecipe))
+                                    if (vendorTinkering.LearnTinkerData(learnableBuildRecipe, shouldScribeRecipe))
                                     {
                                         Debug.CheckYeh(4, $"{learnableBuildRecipe.DisplayName} \"Learned\"", Indent: indent + 3, Toggle: doDebug);
                                     }
@@ -395,7 +395,7 @@ namespace UD_Tinkering_Bytes
                                     foreach (TinkerData learnableMod in learnableModRecipes)
                                     {
                                         bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
-                                        if (vendorTinkering.LearnRecipe(learnableMod, shouldScribeRecipe))
+                                        if (vendorTinkering.LearnTinkerData(learnableMod, shouldScribeRecipe))
                                         {
                                             Debug.CheckYeh(4, $"{learnableMod?.DisplayName?.Strip() ?? Const.NULL} \"Learned\"", Indent: indent + 3, Toggle: doDebug);
                                         }
