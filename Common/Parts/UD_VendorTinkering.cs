@@ -1,32 +1,28 @@
-﻿using ConsoleLib.Console;
+﻿using AiUnity.Common.Extensions;
+using ConsoleLib.Console;
+using FuzzySharp.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-
+using UD_Modding_Toolbox;
+using UD_Tinkering_Bytes;
+using UD_Vendor_Actions;
+using XRL.Language;
+using XRL.Rules;
 using XRL.UI;
 using XRL.Wish;
-using XRL.Rules;
-using XRL.Language;
-using XRL.World.Tinkering;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
 using XRL.World.Parts.Mutation;
 using XRL.World.Parts.Skill;
-
-using static XRL.World.Parts.Skill.Tinkering;
-
-using UD_Modding_Toolbox;
-using UD_Vendor_Actions;
-
-using UD_Tinkering_Bytes;
-
-using static UD_Modding_Toolbox.Const;
-
-using static UD_Tinkering_Bytes.Options;
-using Utils = UD_Tinkering_Bytes.Utils;
 using XRL.World.Skills;
-using FuzzySharp.Utils;
+using XRL.World.Tinkering;
+using static UD_Modding_Toolbox.Const;
+using static UD_Tinkering_Bytes.Options;
+using static XRL.World.Parts.Skill.Tinkering;
+using Utils = UD_Tinkering_Bytes.Utils;
 
 namespace XRL.World.Parts
 {
@@ -262,20 +258,21 @@ namespace XRL.World.Parts
 
         public static int GetTinkerTierFromBit(char Bit)
         {
-            int i = BitType.BitOrder.IndexOf(Bit);
-            if (i < 0)
+            return GetTinkerSkillFromBit(Bit) switch
             {
-                return -1;
-            }
-            return (int)Math.Max(0, i + 1.0 - 4.0);
+                nameof(Tinkering_Tinker1) => 1,
+                nameof(Tinkering_Tinker2) => 2,
+                nameof(Tinkering_Tinker3) => 3,
+                _ => 0,
+            };
         }
         public static string GetTinkerSkillFromBit(char Bit)
         {
-            return DataDisk.GetRequiredSkill(GetTinkerTierFromBit(Bit));
+            return DataDisk.GetRequiredSkill(BitType.GetBitTier(Bit));
         }
         public static string GetTinkerSkillFromBitHumanReadable(char Bit)
         {
-            return DataDisk.GetRequiredSkillHumanReadable(GetTinkerTierFromBit(Bit));
+            return DataDisk.GetRequiredSkillHumanReadable(BitType.GetBitTier(Bit));
         }
         public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true, bool suppressDebug = false)
         {
@@ -306,13 +303,15 @@ namespace XRL.World.Parts
                     bitRanges.Add(bit, (0, 0));
                 }
 
-                int upperLimit = bitList.Count - 1;
-                int firstBreakPoint = upperLimit / 3;
-                int secondBreakPoint = upperLimit - (firstBreakPoint / 2);
+                int basicBitsInclusive = Math.Max(0, BitType.BitOrder.IndexOf(BitType.BitOrder.FirstOrDefault(c => GetTinkerTierFromBit(c) == 1)));
+                int tinker1BitsInclusive = Math.Max(0, BitType.BitOrder.IndexOf(BitType.BitOrder.FirstOrDefault(c => GetTinkerTierFromBit(c) == 2)));
+                int tinker2BitsInclusive = Math.Max(0, BitType.BitOrder.IndexOf(BitType.BitOrder.FirstOrDefault(c => GetTinkerTierFromBit(c) == 3)));
+                int tinker3BitsInclusive = bitList.Count;
+                int lastIndex = tinker3BitsInclusive - 1;
 
                 bool hasDisassemble = Tinker.HasSkill(nameof(Tinkering_Disassemble));
-                bool hasScavenger = Tinker.HasSkill(nameof(Tinkering_Scavenger));
-                bool hasReverseEngineer = Tinker.HasSkill(nameof(Tinkering_ReverseEngineer));
+                bool hasScavenger = hasDisassemble && Tinker.HasSkill(nameof(Tinkering_Scavenger));
+                bool hasReverseEngineer = hasDisassemble && Tinker.HasSkill(nameof(Tinkering_ReverseEngineer));
                 int tinkeringSkill = 0;
 
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
@@ -338,112 +337,159 @@ namespace XRL.World.Parts
                     Indent: indent + 3, Toggle: doDebug);
 
                 Debug.Entry(4, 
-                    $"Iterating over {nameof(bitList)}, [" +
-                    $"1: {firstBreakPoint} | " +
-                    $"2: {secondBreakPoint} | " +
-                    $"U: {upperLimit}]...", 
+                    "Iterating over " + nameof(bitList) + ", [" +
+                    "B: < " + basicBitsInclusive + " | " +
+                    "1: < " + tinker1BitsInclusive + " | " +
+                    "2: < " + tinker2BitsInclusive + " | " +
+                    "3: < " + tinker3BitsInclusive + "]...", 
                     Indent: indent + 3, Toggle: doDebug);
-                for (int i = 0; i < bitList.Count; i++)
+
+                for (int i = 0; i < tinker3BitsInclusive; i++)
                 {
-                    char bitIndex = bitList[i];
-                    (int low, int high) currentRange = bitRanges[bitIndex];
+                    char iBit = bitList[i];
+                    (int low, int high) currentRange = bitRanges[iBit];
 
-                    int bitTier = GetTinkerSkillFromBit(bitIndex) switch
-                    {
-                        nameof(Tinkering_Tinker1) => 1,
-                        nameof(Tinkering_Tinker2) => 2,
-                        nameof(Tinkering_Tinker3) => 3,
-                        _ => 0,
-                    };
+                    int bitTinkerTier = GetTinkerTierFromBit(iBit);
 
-                    string iterationLabel = i.ToString().PadLeft(upperLimit.ToString().Length);
+                    string iterationLabel = i.ToString().PadLeft(lastIndex.ToString().Length);
 
                     Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
                     Debug.LoopItem(4, 
                         iterationLabel + "] " +
-                        nameof(bitIndex) + ": " + bitIndex + " (" + 
-                        BitType.TranslateBit(bitIndex) + "), " +
-                        nameof(bitTier) + ": " + bitTier + ", " +
-                        "Skill: " + GetTinkerSkillFromBitHumanReadable(bitIndex),
+                        nameof(iBit) + ": " + iBit + " (" + 
+                        BitType.TranslateBit(iBit) + "), " +
+                        nameof(bitTinkerTier) + ": " + bitTinkerTier + ", " +
+                        "Skill: " + GetTinkerSkillFromBitHumanReadable(iBit),
                         Indent: indent + 3, Toggle: doDebug);
 
-                    if (hasDisassemble || hasReverseEngineer)
+                    if (hasDisassemble)
                     {
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.low += 4;
-                            currentRange.high += 8;
-                        }
-                        if (i < secondBreakPoint)
+                        if (i < basicBitsInclusive)
                         {
                             currentRange.low += 2;
                             currentRange.high += 4;
                         }
-                        int tierOdds = Math.Max(0, i - 4);
-                        int tierChance = upperLimit - 3;
-                        if (i < secondBreakPoint && !tierOdds.ChanceIn(tierChance))
+                        if (i < tinker1BitsInclusive)
                         {
-                            currentRange.high += 1;
+                            currentRange.low += 2;
+                            currentRange.high += 2;
                         }
-                        Debug.CheckYeh(4, 
-                            $"Have Ancillary Skill !({tierOdds} in {tierChance}), " +
-                            $"{nameof(currentRange)}: {currentRange}",
+                        if (i < tinker2BitsInclusive)
+                        {
+                            currentRange.low += 1;
+                            if (currentRange.low > currentRange.high)
+                            {
+                                currentRange.high = currentRange.low;
+                            }
+                        }
+                        if (i < lastIndex && 3.in10())
+                        {
+                            currentRange.low += 1;
+                            if (currentRange.low > currentRange.high)
+                            {
+                                currentRange.high = currentRange.low;
+                            }
+                        }
+                        Debug.CheckYeh(4, $"Have Disassemble, {nameof(currentRange)}: {currentRange}",
                             Indent: indent + 4, Toggle: doDebug);
                     }
-                    if (hasScavenger && hasDisassemble)
+                    if (hasScavenger)
                     {
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.low += 4;
-                            currentRange.high += 8;
-                        }
-                        if (i < secondBreakPoint)
+                        if (i < basicBitsInclusive)
                         {
                             currentRange.low += 2;
                             currentRange.high += 4;
+                        }
+                        if (i < tinker1BitsInclusive)
+                        {
+                            currentRange.low += 1;
+                            currentRange.high += 2;
+                        }
+                        if (i < tinker2BitsInclusive)
+                        {
+                            currentRange.low += 1;
+                            currentRange.high += 2;
                         }
                         Debug.CheckYeh(4, $"Have Scavenger, {nameof(currentRange)}: {currentRange}",
                             Indent: indent + 4, Toggle: doDebug);
                     }
                     if (hasReverseEngineer)
                     {
-                        int tierOdds = Math.Max(0, i - 4);
-                        int tierChance = upperLimit - 3;
-                        if (tierOdds.ChanceIn(tierChance))
-                        {
-                            currentRange.high += 1;
-                        }
-                        Debug.CheckYeh(4,
-                            $"Have Reverse Engineering ({tierOdds} in {tierChance}), " +
-                            $"{nameof(currentRange)}: {currentRange}",
-                            Indent: indent + 4, Toggle: doDebug);
-                    }
-                    if (Tinker.HasSkill(GetTinkerSkillFromBit(bitIndex)))
-                    {
-                        string bitTierDebug;
-                        if (i < firstBreakPoint)
-                        {
-                            currentRange.low += 8;
-                            currentRange.high += 16;
-                            bitTierDebug = nameof(i) + " < " + nameof(firstBreakPoint);
-                        }
-                        else
-                        if (i < secondBreakPoint)
+                        if (i < basicBitsInclusive)
                         {
                             currentRange.low += 2;
                             currentRange.high += 4;
-                            bitTierDebug = nameof(i) + " < " + nameof(secondBreakPoint);
                         }
-                        else
-                        if (i < upperLimit)
+                        if (i < tinker1BitsInclusive)
+                        {
+                            currentRange.low += 2;
+                            currentRange.high += 4;
+                        }
+                        if (i < tinker2BitsInclusive)
                         {
                             currentRange.low += 1;
                             currentRange.high += 2;
-                            bitTierDebug = nameof(i) + " < " + nameof(upperLimit);
+                        }
+                        int tierOdds = Math.Max(0, i - 4);
+                        int tierChance = lastIndex - 3;
+                        string reverseEngineerDebug = "";
+                        if (i < tinker2BitsInclusive)
+                        {
+                            reverseEngineerDebug = " !(" + tierOdds + " in " + tierChance + ")";
+                            if (!tierOdds.ChanceIn(tierChance))
+                            {
+                                currentRange.high += 1;
+                                reverseEngineerDebug += " [" + TICK + "]";
+                            }
+                            else
+                            {
+                                reverseEngineerDebug += " [" + CROSS + "]";
+                            }
                         }
                         else
                         {
-                            bitTierDebug = nameof(i) + " == " + nameof(upperLimit);
+                            reverseEngineerDebug = " (" + tierOdds + " in " + tierChance + ")";
+                            if (tierOdds.ChanceIn(tierChance))
+                            {
+                                currentRange.high += 1;
+                                reverseEngineerDebug += " [" + TICK + "]";
+                            }
+                            else
+                            {
+                                reverseEngineerDebug += " [" + CROSS + "]";
+                            }
+                        }
+                        Debug.CheckYeh(4,
+                            $"Have Reverse Engineering" + reverseEngineerDebug + ", " +
+                            $"{nameof(currentRange)}: {currentRange}",
+                            Indent: indent + 4, Toggle: doDebug);
+                    }
+                    if (Tinker.HasSkill(GetTinkerSkillFromBit(iBit)))
+                    {
+                        string bitTierDebug;
+                        if (i < tinker1BitsInclusive)
+                        {
+                            currentRange.low += 4;
+                            currentRange.high += 8;
+                            bitTierDebug = nameof(i) + " < " + nameof(tinker1BitsInclusive);
+                        }
+                        else
+                        if (i < tinker2BitsInclusive)
+                        {
+                            currentRange.low += 2;
+                            currentRange.high += 4;
+                            bitTierDebug = nameof(i) + " < " + nameof(tinker2BitsInclusive);
+                        }
+                        else
+                        if (i < lastIndex)
+                        {
+                            currentRange.low += 1;
+                            currentRange.high += 2;
+                            bitTierDebug = nameof(i) + " < " + nameof(lastIndex);
+                        }
+                        else
+                        {
+                            bitTierDebug = nameof(i) + " == " + nameof(lastIndex);
                             if (3.in10())
                             {
                                 currentRange.high += 1;
@@ -460,9 +506,9 @@ namespace XRL.World.Parts
                             Indent: indent + 4, Toggle: doDebug);
                     }
 
-                    bitRanges[bitIndex] = currentRange;
+                    bitRanges[iBit] = currentRange;
 
-                    Debug.Entry(4, $"{nameof(bitRanges)}[{nameof(bitIndex)}]: {bitRanges[bitIndex]}",
+                    Debug.Entry(4, $"{nameof(bitRanges)}[{iBit}]: {bitRanges[iBit]}",
                         Indent: indent + 3, Toggle: doDebug);
                 }
                 Debug.Divider(4, HONLY, Count: 40, Indent: indent + 3, Toggle: doDebug);
@@ -471,7 +517,9 @@ namespace XRL.World.Parts
                 foreach ((char bit, (int low, int high)) in bitRanges)
                 {
                     string bits = "";
-                    int amountToAdd = Stat.RandomCosmetic(low, high);
+                    int min = low;
+                    int max = Math.Max(low, high);
+                    int amountToAdd = Stat.RandomCosmetic(min, max);
                     for (int i = 0; i < amountToAdd; i++)
                     {
                         bits += bit;
@@ -2787,21 +2835,21 @@ namespace XRL.World.Parts
             }
         }
 
-        [WishCommand(Command = "give random bits")]
+        [WishCommand(Command = "UD_TB give random bits")]
         public static void GiveRandomBitsWish()
         {
             BitLocker bitLocker = GiveRandomBits(The.Player, false);
             Popup.Show(bitLocker.GetBitsString());
         }
 
-        [WishCommand(Command = "give random new bits")]
+        [WishCommand(Command = "UD_TB give random new bits")]
         public static void GiveRandomNewBitsWish()
         {
             BitLocker bitLocker = GiveRandomBits(The.Player);
             Popup.Show(bitLocker.GetBitsString());
         }
 
-        [WishCommand(Command = "random bits summary")]
+        [WishCommand(Command = "UD_TB random bits summary")]
         public static void RandomBitsSummaryWish()
         {
             BitLocker bitLocker = null;
@@ -2822,17 +2870,22 @@ namespace XRL.World.Parts
             The.Player.AddPart(originalBitLocker);
         }
 
-        [WishCommand(Command = "all random bits debug")]
-        public static void AllRandomBitsDebugWish()
+        [WishCommand(Command = "UD_TB random bits debug")]
+        public static void RandomBitsDebug_Wish()
         {
             AllRandomBitsDebug();
         }
-        [WishCommand(Command = "random bits debug")]
-        public static void RelevantRandomBitsDebugWish()
+        [WishCommand(Command = "UD_TB random bits debug")]
+        public static void Relevant_RandomBitsDebug_Wish(string Flags)
         {
-            AllRandomBitsDebug(true);
+            if (Flags.IsNullOrEmpty())
+            {
+                AllRandomBitsDebug();
+            }
+            string flags = Flags.ToLower();
+            AllRandomBitsDebug(flags.Contains("-r"), flags.Contains("-l"));
         }
-        public static void AllRandomBitsDebug(bool OnlyRelevant = false)
+        public static void AllRandomBitsDebug(bool OnlyRelevant = false, bool OnlyLogical = false)
         {
             GameObject sampleBep = GameObject.CreateSample("Bep");
             BitLocker bitLocker = null;
@@ -2865,15 +2918,39 @@ namespace XRL.World.Parts
                     {
                         continue;
                     }
-                    tinkeringPowers.Add(allTinkeringPowers[j]);
+                    if (OnlyLogical)
+                    {
+                        if (allTinkeringPowers[j].requirements.IsNullOrEmpty()
+                            || allTinkeringPowers[j].requirements.All(r => tinkeringPowers.Contains(r.Entry)))
+                        {
+                            tinkeringPowers.Add(allTinkeringPowers[j]);
+                        }
+                    }
+                    else
+                    {
+                        tinkeringPowers.Add(allTinkeringPowers[j]);
+                    }
                 }
                 if (!tinkeringPowers.IsNullOrEmpty())
                 {
                     tinkeringPowerPermutations.Add(tinkeringPowers);
                 }
             }
+            int defaultRerolls = 1000;
+            int maxRerolls = 10000;
+            int? askRerolls = Popup.AskNumber(
+                Message: "How many rerolls do you want per set of skills?\n\n" +
+                "There are " + tinkeringPowerPermutations.Count + " permutations this will be multiplied by.\n\n" +
+                "Default = {{W|" + defaultRerolls + "}} | Max = {{c|" + maxRerolls + "}} | Cancel = {{R|0}} or {{W|[esc]}}",
+                Start: defaultRerolls, 
+                Max: maxRerolls);
 
-            int bitLockerRerolls = 1000;
+            if (askRerolls.IsNullOrZero())
+            {
+                return;
+            }
+            UnityEngine.Debug.LogError("Expecting " + numPermutations + " lines of output...");
+            int bitLockerRerolls = (int)askRerolls;
             int totalIterations = tinkeringPowerPermutations.Count * bitLockerRerolls;
             int currentIteration = 1;
             bool supressPopups = Popup.Suppress;
@@ -2881,12 +2958,14 @@ namespace XRL.World.Parts
             int actuallyOutputLines = 0;
             try
             {
+                double rerollsFor1Minute = 2000.0;
+                double oneMinuteTotalRerolls = rerollsFor1Minute * tinkeringPowerPermutations.Count;
                 if (totalIterations > 95000 
                     && Popup.ShowYesNoCancel(
                         "This debug wish will attempt " + totalIterations + " BitLocker rerolls over " +
                         tinkeringPowerPermutations.Count + " skill set permutations.\n\n" +
-                        "2,000 rerolls takes around 1 minute, so expect (very roughly) " +
-                        Math.Round(tinkeringPowerPermutations.Count / 2000.0, 1) + " minutes." + "\n\n" +
+                        oneMinuteTotalRerolls + " total rerolls takes around 1 minute, so expect (very roughly) " +
+                        Math.Round(totalIterations / oneMinuteTotalRerolls, 1) + " minutes." + "\n\n" +
                         "Are you sure?") != DialogResult.Yes)
                 {
                     return;
@@ -2973,14 +3052,29 @@ namespace XRL.World.Parts
             }
             finally
             {
-                UnityEngine.Debug.LogError(totalDebugOutput);
                 RemoveAllTinkeringPowers(sampleBep);
                 sampleBep.Obliterate();
                 Popup.Suppress = supressPopups;
                 UD_Tinkering_Bytes.Options.doDebug = doDebug;
                 if (actuallyOutputLines > 0)
                 {
-                    Popup.Show("Finished compiling " + actuallyOutputLines.Things("debug line") + ", go check Player.log for the output.");
+                    var baseFileName = "UD_Tinkering_Bytes.RandomBitDebug" + (OnlyRelevant ? ".r" : "") + (OnlyLogical ? ".l" : "");
+                    var fileName = string.Format("{0}.{1:yyyyMMdd.HHmmss}.csv", "UD_Tinkering_Bytes.RandomBitDebug", DateTime.Now);
+                    var fullFilePath = DataManager.SavePath(fileName);
+                    string outputFileLocation = "";
+                    if (new StreamWriter(fullFilePath) is StreamWriter writer)
+                    {
+                        writer.Write(totalDebugOutput);
+                        writer.Flush();
+                        writer.Dispose();
+                        outputFileLocation = fileName + " (same folder as Player.log)";
+                    }
+                    else
+                    {
+                        outputFileLocation = "Player.log";
+                    }
+                    UnityEngine.Debug.LogError(totalDebugOutput);
+                    Popup.Show("Finished compiling " + actuallyOutputLines.Things("debug line") + ", go check " + outputFileLocation + " for the output.");
                 }
                 Loading.SetLoadingStatus(null);
             }

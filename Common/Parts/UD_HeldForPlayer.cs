@@ -33,7 +33,22 @@ namespace XRL.World.Parts
 
         public const int GUARANTEED_RESTOCKS = 2;
 
-        public GameObject HeldFor;
+        private GameObjectReference HeldForReference;
+
+        public GameObject HeldFor
+        {
+            get
+            {
+                HeldForReference ??= new();
+                return HeldForReference.Object;
+            }
+            set
+            {
+                HeldForReference ??= new();
+                HeldForReference.Clear();
+                HeldForReference.Set(value);
+            }
+        }
 
         public string VendorID;
 
@@ -56,14 +71,12 @@ namespace XRL.World.Parts
         {
             return true;
         }
-
         public override void Attach()
         {
             base.Attach();
             ParentObject.SetIntProperty("norestock", 1);
             ParentObject.SetIntProperty("_stock", 0, true);
         }
-
         public override void Remove()
         {
             ParentObject.SetIntProperty("norestock", 0, true);
@@ -74,7 +87,6 @@ namespace XRL.World.Parts
             }
             base.Remove();
         }
-
         public override bool SameAs(IPart p)
         {
             if (p is UD_HeldForPlayer hfp)
