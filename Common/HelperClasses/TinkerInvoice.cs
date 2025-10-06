@@ -501,6 +501,15 @@ namespace UD_Tinkering_Bytes
             return output;
         }
 
+        public static string DramsCostString(double DramsCost)
+        {
+            return DramsCost.Things("dram").Color("C");
+        }
+        public static string DramsCostString(int DramsCost)
+        {
+            return DramsCostString((double)DramsCost);
+        }
+
         public override string ToString()
         {
             GameObject player = The.Player;
@@ -540,29 +549,30 @@ namespace UD_Tinkering_Bytes
             bool isItemWorthMore = itemValue > materialsValue;
             bool vendorSuppliesAll = VendorSuppliesIngredients && VendorSuppliesBits;
             double labourValue = GetLabourValue();
+            double markUpValue = GetMarkUpValue();
             if (!isItemValueIrrelevant && isItemWorthMore && Service == BUILD)
             {
-                SB.Append("Item Value: ").AppendColored("C", itemValue.Things("dram")).AppendLine();
+                SB.Append("Item Value: ").Append(DramsCostString(itemValue)).AppendLine();
                 if (labourValue > -1)
                 {
-                    SB.Append("Labour: ").AppendColored("C", labourValue.Things("dram")).AppendLine();
+                    SB.Append("Labour: ").Append(DramsCostString(labourValue)).AppendLine();
                 }
             }
             else
             if (VendorOwnsRecipe)
             {
-                SB.Append("Labour && Expertise: ").AppendColored("C", GetMarkUpValue().Things("dram")).AppendLine();
+                SB.Append("Labour && Expertise: ").Append(DramsCostString(markUpValue)).AppendLine();
             }
             else
-            if (GetMarkUpValue() > -1)
+            if (markUpValue > -1)
             {
-                SB.Append("Labour: ").AppendColored("C", GetMarkUpValue().Things("dram")).AppendLine();
+                SB.Append("Labour: ").Append(DramsCostString(markUpValue)).AppendLine();
             }
 
             // Item ID.
             if (Service == BUILD && !Item.Understood())
             {
-                SB.Append("Identification of item: ").AppendColored("y", labourValue.Things("dram").Color("C"));
+                SB.Append("Identification of item: ").Append(DramsCostString(labourValue));
                 SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
             }
 
@@ -574,7 +584,7 @@ namespace UD_Tinkering_Bytes
                 SB.Append("Ingredient, ").Append(ingredientDisplayName).Append(": ");
                 if (VendorSuppliesIngredients)
                 {
-                    SB.AppendColored("C", ingredientValue.Things("dram"));
+                    SB.Append(DramsCostString(ingredientValue));
                     if (isItemWorthMore && vendorSuppliesAll)
                     {
                         SB.Append(" (").AppendColored("K", "included in item value").Append(")");
@@ -582,7 +592,7 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    SB.AppendColored("C", 0.Things("dram"));
+                    SB.Append(DramsCostString(0));
                     SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
                 }
                 SB.AppendLine();
@@ -595,7 +605,7 @@ namespace UD_Tinkering_Bytes
                 SB.Append($"Bits <{BitCost}>: ");
                 if (VendorSuppliesBits)
                 {
-                    SB.AppendColored("C", bitsValue.Things("dram"));
+                    SB.Append(DramsCostString(bitsValue));
                     if (isItemWorthMore && vendorSuppliesAll)
                     {
                         SB.Append(" (").AppendColored("K", "included in item value").Append(")");
@@ -603,7 +613,7 @@ namespace UD_Tinkering_Bytes
                 }
                 else
                 {
-                    SB.AppendColored("C", 0.Things("dram"));
+                    SB.Append(DramsCostString(0));
                     SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
                 }
                 SB.AppendLine();
@@ -621,7 +631,7 @@ namespace UD_Tinkering_Bytes
                     MOD => "tinker",
                     _ => "tinker",
                 };
-                SB.Append($"Total cost to {performServiceOn} item: ").AppendColored("C", totalCost.Things("dram"));
+                SB.Append($"Total cost to {performServiceOn} item: ").Append(DramsCostString(totalCost));
                 if (Besties)
                 {
                     if (Vendor.HasEffect<Lovesick>())
@@ -650,7 +660,7 @@ namespace UD_Tinkering_Bytes
                 && player.GetFreeDrams() < totalCost)
             {
                 SB.Append(dividerLineK).AppendLine();
-                SB.Append("Will tinker and hold item for desposit of ").AppendColored("C", depositCost.Things("dram")).AppendLine();
+                SB.Append("Will tinker and hold item for desposit of ").Append(DramsCostString(depositCost)).AppendLine();
             }
 
             return Event.FinalizeString(SB);
@@ -667,9 +677,9 @@ namespace UD_Tinkering_Bytes
             }
             string thisTheseItems = Item.indicativeProximal + " " + items;
 
-            string totalCost = GetTotalCost().Things("dram").Color("C");
-            string depositCost = GetDepositCost().Things("dram").Color("C") + " of fresh water";
-            string itemValue = GetItemValue().Things("dram").Color("C");
+            string totalCost = DramsCostString(GetTotalCost());
+            string depositCost = DramsCostString(GetDepositCost()) + " of fresh water";
+            string itemValue = DramsCostString(GetItemValue());
             string restocks = "2 restocks".Color("g");
 
             string tooExpensiveMsg = 
@@ -681,7 +691,7 @@ namespace UD_Tinkering_Bytes
                     .ToString();
 
             string willTinkerForDepositMsg = 
-                ("=object.T= will tinker " + thisTheseItems + " for a deposit of " + depositCost +
+                ("=object.Subjective= will tinker " + thisTheseItems + " for a deposit of " + depositCost +
                 ", however =object.subjective= will hold onto " + itThem + " until =subject.subjective= " +
                 "=verb:have:afterpronoun= the remaining " + itemValue + ".")
                     .StartReplace()
@@ -696,11 +706,24 @@ namespace UD_Tinkering_Bytes
                     .AddObject(Vendor)
                     .ToString();
 
+            string confirmDepositMsg = "Would =subject.t= like to pay the deposit?"
+                .StartReplace()
+                .AddObject(The.Player)
+                .AddObject(Vendor)
+                .ToString();
+
             return tooExpensiveMsg +
                 "\n\n" +
                 willTinkerForDepositMsg +
                 "\n\n" +
-                pleaseNoteMsg;
+                pleaseNoteMsg +
+                "\n" +
+                DividerLine().Color("K") + DividerLine().Color("K") +
+                "\n" +
+                this + 
+                DividerLine().Color("K") + DividerLine().Color("K") +
+                "\n\n" +
+                confirmDepositMsg;
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)

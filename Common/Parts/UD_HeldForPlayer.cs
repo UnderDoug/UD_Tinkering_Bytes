@@ -19,6 +19,7 @@ using static UD_Modding_Toolbox.Const;
 using UD_Tinkering_Bytes;
 using static UD_Tinkering_Bytes.Options;
 using Qud.UI;
+using SerializeField = UnityEngine.SerializeField;
 
 namespace XRL.World.Parts
 {
@@ -33,22 +34,22 @@ namespace XRL.World.Parts
 
         public const int GUARANTEED_RESTOCKS = 2;
 
-        private GameObjectReference HeldForReference;
+        [SerializeField]
+        private string HeldForID;
+
+        private GameObject _HeldFor;
 
         public GameObject HeldFor
         {
-            get
-            {
-                HeldForReference ??= new();
-                return HeldForReference.Object;
-            }
+            get => _HeldFor ??= GameObject.FindByID(HeldForID);
             set
             {
-                HeldForReference ??= new();
-                HeldForReference.Clear();
-                HeldForReference.Set(value);
+                HeldForID = value?.ID;
+                _HeldFor = value;
             }
         }
+
+        public string HeldForName => HeldFor != null ? "=object.refname=" : "somebody";
 
         public string VendorID;
 
@@ -109,7 +110,8 @@ namespace XRL.World.Parts
             int indent = Debug.LastIndent;
             string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(CheckStillHeld);
 
-            if (ParentObject?.InInventory is not GameObject holder 
+            if ((HeldFor == null && RemoveOnFalse)
+                || ParentObject?.InInventory is not GameObject holder 
                 || holder != Vendor
                 || IsHoldFulfilled()
                 || RestocksLeft < 1)
@@ -157,9 +159,9 @@ namespace XRL.World.Parts
             {
                 if (E.Context == nameof(TradeLine) || E.Context == nameof(UD_VendorAction.ShowVendorActionMenu))
                 {
-                    string heldForTag = "[{{C|held for =subject.refname=}}]"
+                    string heldForTag = ("[{{C|held for " + HeldForName + "}}]")
                         .StartReplace()
-                        .AddObject(HeldFor)
+                        .AddObject(HeldFor, "object")
                         .ToString();
 
                     E.AddTag(heldForTag);
@@ -173,10 +175,10 @@ namespace XRL.World.Parts
                 && CheckStillHeld(vendor))
             {
                 double depositPaid = Math.Round(DepositPaid, 2);
-                string depositPaidString = depositPaid.Things("dram").Color("C") + " of fresh water";
+                string depositPaidString = TinkerInvoice.DramsCostString(depositPaid) + " of fresh water";
                 string heldForDescription = 
                     ("Deposit Paid: =subject.T= =verb:are:afterpronoun= holding this " + 
-                    ParentObject.GetDescriptiveCategory() + " for =object.refname=, " +
+                    ParentObject.GetDescriptiveCategory() + " for " + HeldForName + ", " +
                     "who had it tinkered for a deposit of " + depositPaidString + ".");
 
                 string holdLongerDescription = 
@@ -184,7 +186,7 @@ namespace XRL.World.Parts
                     RestocksLeft.Things("more restock") + ".");
 
                 string holdOnlyDescription =
-                    (" =subject.Subjective= will only sell it to =object.refname= until at least" +
+                    (" =subject.Subjective= will only sell it to " + HeldForName + " until at least " +
                     RestocksLeft.Things("more restock") + " has passed.");
 
                 string descriptionString = (heldForDescription + (HeldFor == The.Player ? holdLongerDescription : holdOnlyDescription))
@@ -206,7 +208,7 @@ namespace XRL.World.Parts
                 methodDebug + " " +
                 nameof(E.Trader) + ": [" + E.Trader?.ID + "]" + E.Trader?.Render?.DisplayName + ", " +
                 nameof(E.Actor) + ": [" + E.Actor?.ID + "]" + E.Actor?.Render?.DisplayName + ", " +
-                nameof(HeldFor) + ": [" + HeldFor?.ID + "]" + HeldFor?.Render?.DisplayName,
+                nameof(HeldFor) + ": [" + HeldFor?.ID + "]" + HeldFor?.Render?.DisplayName + " as "+ HeldForName,
                 Indent: indent + 1, Toggle: doDebug);
 
             if (CheckStillHeld(E.Trader, RemoveOnFalse: true)
@@ -215,14 +217,14 @@ namespace XRL.World.Parts
                 if (E.Actor != HeldFor)
                 {
                     ParentObject.SetIntProperty("TradeUI_DisplayOnly", 1);
-                    Debug.CheckNah(4, "You're not " + HeldFor.them, Indent: indent + 2, Toggle: doDebug);
+                    Debug.CheckNah(4, "You're not " + HeldFor?.them, Indent: indent + 2, Toggle: doDebug);
                 }
                 else
                 {
                     ParentObject.SetIntProperty("TradeUI_DisplayOnly", 0, true);
                     bool secondPersonAllowed = Grammar.AllowSecondPerson;
                     Grammar.AllowSecondPerson = false;
-                    Debug.CheckYeh(4, "You're " + HeldFor.them, Indent: indent + 2, Toggle: doDebug);
+                    Debug.CheckYeh(4, "You're " + HeldFor?.them, Indent: indent + 2, Toggle: doDebug);
                     Grammar.AllowSecondPerson = secondPersonAllowed;
                 }
             }

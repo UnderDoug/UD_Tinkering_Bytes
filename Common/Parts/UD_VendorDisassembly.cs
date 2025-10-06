@@ -1,19 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+
+using XRL.UI;
+using XRL.Language;
+using XRL.World.Parts.Skill;
+using XRL.World.Tinkering;
+using XRL.World.Capabilities;
+
 using UD_Modding_Toolbox;
 using UD_Tinkering_Bytes;
 using UD_Vendor_Actions;
-using XRL.Language;
-using XRL.Messages;
-using XRL.Rules;
-using XRL.UI;
-using XRL.UI.ObjectFinderClassifiers;
-using XRL.World.Capabilities;
-using XRL.World.Parts.Skill;
-using XRL.World.Text;
-using XRL.World.Tinkering;
 
 namespace XRL.World.Parts
 {
@@ -344,8 +340,8 @@ namespace XRL.World.Parts
                 && Item.TryGetPart(out TinkerItem tinkerItem))
             {
                 int itemCount = Item.Count;
-                int amountToDisassemble = itemCount;
-                bool multipleItems = E.Command == COMMAND_DISASSEMBLE_ALL && amountToDisassemble > 1;
+                int amountToDisassemble = E.Command == COMMAND_DISASSEMBLE_ALL ? itemCount : 1;
+                bool multipleItems = amountToDisassemble > 1;
 
                 string bits = tinkerItem.Bits;
                 int numberOfBits = bits.Length;
@@ -399,7 +395,7 @@ namespace XRL.World.Parts
                     string thisThese = multipleItems ? ("these " + amountToDisassemble.Things("item")) : "this item";
                     string dramsCost = costToDisassemble.Things("dram").Color("C");
 
-                    bool tooExpensive = player.GetFreeDrams() < costToDisassemble;
+                    bool tooExpensive = !player.CanAfford(costToDisassemble);
                     if (tooExpensive || (!multipleItems && itemCount > 1))
                     {
                         string tooExpensiveMsg =
@@ -410,18 +406,19 @@ namespace XRL.World.Parts
                                 .AddObject(Vendor)
                                 .ToString();
 
-                        if (player.GetFreeDrams() > RealCostPerItem)
+                        if (player.CanAfford(RealCostPerItem))
                         {
                             int maxAfford = (int)Math.Floor(player.GetFreeDrams() / (double)RealCostPerItem);
                             int maxHave = Item.Count;
                             int maxAsk = Math.Min(maxAfford, maxHave);
                             string realCostPerItemString = RealCostPerItem.Things("dram").Color("C");
-                            string canAfford = "=verb:can:afterpronoun= afford";
+                            string canAfford = "can afford";
                             string doesHave = "=verb:have:afterpronoun=";
                             bool haveCountSmaller = maxAsk == maxHave;
                             string whyMax = haveCountSmaller ? doesHave : canAfford;
+                            string itemRefName = Item.GetReferenceDisplayName(Short: true);
                             string disassembleSomeMsg =
-                                ("How many of the " + maxAsk.ToString().Color("C") + " =subject.t= " + whyMax + " " +
+                                ("How many of the " + maxAsk.Things(itemRefName) + " that =subject.t= " + whyMax + " " +
                                 "would =subject.subjective= like =object.t= to disassemble?\n\n" +
                                 "It costs " + realCostPerItemString + " of fresh water each to disassemble this item.")
                                     .StartReplace()
@@ -438,19 +435,11 @@ namespace XRL.World.Parts
                             {
                                 numberToDisassembleMessage += disassembleSomeMsg;
                             }
-                            int? askedAmountDisassemble = Popup.AskNumber(
+                            amountToDisassemble = Popup.AskNumber(
                                 Message: numberToDisassembleMessage,
                                 Start: maxAsk,
-                                Max: maxAsk);
-
-                            if (askedAmountDisassemble.IsNullOrZero())
-                            {
-                                amountToDisassemble = 0;
-                            }
-                            else
-                            {
-                                amountToDisassemble = (int)askedAmountDisassemble;
-                            }
+                                Max: maxAsk)
+                                .GetValueOrDefault();
                         }
                         else
                         {
@@ -460,43 +449,39 @@ namespace XRL.World.Parts
 
                     if (amountToDisassemble > 0)
                     {
+                        multipleItems = amountToDisassemble > 1;
                         costToDisassemble = amountToDisassemble * RealCostPerItem;
                         dramsCost = costToDisassemble.Things("dram").Color("C");
                         thisThese = multipleItems ? ("these " + amountToDisassemble.Things("item")) : "this item";
-                        tooExpensive = player.GetFreeDrams() < costToDisassemble || ;
+                        tooExpensive = !player.CanAfford(costToDisassemble);
                     }
-                    if (!tooExpensive && amountToDisassemble > 0)
+                    if (!tooExpensive 
+                        && amountToDisassemble > 0
+                        && UD_VendorTinkering.ConfirmTinkerService(
+                            Vendor: Vendor,
+                            Shopper: player,
+                            DramsCost: costToDisassemble,
+                            DoWhat: "disassemble " + thisThese,
+                            Extra: "Note: the trade window will be closed, ending the conversation that opened it."))
                     {
-                        string confirmDisassembleMsg =
-                            ("=subject.T= may have =object.t= disassemble " + thisThese +
-                            " for " + dramsCost + " of fresh water.\n\n" +
-                            "Note: the trade window will be closed, ending the conversation that opened it.")
-                                .StartReplace()
-                                .AddObject(player)
-                                .AddObject(Vendor)
-                                .ToString();
-
-                        if (Popup.ShowYesNo(confirmDisassembleMsg) == DialogResult.Yes)
+                        List<Action<GameObject>> broadcastActions = null;
+                        if (!CheckHostiles(E, multipleItems)
+                            || !CheckImportant(Item, itemCount, E, multipleItems)
+                            || !CheckTinkerItemConfirm(Item, E, multipleItems)
+                            || !CheckOwner(Item, E, multipleItems, ref broadcastActions)
+                            || !CheckContainerOwner(Item, E, multipleItems, ref broadcastActions))
                         {
-                            List<Action<GameObject>> broadcastActions = null;
-                            if (!CheckHostiles(E, multipleItems)
-                                || !CheckImportant(Item, itemCount, E, multipleItems)
-                                || !CheckTinkerItemConfirm(Item, E, multipleItems)
-                                || !CheckOwner(Item, E, multipleItems, ref broadcastActions)
-                                || !CheckContainerOwner(Item, E, multipleItems, ref broadcastActions))
-                            {
-                                return false;
-                            }
-                            if (!broadcastActions.IsNullOrEmpty())
-                            {
-                                foreach (Action<GameObject> broadcastAction in broadcastActions)
-                                {
-                                    broadcastAction(player);
-                                }
-                            }
-                            Disassembly = new(E.Item, amountToDisassemble, EnergyCostPer: 0);
-                            return true;
+                            return false;
                         }
+                        if (!broadcastActions.IsNullOrEmpty())
+                        {
+                            foreach (Action<GameObject> broadcastAction in broadcastActions)
+                            {
+                                broadcastAction(player);
+                            }
+                        }
+                        Disassembly = new(E.Item, amountToDisassemble, EnergyCostPer: 0);
+                        return true;
                     }
                     E.RequestCancelSecond();
                 }
