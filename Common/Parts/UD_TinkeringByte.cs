@@ -35,6 +35,14 @@ namespace XRL.World.Parts
             }
             yield break;
         }
+        public static bool IsByteBlueprint(string Blueprint)
+        {
+            return GetByteBlueprints().Contains(Blueprint);
+        }
+        public static bool IsByteBlueprint(GameObjectBlueprint GameObjectBlueprint)
+        {
+            return IsByteBlueprint(GameObjectBlueprint.Name);
+        }
 
         public override bool AllowStaticRegistration()
         {

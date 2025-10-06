@@ -66,6 +66,8 @@ namespace UD_Tinkering_Bytes
         public double TotalCost = 0;
         public double DepositCost = 0;
 
+        public bool HoldForPlayer = false;
+
         public TinkerInvoice()
         {
         }
@@ -523,7 +525,12 @@ namespace UD_Tinkering_Bytes
             // Description
             if (Service == BUILD)
             {
-                SB.Append("Description: Tinker ").Append($"{NumberMade}x ").Append(itemName).AppendLine();
+                SB.Append("Description: Tinker ");
+                if (HoldForPlayer)
+                {
+                    SB.Append("and hold ");
+                }
+                SB.Append($"{NumberMade}x ").Append(itemName).AppendLine();
             }
             else
             if (Service == MOD)
@@ -660,7 +667,7 @@ namespace UD_Tinkering_Bytes
                 && player.GetFreeDrams() < totalCost)
             {
                 SB.Append(dividerLineK).AppendLine();
-                SB.Append("Will tinker and hold item for desposit of ").Append(DramsCostString(depositCost)).AppendLine();
+                SB.Append("Will tinker and hold item for desposit of ").Append(DramsCostString(depositCost));
             }
 
             return Event.FinalizeString(SB);
@@ -706,24 +713,11 @@ namespace UD_Tinkering_Bytes
                     .AddObject(Vendor)
                     .ToString();
 
-            string confirmDepositMsg = "Would =subject.t= like to pay the deposit?"
-                .StartReplace()
-                .AddObject(The.Player)
-                .AddObject(Vendor)
-                .ToString();
-
             return tooExpensiveMsg +
                 "\n\n" +
                 willTinkerForDepositMsg +
                 "\n\n" +
-                pleaseNoteMsg +
-                "\n" +
-                DividerLine().Color("K") + DividerLine().Color("K") +
-                "\n" +
-                this + 
-                DividerLine().Color("K") + DividerLine().Color("K") +
-                "\n\n" +
-                confirmDepositMsg;
+                pleaseNoteMsg;
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)

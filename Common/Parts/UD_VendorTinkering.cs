@@ -70,12 +70,19 @@ namespace XRL.World.Parts
 
         public List<TinkerData> KnownMods => new(GetKnownRecipes(D => D.Type == "Mod"));
 
+        public bool LearnsOneStockedDataDiskOnRestock;
+
+        public int RestockLearnChance;
+
         public bool ScribesKnownRecipesOnRestock;
 
         public int RestockScribeChance;
 
         public UD_VendorTinkering()
         {
+            LearnsOneStockedDataDiskOnRestock = true;
+            RestockLearnChance = 35;
+
             ScribesKnownRecipesOnRestock = true;
             RestockScribeChance = 15;
         }
@@ -102,9 +109,10 @@ namespace XRL.World.Parts
             }
         }
 
+        public static bool IsStockDataDisk(GameObject GO) => GO.HasPart<DataDisk>() && GO.HasProperty("_stock");
         public bool LearnFromOneDataDisk()
         {
-            List<GameObject> dataDiskObjects = ParentObject?.Inventory?.GetObjectsViaEventList(GO => GO.HasPart<DataDisk>());
+            List<GameObject> dataDiskObjects = ParentObject?.Inventory?.GetObjectsViaEventList(IsStockDataDisk);
             if (!dataDiskObjects.IsNullOrEmpty())
             {
                 dataDiskObjects.ShuffleInPlace();
@@ -1498,6 +1506,7 @@ namespace XRL.World.Parts
             string ToDoWhat,
             GameObject WithItem = null,
             TinkerInvoice TinkerInvoice = null,
+            string Extra = null,
             bool Silent = false)
         {
             if (!Shopper.CanAfford(DramsCost))
@@ -1505,18 +1514,22 @@ namespace XRL.World.Parts
                 if (!Silent)
                 {
                     string dramsCostString = DramsCost.Things("dram").Color("C");
-                    string tooExpensiveFailMsg =
+                    string baseFailMsg =
                         ("=shopper.T= =verb:don't:afterpronoun= have the required " + dramsCostString +
-                        " to have =vendor.t= " + ToDoWhat)
+                        " to have =vendor.t= " + ToDoWhat);
+
+                    string tinkerInvoiceMsg = TinkerInvoice != null ? ("\n\n" + TinkerInvoice) : "";
+
+                    string extraMsg = Extra != null ? ("\n\n" + Extra) : "";
+
+                    string tooExpensiveFailMsg = (baseFailMsg + tinkerInvoiceMsg + extraMsg)
                         .StartReplace()
                         .AddObject(Shopper, "shopper")
                         .AddObject(Vendor, "vendor")
                         .AddObject(WithItem, "item")
                         .ToString();
 
-                    string tinkerInvoiceMsg = TinkerInvoice != null ? ("\n\n" + TinkerInvoice) : "";
-
-                    Popup.ShowFail(tooExpensiveFailMsg + tinkerInvoiceMsg);
+                    Popup.ShowFail(tooExpensiveFailMsg);
                 }
                 return true;
             }
@@ -1528,6 +1541,7 @@ namespace XRL.World.Parts
             string ToDoWhat,
             GameObject WithItem = null,
             TinkerInvoice TinkerInvoice = null,
+            string Extra = null,
             bool Silent = false)
         {
             return IsTooExpensive(
@@ -1537,6 +1551,7 @@ namespace XRL.World.Parts
                 ToDoWhat: ToDoWhat,
                 WithItem: WithItem,
                 TinkerInvoice: TinkerInvoice,
+                Extra: Extra,
                 Silent: Silent);
         }
 
@@ -1547,23 +1562,29 @@ namespace XRL.World.Parts
             string DoWhat,
             GameObject WithItem = null,
             TinkerInvoice TinkerInvoice = null,
-            string Extra = null)
+            string Extra = null,
+            bool SetTinkerInvoiceHold = false)
         {
             string dramsCostString = TinkerInvoice.DramsCostString(DramsCost);
-            string confirmServiceMsg =
-                ("=vendor.T= will " + DoWhat + " for " +
-                dramsCostString + " of fresh water.")
-                    .StartReplace()
-                    .AddObject(Shopper, "shopper")
-                    .AddObject(Vendor, "vendor")
-                    .AddObject(WithItem, "item")
-                    .ToString();
+            string baseMsg = "=vendor.T= will " + DoWhat + " for " + dramsCostString + " of fresh water.";
 
             string tinkerInvoiceMsg = TinkerInvoice != null ? ("\n\n" + TinkerInvoice) : "";
 
             string extraMsg = Extra != null ? ("\n\n" + Extra) : "";
 
-            return Popup.ShowYesNo(confirmServiceMsg + tinkerInvoiceMsg + extraMsg) == DialogResult.Yes;
+            string confirmServiceMsg = (baseMsg + tinkerInvoiceMsg + extraMsg)
+                .StartReplace()
+                .AddObject(Shopper, "shopper")
+                .AddObject(Vendor, "vendor")
+                .AddObject(WithItem, "item")
+                .ToString();
+
+            bool output = Popup.ShowYesNo(confirmServiceMsg) == DialogResult.Yes;
+            if (SetTinkerInvoiceHold && TinkerInvoice != null)
+            {
+                TinkerInvoice.HoldForPlayer = output;
+            }
+            return output;
         }
         public bool ConfirmTinkerService(
             int DramsCost,
@@ -1571,7 +1592,8 @@ namespace XRL.World.Parts
             string DoWhat,
             GameObject WithItem = null,
             TinkerInvoice TinkerInvoice = null,
-            string Extra = null)
+            string Extra = null,
+            bool SetTinkerInvoiceHold = false)
         {
             return ConfirmTinkerService(
                 Vendor: ParentObject,
@@ -1580,10 +1602,11 @@ namespace XRL.World.Parts
                 DoWhat: DoWhat,
                 WithItem: WithItem,
                 TinkerInvoice: TinkerInvoice,
-                Extra: Extra);
+                Extra: Extra,
+                SetTinkerInvoiceHold: SetTinkerInvoiceHold);
         }
 
-        public static bool VendorDoBuild(GameObject Vendor, TinkerInvoice TinkerInvoice, GameObject RecipeIngredientSupplier, bool VendorKeepsItem)
+        public static bool VendorDoBuild(GameObject Vendor, TinkerInvoice TinkerInvoice, GameObject RecipeIngredientSupplier)
         {
             if (Vendor == null || TinkerInvoice == null || TinkerInvoice.Recipe is not TinkerData tinkerDatum)
             {
@@ -1616,7 +1639,7 @@ namespace XRL.World.Parts
                         return false;
                     }
                 }
-                Inventory inventory = VendorKeepsItem ? Vendor.Inventory : player.Inventory;
+                Inventory inventory = TinkerInvoice.HoldForPlayer ? Vendor.Inventory : player.Inventory;
                 TinkerItem tinkerItem = tinkerSampleItem.GetPart<TinkerItem>();
                 GameObject tinkeredItem = null;
                 for (int i = 0; i < Math.Max(tinkerItem.NumberMade, 1); i++)
@@ -1631,7 +1654,7 @@ namespace XRL.World.Parts
                     tinkeredItem.SetIntProperty("TinkeredItem", 1);
                     TinkeringHelpers.CheckMakersMark(tinkeredItem, Vendor, null, "Tinkering");
 
-                    if (VendorKeepsItem)
+                    if (TinkerInvoice.HoldForPlayer)
                     {
                         // tinkeredItem.SetIntProperty(HELD_FOR_PLAYER, 2);
                         var heldForPlayer = tinkeredItem.RequirePart<UD_HeldForPlayer>();
@@ -1642,7 +1665,7 @@ namespace XRL.World.Parts
                     }
 
                     inventory.AddObject(tinkeredItem);
-                    if (!VendorKeepsItem)
+                    if (!TinkerInvoice.HoldForPlayer)
                     {
                         tinkeredItem?.CheckStack();
                     }
@@ -1661,7 +1684,7 @@ namespace XRL.World.Parts
                     .ToString();
 
                 string comeBackToPickItUp = "";
-                if (VendorKeepsItem)
+                if (TinkerInvoice.HoldForPlayer)
                 {
                     string themIt = tinkerSampleItem.themIt();
                     comeBackToPickItUp += 
@@ -2159,25 +2182,27 @@ namespace XRL.World.Parts
             if (E.Object == ParentObject && WantVendorActions)
             {
                 GameObject Vendor = E.Object;
-                LearnFromOneDataDisk();
+                if (LearnsOneStockedDataDiskOnRestock && RestockLearnChance.in100())
+                {
+                    LearnFromOneDataDisk();
+                }
                 if (ScribesKnownRecipesOnRestock)
                 {
                     List<TinkerData> knownRecipes = new(GetKnownRecipes());
                     if (!knownRecipes.IsNullOrEmpty())
                     {
-                        List<GameObject> knownDataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(GO => GO.TryGetPart(out DataDisk dataDisk) && knownRecipes.Contains(dataDisk.Data));
                         List<TinkerData> inventoryTinkerData = new();
-                        foreach (GameObject knownDataDiskObject in knownDataDiskObjects)
+                        foreach (GameObject dataDiskObject in Vendor?.Inventory?.GetObjects(GO => GO.HasPart<DataDisk>()))
                         {
-                            if (knownDataDiskObject.TryGetPart(out DataDisk knownDataDisk))
+                            if (dataDiskObject.TryGetPart(out DataDisk dataDiskPart)
+                                && knownRecipes.Contains(dataDiskPart.Data))
                             {
-                                inventoryTinkerData.Add(knownDataDisk.Data);
+                                inventoryTinkerData.Add(dataDiskPart.Data);
                             }
                         }
-                        List<string> byteBlueprints = new(UD_TinkeringByte.GetByteBlueprints());
                         foreach (TinkerData knownRecipe in knownRecipes)
                         {
-                            if (!byteBlueprints.Contains(knownRecipe.Blueprint) 
+                            if (!UD_TinkeringByte.IsByteBlueprint(knownRecipe.Blueprint) 
                                 && !inventoryTinkerData.Contains(knownRecipe) 
                                 && RestockScribeChance.in100())
                             {
@@ -2406,8 +2431,6 @@ namespace XRL.World.Parts
                             int depositDramCost = tinkerInvoice.GetDepositCost();
                             double itemDramValue = tinkerInvoice.GetItemValue();
 
-                            bool vendorHoldsItem = false;
-
                             string dramsCostString = totalDramsCost.Things("dram").Color("C");
 
                             if ((depositDramCost == 0 || !player.CanAfford(depositDramCost))
@@ -2419,26 +2442,38 @@ namespace XRL.World.Parts
                             {
                                 return false;
                             }
-                            if (!player.CanAfford(totalDramsCost) && (depositDramCost > 0 && player.CanAfford(depositDramCost)))
+                            if (depositDramCost == 0 
+                                || IsTooExpensive(
+                                    Shopper: player,
+                                    DramsCost: depositDramCost,
+                                    ToDoWhat: "tinker and hold " + "item".ThisTheseN(tinkerInvoice.NumberMade) + ".",
+                                    Extra: tinkerInvoice.GetDepositMessage())
+                                || !ConfirmTinkerService(
+                                    Vendor: vendor,
+                                    Shopper: player,
+                                    DramsCost: depositDramCost,
+                                    DoWhat: "tinker and hold this item",
+                                    TinkerInvoice: tinkerInvoice,
+                                    Extra: "Would =subject.t= like to pay this deposit?",
+                                    SetTinkerInvoiceHold: true))
                             {
-                                vendorHoldsItem = Popup.ShowYesNo(tinkerInvoice.GetDepositMessage()) == DialogResult.Yes;
-                                if (!vendorHoldsItem)
-                                {
-                                    return false;
-                                }
+                                return false;
                             }
-                            if ((vendorHoldsItem || ConfirmTinkerService(
+                            if ((tinkerInvoice.HoldForPlayer || ConfirmTinkerService(
                                     Vendor: vendor,
                                     Shopper: player,
                                     DramsCost: totalDramsCost,
                                     DoWhat: "tinker this item",
                                     TinkerInvoice: tinkerInvoice))
-                                && VendorDoBuild(vendor, tinkerInvoice, recipeIngredientSupplier, vendorHoldsItem))
+                                && VendorDoBuild(
+                                    Vendor: vendor,
+                                    TinkerInvoice: tinkerInvoice,
+                                    RecipeIngredientSupplier: recipeIngredientSupplier))
                             {
                                 bitSupplierBitLocker.UseBits(bitCost);
 
-                                player.UseDrams(vendorHoldsItem ? depositDramCost : totalDramsCost);
-                                vendor.GiveDrams(vendorHoldsItem ? depositDramCost : totalDramsCost);
+                                player.UseDrams(tinkerInvoice.HoldForPlayer ? depositDramCost : totalDramsCost);
+                                vendor.GiveDrams(tinkerInvoice.HoldForPlayer ? depositDramCost : totalDramsCost);
 
                                 player.UseEnergy(1000, "Trade Tinkering Build");
                                 vendor.UseEnergy(1000, "Skill Tinkering Build");
