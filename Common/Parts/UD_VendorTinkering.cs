@@ -678,12 +678,20 @@ namespace XRL.World.Parts
                 Debug.Entry(3,
                     $"Spinning up skill-based data disks for {Vendor?.DebugName ?? NULL} (" +
                     $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0, Toggle: doDebug);
-
-                for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
+                Raffle<TinkerData> recipeDeck = new(vendorRecipeSeed, avaialableRecipes);
+                Debug.Entry(3,
+                    $"Drawing disks from deck...", Indent: 0, Toggle: doDebug);
+                foreach (TinkerData recipeToKnow in recipeDeck.DrawUptoN(numberToKnow))
                 {
-                    TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(LearnSkillRecipes));
                     learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
                 }
+                /*
+                for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
+                {
+                    // TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(LearnSkillRecipes));
+                    // learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
+                }
+                */
             }
             return learned;
         }
