@@ -2454,15 +2454,14 @@ namespace XRL.World.Parts
                                 || IsTooExpensive(
                                     Shopper: player,
                                     DramsCost: depositDramCost,
-                                    ToDoWhat: "tinker and hold " + "item".ThisTheseN(tinkerInvoice.NumberMade) + ".",
-                                    Extra: tinkerInvoice.GetDepositMessage())
+                                    ToDoWhat: "tinker and hold " )
                                 || !ConfirmTinkerService(
                                     Vendor: vendor,
                                     Shopper: player,
                                     DramsCost: depositDramCost,
-                                    DoWhat: "tinker and hold this item",
+                                    DoWhat: "tinker and hold " + "item".ThisTheseN(tinkerInvoice.NumberMade) + ".",
                                     TinkerInvoice: tinkerInvoice,
-                                    Extra: "Would =subject.t= like to pay this deposit?",
+                                    Extra: tinkerInvoice.GetDepositMessage(),
                                     SetTinkerInvoiceHold: true))
                             {
                                 return false;

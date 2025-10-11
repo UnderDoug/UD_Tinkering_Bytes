@@ -713,11 +713,19 @@ namespace UD_Tinkering_Bytes
                     .AddObject(Vendor)
                     .ToString();
 
+            string likeToPayMsg = "Would =subject.t= like to pay this deposit?"
+                    .StartReplace()
+                    .AddObject(The.Player)
+                    .AddObject(Vendor)
+                    .ToString();
+
             return tooExpensiveMsg +
                 "\n\n" +
                 willTinkerForDepositMsg +
                 "\n\n" +
-                pleaseNoteMsg;
+                pleaseNoteMsg +
+                "\n\n" +
+                likeToPayMsg;
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)
