@@ -28,13 +28,12 @@ namespace XRL.World.Parts
         : IScribedPart
         , I_UD_VendorActionEventHandler
     {
-        private static bool doDebug => true;
+        private static bool doDebug => false;
 
         public const string HELD_FOR_PLAYER = "HeldForPlayer";
 
         public const int GUARANTEED_RESTOCKS = 2;
 
-        [SerializeField]
         private string HeldForID;
 
         private GameObject _HeldFor;
@@ -59,6 +58,8 @@ namespace XRL.World.Parts
 
         public int ExtraHoldChance;
 
+        private long TurnHoldStarted;
+
         public UD_HeldForPlayer()
         {
             HeldFor = null;
@@ -66,6 +67,7 @@ namespace XRL.World.Parts
             DepositPaid = 0;
             RestocksLeft = GUARANTEED_RESTOCKS;
             ExtraHoldChance = 25;
+            TurnHoldStarted = The.CurrentTurn;
         }
 
         public override bool AllowStaticRegistration()
@@ -179,7 +181,7 @@ namespace XRL.World.Parts
                 string heldForDescription = 
                     ("Deposit Paid: =subject.T= =verb:are:afterpronoun= holding this " + 
                     ParentObject.GetDescriptiveCategory() + " for " + HeldForName + ", " +
-                    "who had it tinkered for a deposit of " + depositPaidString + ".");
+                    "who had it tinkered " + TurnHoldStarted.TimeAgo() + " for a deposit of " + depositPaidString + ".");
 
                 string holdLongerDescription = 
                     (" =subject.Subjective= will hold it for at least " + 
@@ -238,6 +240,19 @@ namespace XRL.World.Parts
                 ParentObject.RemovePart(this);
             }
             return base.HandleEvent(E);
+        }
+
+        public override void Write(GameObject Basis, SerializationWriter Writer)
+        {
+            base.Write(Basis, Writer);
+            Writer.WriteOptimized(HeldForID);
+            Writer.WriteOptimized(TurnHoldStarted);
+        }
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            base.Read(Basis, Reader);
+            HeldForID = Reader.ReadOptimizedString();
+            TurnHoldStarted = Reader.ReadOptimizedInt64();
         }
     }
 }

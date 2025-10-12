@@ -267,7 +267,9 @@ namespace UD_Tinkering_Bytes
 
         public GameObject GetSelectedIngredient()
         {
-            if (SelectedIngredient == null
+            if (Recipe != null
+                && !Recipe.Ingredient.IsNullOrEmpty()
+                && SelectedIngredient == null
                 && UD_VendorTinkering.PickRecipeIngredientSupplier(
                     Vendor: Vendor,
                     ForObject: Item,
@@ -656,7 +658,6 @@ namespace UD_Tinkering_Bytes
                         SB.Append(" for my ").Append(waterRitualLiquid).Append(" ").Append(player.siblingTerm).Append("!");
                     }
                 }
-                SB.AppendLine();
             }
 
             // Deposit
@@ -666,8 +667,10 @@ namespace UD_Tinkering_Bytes
                 && depositCost < totalCost
                 && player.GetFreeDrams() < totalCost)
             {
+                SB.AppendLine();
                 SB.Append(dividerLineK).AppendLine();
-                SB.Append("Will tinker and hold item for desposit of ").Append(DramsCostString(depositCost));
+                SB.Append(Vendor.T()).Append(" will tinker and hold ").Append("item".ThisTheseN(NumberMade));
+                SB.Append(" for a desposit of ").Append(DramsCostString(depositCost));
             }
 
             return Event.FinalizeString(SB);
@@ -687,7 +690,6 @@ namespace UD_Tinkering_Bytes
             string totalCost = DramsCostString(GetTotalCost());
             string depositCost = DramsCostString(GetDepositCost()) + " of fresh water";
             string itemValue = DramsCostString(GetItemValue());
-            string restocks = "2 restocks".Color("g");
 
             string tooExpensiveMsg = 
                 ("=subject.T= =verb:don't:afterpronoun= have the required " + totalCost +
@@ -706,26 +708,26 @@ namespace UD_Tinkering_Bytes
                     .AddObject(Vendor)
                     .ToString();
 
-            string pleaseNoteMsg = 
-                ("Please note: =object.T= will only hold onto " + thisTheseItems + " for " + restocks + ".")
-                    .StartReplace()
-                    .AddObject(The.Player)
-                    .AddObject(Vendor)
-                    .ToString();
-
-            string likeToPayMsg = "Would =subject.t= like to pay this deposit?"
-                    .StartReplace()
-                    .AddObject(The.Player)
-                    .AddObject(Vendor)
-                    .ToString();
-
             return tooExpensiveMsg +
                 "\n\n" +
-                willTinkerForDepositMsg +
-                "\n\n" +
-                pleaseNoteMsg +
-                "\n\n" +
-                likeToPayMsg;
+                willTinkerForDepositMsg;
+        }
+
+        public string GetDepositPleaseNote()
+        {
+            string items = "item";
+            if (NumberMade != 1)
+            {
+                items = Grammar.Pluralize(items);
+            }
+            string restocks = "2 restocks".Color("g");
+
+            string thisTheseItems = Item.indicativeProximal + " " + items;
+            return ("Please note: =object.T= will only hold onto " + thisTheseItems + " for " + restocks + ".")
+                .StartReplace()
+                .AddObject(The.Player)
+                .AddObject(Vendor)
+                .ToString();
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)

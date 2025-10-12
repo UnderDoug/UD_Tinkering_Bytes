@@ -1567,20 +1567,33 @@ namespace XRL.World.Parts
             GameObject Vendor,
             GameObject Shopper,
             int DramsCost,
-            string DoWhat,
+            string DoWhat = null,
             GameObject WithItem = null,
             TinkerInvoice TinkerInvoice = null,
-            string Extra = null,
+            string ExtraBefore = null,
+            string ExtraAfter = null,
             bool SetTinkerInvoiceHold = false)
         {
             string dramsCostString = TinkerInvoice.DramsCostString(DramsCost);
-            string baseMsg = "=vendor.T= will " + DoWhat + " for " + dramsCostString + " of fresh water.";
 
-            string tinkerInvoiceMsg = TinkerInvoice != null ? ("\n\n" + TinkerInvoice) : "";
+            List<string> messageList = new()
+            {
+                !ExtraBefore.IsNullOrEmpty() ? ExtraBefore : "",
+                !DoWhat.IsNullOrEmpty() ? ("=vendor.T= will " + DoWhat + " for " + dramsCostString + " of fresh water.") : "",
+                TinkerInvoice ?? "",
+                !ExtraAfter.IsNullOrEmpty() ? ExtraAfter : ""
+            };
+            string combinedMessages = "";
+            foreach (string message in messageList)
+            {
+                if (!combinedMessages.IsNullOrEmpty() && !message.IsNullOrEmpty())
+                {
+                    combinedMessages += "\n\n";
+                }
+                combinedMessages += message;
+            }
 
-            string extraMsg = Extra != null ? ("\n\n" + Extra) : "";
-
-            string confirmServiceMsg = (baseMsg + tinkerInvoiceMsg + extraMsg)
+            string confirmServiceMsg = combinedMessages
                 .StartReplace()
                 .AddObject(Shopper, "shopper")
                 .AddObject(Vendor, "vendor")
@@ -1610,7 +1623,7 @@ namespace XRL.World.Parts
                 DoWhat: DoWhat,
                 WithItem: WithItem,
                 TinkerInvoice: TinkerInvoice,
-                Extra: Extra,
+                ExtraAfter: Extra,
                 SetTinkerInvoiceHold: SetTinkerInvoiceHold);
         }
 
@@ -1898,11 +1911,12 @@ namespace XRL.World.Parts
 
                 string howManyBitsMsg =
                     ("It would take " + bitsToRechargeFully.Things(BitType.GetString(bits) + " bit").Color("C") +
-                    " to fully recharge =object.t=. =subject.T= =verb:have:afterpronoun=" + bitCount.Color("C") + ". " +
-                    "How many do you want to use?")
+                    " to fully recharge =item.t=. =object.T= =verb:have:afterpronoun= " + bitCount.Color("C") + ". " +
+                    "How many =verb:do:afterpronoun= =subject.t= want to use?")
                         .StartReplace()
+                        .AddObject(player)
                         .AddObject(rechargeBitSupplier)
-                        .AddObject(Item)
+                        .AddObject(Item, "item")
                         .ToString();
 
                 int chosenBitsToUse = Popup.AskNumber(
@@ -2450,28 +2464,31 @@ namespace XRL.World.Parts
                             {
                                 return false;
                             }
-                            if (depositDramCost == 0 
-                                || IsTooExpensive(
+                            if (!player.CanAfford(totalDramsCost)
+                                && depositDramCost > 0
+                                && (IsTooExpensive(
                                     Shopper: player,
                                     DramsCost: depositDramCost,
-                                    ToDoWhat: "tinker and hold " )
-                                || !ConfirmTinkerService(
-                                    Vendor: vendor,
-                                    Shopper: player,
-                                    DramsCost: depositDramCost,
-                                    DoWhat: "tinker and hold " + "item".ThisTheseN(tinkerInvoice.NumberMade) + ".",
-                                    TinkerInvoice: tinkerInvoice,
-                                    Extra: tinkerInvoice.GetDepositMessage(),
-                                    SetTinkerInvoiceHold: true))
+                                    ToDoWhat: "tinker and hold " + "item".ThisTheseN(tinkerInvoice.NumberMade))
+                                    || !ConfirmTinkerService(
+                                        Vendor: vendor,
+                                        Shopper: player,
+                                        DramsCost: depositDramCost,
+                                        TinkerInvoice: tinkerInvoice,
+                                        ExtraBefore: tinkerInvoice.GetDepositMessage(),
+                                        ExtraAfter: tinkerInvoice.GetDepositPleaseNote(),
+                                        SetTinkerInvoiceHold: true)))
                             {
                                 return false;
                             }
-                            if ((tinkerInvoice.HoldForPlayer || ConfirmTinkerService(
-                                    Vendor: vendor,
-                                    Shopper: player,
-                                    DramsCost: totalDramsCost,
-                                    DoWhat: "tinker this item",
-                                    TinkerInvoice: tinkerInvoice))
+                            if ((tinkerInvoice.HoldForPlayer 
+                                    || ConfirmTinkerService(
+                                        Vendor: vendor,
+                                        Shopper: player,
+                                        DramsCost: totalDramsCost,
+                                        DoWhat: "tinker " + "item".ThisTheseN(tinkerInvoice.NumberMade),
+                                        TinkerInvoice: tinkerInvoice)
+                                    )
                                 && VendorDoBuild(
                                     Vendor: vendor,
                                     TinkerInvoice: tinkerInvoice,

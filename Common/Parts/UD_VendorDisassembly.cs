@@ -462,7 +462,7 @@ namespace XRL.World.Parts
                             Shopper: player,
                             DramsCost: costToDisassemble,
                             DoWhat: "disassemble " + thisThese,
-                            Extra: "Note: the trade window will be closed, ending the conversation that opened it."))
+                            ExtraAfter: "Note: the trade window will be closed, ending the conversation that opened it."))
                     {
                         List<Action<GameObject>> broadcastActions = null;
                         if (!CheckHostiles(E, multipleItems)
