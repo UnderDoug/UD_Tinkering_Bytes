@@ -679,19 +679,11 @@ namespace XRL.World.Parts
                     $"Spinning up skill-based data disks for {Vendor?.DebugName ?? NULL} (" +
                     $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0, Toggle: doDebug);
                 Raffle<TinkerData> recipeDeck = new(vendorRecipeSeed, avaialableRecipes);
-                Debug.Entry(3,
-                    $"Drawing disks from deck...", Indent: 0, Toggle: doDebug);
+                Debug.Entry(3, $"Drawing disks from deck...", Indent: 0, Toggle: doDebug);
                 foreach (TinkerData recipeToKnow in recipeDeck.DrawUptoN(numberToKnow))
                 {
                     learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
                 }
-                /*
-                for (int i = 0; i < numberToKnow && !avaialableRecipes.IsNullOrEmpty(); i++)
-                {
-                    // TinkerData recipeToKnow = avaialableRecipes.DrawSeededToken(vendorRecipeSeed, i, nameof(LearnSkillRecipes));
-                    // learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
-                }
-                */
             }
             return learned;
         }
@@ -2183,13 +2175,13 @@ namespace XRL.World.Parts
                 }
                 if (DebugTinkerSkillsDebugDescriptions)
                 {
-                    List<BaseSkill> tinkersSkills = ParentObject.GetPartsDescendedFrom<BaseSkill>();
+                    List<BaseSkill> tinkersSkills = ParentObject.GetPartsDescendedFrom<BaseSkill>(s => s.Name.StartsWith(nameof(Skill.Tinkering)));
                     if (!tinkersSkills.IsNullOrEmpty())
                     {
                         E.Infix.AppendRules("Tinkering Skills".Color("M") + ":");
                         foreach (BaseSkill skill in ParentObject.GetPartsDescendedFrom<BaseSkill>())
                         {
-                            if (skill.GetType().Name.StartsWith(nameof(Skill.Tinkering))) // || skill.GetType().Name == nameof(UD_Basics))
+                            if (skill.GetType().Name.StartsWith(nameof(Skill.Tinkering)))
                             {
                                 E.Infix.AppendRules(recipeBullet + skill.DisplayName.Color("y"));
                             }
