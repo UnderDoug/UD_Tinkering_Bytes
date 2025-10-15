@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+
+using Qud.UI;
+
 using XRL.Language;
 using XRL.UI;
 using XRL.World.Capabilities;
@@ -10,7 +13,6 @@ using XRL.World.Tinkering;
 
 using static XRL.World.Parts.Skill.Tinkering;
 
-
 using UD_Vendor_Actions;
 using UD_Modding_Toolbox;
 
@@ -18,7 +20,6 @@ using static UD_Modding_Toolbox.Const;
 
 using UD_Tinkering_Bytes;
 using static UD_Tinkering_Bytes.Options;
-using Qud.UI;
 
 namespace XRL.World.Parts
 {

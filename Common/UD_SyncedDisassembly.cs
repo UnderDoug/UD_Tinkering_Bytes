@@ -5,6 +5,7 @@ using System.Text;
 
 using XRL;
 using XRL.UI;
+using XRL.Rules;
 using XRL.Language;
 using XRL.Messages;
 using XRL.World;
@@ -17,7 +18,6 @@ using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 
 using static UD_Tinkering_Bytes.Options;
-using XRL.Rules;
 
 namespace UD_Tinkering_Bytes
 {

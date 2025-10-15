@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+
 using Qud.UI;
+
 using XRL.Language;
 using XRL.UI;
 using XRL.World.Capabilities;
