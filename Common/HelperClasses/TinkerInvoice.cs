@@ -27,6 +27,7 @@ namespace UD_Tinkering_Bytes
     [HasWishCommand]
     public class TinkerInvoice
     {
+        public const string IDENTIFY = "Identify";
         public const string RECHARGE = "Recharge";
         public const string REPAIR = "Repair";
         public const string BUILD = "Build";
@@ -72,7 +73,12 @@ namespace UD_Tinkering_Bytes
         {
         }
 
-        public TinkerInvoice(GameObject Vendor, string Service, GameObject SelectedIngredient = null, BitCost BitCost = null, GameObject Item = null)
+        public TinkerInvoice(
+            GameObject Vendor,
+            string Service,
+            GameObject SelectedIngredient = null,
+            BitCost BitCost = null,
+            GameObject Item = null)
             : this()
         {
             this.Vendor = Vendor;
@@ -83,8 +89,18 @@ namespace UD_Tinkering_Bytes
             this.Item = Item;
         }
 
-        public TinkerInvoice(GameObject Vendor, TinkerData Recipe, GameObject SelectedIngredient, BitCost BitCost, bool VendorOwnsRecipe = true, GameObject ApplyModTo = null)
-            : this(Vendor, Recipe.Type, SelectedIngredient, BitCost)
+        public TinkerInvoice(
+            GameObject Vendor,
+            TinkerData Recipe,
+            GameObject SelectedIngredient,
+            BitCost BitCost,
+            bool VendorOwnsRecipe = true,
+            GameObject ApplyModTo = null)
+            : this(
+                  Vendor: Vendor, 
+                  Service: Recipe.Type, 
+                  SelectedIngredient: SelectedIngredient,
+                  BitCost: BitCost)
         {
             this.Recipe = Recipe;
             this.VendorOwnsRecipe = VendorOwnsRecipe;
@@ -105,8 +121,19 @@ namespace UD_Tinkering_Bytes
                 Item = ApplyModTo;
             }
         }
-        public TinkerInvoice(GameObject Vendor, TinkerData Recipe, BitCost BitCost, bool VendorOwnsRecipe = true, GameObject ApplyModTo = null)
-            : this(Vendor, Recipe, null, BitCost, VendorOwnsRecipe, ApplyModTo)
+        public TinkerInvoice(
+            GameObject Vendor,
+            TinkerData Recipe,
+            BitCost BitCost,
+            bool VendorOwnsRecipe = true,
+            GameObject ApplyModTo = null)
+            : this(
+                  Vendor: Vendor,
+                  Recipe: Recipe,
+                  SelectedIngredient: null,
+                  BitCost: BitCost,
+                  VendorOwnsRecipe: VendorOwnsRecipe,
+                  ApplyModTo: ApplyModTo)
         {
         }
 
@@ -117,7 +144,26 @@ namespace UD_Tinkering_Bytes
                 ScrapTinkerSample(ref Item);
             }
             Vendor = null;
+            Service = null;
             Recipe = null;
+            VendorOwnsRecipe = false;
+            GotPerformance = false;
+            Performance = 1.0;
+            Item = null;
+            ItemName = "";
+            NumberMade = 1;
+            ExpertiseValue = 0;
+            SelectedIngredient = null;
+            IngredientValue = 0;
+            VendorSuppliesIngredients = true;
+            IngredientUsed = false;
+            BitCost = null;
+            BitsValue = 0;
+            VendorSuppliesBits = true;
+            LabourValue = 0;
+            TotalCost = 0;
+            DepositCost = 0;
+            HoldForPlayer = false;
         }
 
         public static GameObject CreateTinkerSample(string Blueprint)
@@ -209,6 +255,24 @@ namespace UD_Tinkering_Bytes
             if (CreateTinkerSample(Item) is GameObject tinkerSampleItem)
             {
                 value = GetExamineCost(tinkerSampleItem, Performance);
+                ScrapTinkerSample(ref tinkerSampleItem);
+            }
+            return value;
+        }
+        public static double GetExamineCost(GameObject Item, GameObject Vendor)
+        {
+            return GetExamineCost(Item, GetTradePerformanceEvent.GetFor(The.Player, Vendor));
+        }
+        public static double GetExamineCost(GameObjectBlueprint Item, GameObject Vendor)
+        {
+            return GetExamineCost(Item?.Name, Vendor);
+        }
+        public static double GetExamineCost(string Item, GameObject Vendor)
+        {
+            double value = 0.0;
+            if (CreateTinkerSample(Item) is GameObject tinkerSampleItem)
+            {
+                value = GetExamineCost(tinkerSampleItem, Vendor);
                 ScrapTinkerSample(ref tinkerSampleItem);
             }
             return value;
@@ -497,12 +561,7 @@ namespace UD_Tinkering_Bytes
 
         public static string DividerLine()
         {
-            string output = "";
-            for (int i = 0; i < 25; i++)
-            {
-                output += HONLY;
-            }
-            return output;
+            return HONLY.ThisManyTimes(25);
         }
 
         public static string DramsCostString(double DramsCost)

@@ -49,7 +49,7 @@ namespace XRL.World.Parts
                 && (AutoAct.ShouldHostilesInterrupt("o")
                     || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
             {
-                string hostilesMessage = "=subject.T= cannot disassemble so many items at once with hostiles nearby."
+                string hostilesMessage = "=subject.Name= cannot disassemble so many items at once with hostiles nearby."
                     .StartReplace()
                     .AddObject(Vendor)
                     .ToString();
@@ -101,8 +101,8 @@ namespace XRL.World.Parts
                     pluralItems += Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName);
                 }
                 string confirmDisassemble =
-                    ("=verb:Is:afterpronoun= =subject.t= sure =subject.subjective= " +
-                    "=verb:want:afterpronoun= =object.t= to disassemble " + pluralItems + "?")
+                    ("=verb:Is:afterpronoun= =subject.name= sure =subject.subjective= " +
+                    "=verb:want:afterpronoun= =object.name= to disassemble " + pluralItems + "?")
                         .StartReplace()
                         .AddObject(The.Player)
                         .AddObject(Vendor)
@@ -150,8 +150,8 @@ namespace XRL.World.Parts
                         .ToString();
 
                 string confirmNotOwnedMsg =
-                    ("=verb:Is:afterpronoun= =subject.t= sure =subject.subjective= " +
-                    "=verb:want:afterpronoun= =object.t= to disassemble " + themIt + "?")
+                    ("=verb:Is:afterpronoun= =subject.name= sure =subject.subjective= " +
+                    "=verb:want:afterpronoun= =object.name= to disassemble " + themIt + "?")
                         .StartReplace()
                         .AddObject(The.Player)
                         .AddObject(Vendor)
@@ -194,7 +194,7 @@ namespace XRL.World.Parts
                 && container.Owner != Item.Owner
                 && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
             {
-                string notContainerOwnerMsg = "=subject.T= =verb:isn't:afterpronoun= owned by =object.t=."
+                string notContainerOwnerMsg = "=subject.T= =verb:isn't:afterpronoun= owned by =object.name=."
                     .StartReplace()
                     .AddObject(Item)
                     .AddObject(The.Player)
@@ -211,7 +211,7 @@ namespace XRL.World.Parts
 
                 string confirmContainerMsg =
                     ("=verb:Is:afterpronoun= =subject.subjective= sure =subject.subjective= " +
-                    "=verb:want:afterpronoun= =object.t= to disassemble " + itemsAnItem +
+                    "=verb:want:afterpronoun= =object.name= to disassemble " + itemsAnItem +
                     " inside " + containerIt + "?")
                         .StartReplace()
                         .AddObject(The.Player)
@@ -399,8 +399,8 @@ namespace XRL.World.Parts
                     if (tooExpensive || (!multipleItems && itemCount > 1))
                     {
                         string tooExpensiveMsg =
-                            ("=subject.T= =verb:don't:afterpronoun= have the required " + dramsCost + " to have " +
-                            "=object.t= disassemble " + "item".ThisTheseN(amountToDisassemble, multipleItems) + "\n\n" + ".")
+                            ("=subject.Name= =verb:don't:afterpronoun= have the required " + dramsCost + " to have " +
+                            "=object.name= disassemble " + "item".ThisTheseN(amountToDisassemble, multipleItems) + "\n\n" + ".")
                                 .StartReplace()
                                 .AddObject(player)
                                 .AddObject(Vendor)
@@ -418,8 +418,8 @@ namespace XRL.World.Parts
                             string whyMax = haveCountSmaller ? doesHave : canAfford;
                             string itemRefName = Item.GetReferenceDisplayName(Short: true);
                             string disassembleSomeMsg =
-                                ("How many of the " + maxAsk.Things(itemRefName) + " that =subject.t= " + whyMax + " " +
-                                "would =subject.subjective= like =object.t= to disassemble?\n\n" +
+                                ("How many of the " + maxAsk.Things(itemRefName) + " that =subject.name= " + whyMax + " " +
+                                "would =subject.subjective= like =object.name= to disassemble?\n\n" +
                                 "It costs " + realCostPerItemString + " of fresh water each to disassemble this item.")
                                     .StartReplace()
                                     .AddObject(player)

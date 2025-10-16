@@ -296,7 +296,7 @@ namespace UD_Tinkering_Bytes
 
                     if (multipleObjects || Disassembly.TotalNumberWanted > 1)
                     {
-                        RB = GameText.StartReplace($"=subject.T= =verb:start:afterpronoun= disassembling =object.t=.");
+                        RB = GameText.StartReplace($"=subject.Name= =verb:start:afterpronoun= disassembling =object.t=.");
                         RB.AddObject(Disassembler);
                         RB.AddObject(Item);
 
@@ -498,7 +498,7 @@ namespace UD_Tinkering_Bytes
         public override void Interrupt()
         {
             base.Interrupt();
-            Disassembly.InterruptBecause ??= GameText.VariableReplace("=object.t= interrupted =pronouns.objective=", Disassembler, The.Player);
+            Disassembly.InterruptBecause ??= GameText.VariableReplace("=object.name= interrupted =pronouns.objective=", Disassembler, The.Player);
             Disassembly.Interrupt();
             MessageQueue.AddPlayerMessage(Event.NewStringBuilder()
                 .Append(Disassembler.T())
@@ -595,7 +595,7 @@ namespace UD_Tinkering_Bytes
             {
                 VendorDisassemblyProcessDisassemblingWhat(Disassembly);
                 var SB = Event.NewStringBuilder();
-                SB.Append("=subject.T= disassembled ");
+                SB.Append("=subject.Name= disassembled ");
                 if (Disassembly.DisassembledWhats.IsNullOrEmpty())
                 {
                     SB.Append(Disassembly.DisassembledWhat ?? "something");
@@ -657,10 +657,10 @@ namespace UD_Tinkering_Bytes
                         }
                         else
                         {
-                            finishedMessage = $"=subject.T= ";
+                            finishedMessage = $"=subject.Name= ";
                         }
                         string bits = BitType.GetDisplayString(Disassembly.BitsDone);
-                        finishedMessage += $"=verb:give:afterpronoun= =object.t= tinkering bits <{bits}>.";
+                        finishedMessage += $"=verb:give:afterpronoun= =object.name= tinkering bits <{bits}>.";
                     }
                 }
                 else

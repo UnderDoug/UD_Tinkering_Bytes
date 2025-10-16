@@ -7,6 +7,7 @@ using XRL.World.Parts.Mutation;
 using XRL.World.Tinkering;
 
 using static XRL.World.Parts.Skill.Tinkering;
+using static XRL.World.Parts.UD_VendorTinkering;
 
 using UD_Vendor_Actions;
 
@@ -282,71 +283,105 @@ namespace XRL.World.Parts
         }
         public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
-            if (E.Command == COMMAND_IDENTIFY_BY_RECIPE 
-                && E.Item != null && E.Item == ParentObject 
-                && E.Vendor != null)
+            Debug.Entry(4, GetType().Name, 0, true);
+            if (E.Command == COMMAND_IDENTIFY_BY_RECIPE
+                && E.Item is GameObject knownRecipeObject
+                && E.Vendor is GameObject vendor
+                && The.Player is GameObject player
+                && Data is TinkerData recipeDatum
+                && recipeDatum.Type == "Build")
             {
-                GameObject vendor = E.Vendor;
-                GameObject player = The.Player;
                 int identifyLevel = GetIdentifyLevel(vendor);
-                if (identifyLevel > 0 
-                    && Data.Type == "Build"
-                    && GameObject.CreateSample(Data.Blueprint) is GameObject item)
+                if (identifyLevel > 0
+                    && TinkerInvoice.CreateTinkerSample(recipeDatum.Blueprint) is GameObject sampleItem)
                 {
+                    TinkerInvoice tinkerInvoice = null;
                     try
                     {
-                        if (!item.Understood())
+                        if (!sampleItem.Understood())
                         {
-                            int complexity = item.GetComplexity();
-                            int examineDifficulty = item.GetExamineDifficulty();
+                            int complexity = sampleItem.GetComplexity();
+                            int examineDifficulty = sampleItem.GetExamineDifficulty();
                             if (player.HasPart<Dystechnia>())
                             {
-                                Popup.ShowFail($"You can't understand {Grammar.MakePossessive(vendor.t(Stripped: true))} explanation.");
+                                string dystechniaFailMsg = "=subject.Name= can't understand =object.name's= explanation."
+                                    .StartReplace()
+                                    .AddObject(player)
+                                    .AddObject(vendor)
+                                    .ToString();
+
+                                Popup.ShowFail(dystechniaFailMsg);
                                 return false;
                             }
                             if (identifyLevel < complexity)
                             {
-                                Popup.ShowFail($"This tinker recipe is too complex for {vendor.t(Stripped: true)} to explain.");
+                                string tooComplexForTinkerFailMsg = "This tinker recipe is too complex for =subject.name= to explain."
+                                    .StartReplace()
+                                    .AddObject(vendor)
+                                    .ToString();
+
+                                Popup.ShowFail(tooComplexForTinkerFailMsg);
                                 return false;
                             }
-                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)TinkerInvoice.GetExamineCost(item, GetTradePerformanceEvent.GetFor(player, vendor));
-                            if (dramsCost > 0 && player.GetFreeDrams() < dramsCost)
-                            {
-                                Popup.ShowFail(
-                                    $"You do not have the required {dramsCost.Things("dram").Color("C")} " +
-                                    $"to have {vendor.t(Stripped: true)} identify this tinker recipe.");
-                            }
-                            else
-                            if (Popup.ShowYesNo(
-                                $"You may have {vendor.t(Stripped: true)} identify this tinker recipe for " +
-                                $"{dramsCost.Things("dram").Color("C")} of fresh water.") == DialogResult.Yes)
+                            tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
+                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
+                            if (!IsTooExpensive(
+                                Vendor: vendor,
+                                Shopper: player,
+                                DramsCost: dramsCost,
+                                ToDoWhat: "identify this tinker recipe.")
+                                && ConfirmTinkerService(
+                                    Vendor: vendor,
+                                    Shopper: player,
+                                    DramsCost: dramsCost,
+                                    DoWhat: "identify this tinker recipe"))
                             {
                                 player.UseDrams(dramsCost);
                                 vendor.GiveDrams(dramsCost);
-                                Popup.Show(
-                                    $"{vendor.does("identify", Stripped: true)} {item.the} {item.GetDisplayName()}" +
-                                    $" as {item.an(AsIfKnown: true)}.");
-                                item.MakeUnderstood();
+
+                                string identifiedMsg =
+                                    ("=subject.Name= =verb:identify:afterpronoun= this tinker recipe " +
+                                    "as =object.a= =object.refname=.")
+                                        .StartReplace()
+                                        .AddObject(vendor)
+                                        .AddObject(sampleItem)
+                                        .ToString();
+
+                                Popup.Show(identifiedMsg);
+
+                                sampleItem.MakeUnderstood();
+
                                 return true;
                             }
+                            return false;
                         }
                         else
                         {
-                            Popup.ShowFail("You already understand what this tinker recipe creates.");
+                            string alreadyKnowItemMsg = "=subject.Name= already =verb:understand:afterpronoun= what this tinker recipe creates."
+                                .StartReplace()
+                                .AddObject(player)
+                                .ToString();
+
+                            Popup.ShowFail(alreadyKnowItemMsg);
                             return false;
                         }
                     }
                     finally
                     {
-                        if (GameObject.Validate(ref item))
-                        {
-                            item.Obliterate();
-                        }
+                        tinkerInvoice?.Clear();
+                        TinkerInvoice.ScrapTinkerSample(ref sampleItem);
                     }
                 }
                 else
                 {
-                    Popup.Show($"{vendor.Does("don't", Stripped: true)} have the skill to identify tinker recipes.");
+                    string tinkerUnableIdentifyMsg =
+                        ("=subject.Name= =verb:don't:afterpronoun= have the skill " +
+                        "to identify tinkering recipes.")
+                        .StartReplace()
+                        .AddObject(vendor)
+                        .ToString();
+
+                    Popup.Show(tinkerUnableIdentifyMsg);
                     return false;
                 }
             }
