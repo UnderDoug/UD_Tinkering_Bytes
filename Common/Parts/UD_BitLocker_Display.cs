@@ -77,6 +77,8 @@ namespace XRL.World.Parts
             {
                 if (E.Context == nameof(TradeLine))
                 {
+                    bitLocker.SortBits();
+
                     // style 0: bit locker
                     // style 1: bit locker <A(23)B(36)C(119)1(6)2(24)4(18)5(12)788> (this is base game BitType.GetDisplayString(bits))
                     // style 2: bit locker - Ax23 Bx36 Cx119 1x6 2x24 4x18 5x12 7x1 8x2

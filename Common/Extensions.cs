@@ -62,6 +62,27 @@ namespace UD_Tinkering_Bytes
             return multipleItems ? "them" : Object.them;
         }
 
+        public static BitLocker SortBits(this BitLocker BitLocker)
+        {
+            if (BitLocker == null)
+            {
+                return null;
+            }
+            BitLocker.BitStorage ??= new();
+            Dictionary<char, int> sortedBitStorage = new();
+            foreach (char bit in BitType.BitOrder)
+            {
+                int count = 0;
+                if (BitLocker.BitStorage.ContainsKey(bit))
+                {
+                    count = BitLocker.BitStorage[bit];
+                }
+                sortedBitStorage.Add(bit, count);
+            }
+            BitLocker.BitStorage = sortedBitStorage;
+            return BitLocker;
+        }
+
         public static string GetBitsDisplayString(this BitLocker BitLocker)
         {
             if (BitLocker == null)
