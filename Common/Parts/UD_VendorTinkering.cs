@@ -101,7 +101,7 @@ namespace XRL.World.Parts
 
                 LearnGiganticRecipe(ParentObject, KnownRecipes);
 
-                LearnSkillRecipes(ParentObject, KnownRecipes);
+                LearnSkillsRecipes(ParentObject, KnownRecipes);
 
                 KnowImplantedRecipes(ParentObject, InstalledRecipes);
 
@@ -285,6 +285,32 @@ namespace XRL.World.Parts
         {
             return DataDisk.GetRequiredSkillHumanReadable(BitType.GetBitTier(Bit));
         }
+        public static Raffle<BitType> GetBitTypeRaffle(int Weight, int? Tier = null, int? TierCap = null)
+        {
+            Raffle<BitType> bitTypeRaffle = new();
+            foreach (char bit in BitType.BitOrder)
+            {
+                if ((Tier == null || GetTinkerTierFromBit(bit) == Tier.GetValueOrDefault())
+                    && (TierCap == null || GetTinkerTierFromBit(bit) <= TierCap.GetValueOrDefault()))
+                {
+                    bitTypeRaffle.Add(BitType.BitMap[bit], Weight);
+                }
+            }
+            return bitTypeRaffle;
+        }
+        public static Raffle<char> GetBitRaffle(int Weight, int? Tier = null, int? TierCap = null)
+        {
+            Raffle<char> bitRaffle = new();
+            foreach (char bit in BitType.BitOrder)
+            {
+                if ((Tier == null || GetTinkerTierFromBit(bit) == Tier.GetValueOrDefault())
+                    && (TierCap == null || GetTinkerTierFromBit(bit) <= TierCap.GetValueOrDefault()))
+                {
+                    bitRaffle.Add(BitType.BitMap[bit].Color, Weight);
+                }
+            }
+            return bitRaffle;
+        }
         public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true, bool suppressDebug = false)
         {
             int indent = Debug.LastIndent;
@@ -338,14 +364,110 @@ namespace XRL.World.Parts
                     tinkeringSkill = 3;
                 }
 
-                Debug.LoopItem(4, $"{nameof(hasDisassemble)}", $"{hasDisassemble}",
+                Raffle<char> disassembleBitBag = GetBitRaffle(Weight: 0);
+                Raffle<char> scavengerBitBag = GetBitRaffle(Weight: 0);
+                Raffle<char> reverseEngineerBitBag = GetBitRaffle(Weight: 0);
+                Raffle<char> tinkeringSkillBitBag = GetBitRaffle(Weight: 0);
+                if (hasDisassemble)
+                {
+                    disassembleBitBag =
+                        GetBitRaffle(Weight: 64, TierCap: 0) +
+                        GetBitRaffle(Weight: 32, TierCap: 1) +
+                        GetBitRaffle(Weight: 16, TierCap: 2);
+                        GetBitRaffle(Weight: 2, Tier: 3);
+                }
+                if (hasScavenger)
+                {
+                    scavengerBitBag = 
+                        GetBitRaffle(Weight: 64, TierCap: 0) +
+                        GetBitRaffle(Weight: 16, TierCap: 1);
+                }
+                if (hasReverseEngineer)
+                {
+                    reverseEngineerBitBag =
+                        GetBitRaffle(Weight: 16, TierCap: 0) +
+                        GetBitRaffle(Weight: 32, TierCap: 1) +
+                        GetBitRaffle(Weight: 16, TierCap: 2) +
+                        GetBitRaffle(Weight: 8, TierCap: 3);
+                }
+                int tinkeringSkillWeight = 4;
+                int tinkerSKillLow = 4;
+                int tinkerSkillHigh = 8;
+                for (int i = tinkeringSkill; i >= 0; i--)
+                {
+                    tinkeringSkillBitBag += GetBitRaffle(Weight: tinkeringSkillWeight, TierCap: i);
+                    tinkeringSkillWeight *= 2;
+                    tinkerSKillLow *= 2;
+                    tinkerSkillHigh *= 2;
+                }
+
+                string vomitSource = nameof(UD_VendorTinkering) + "." + nameof(GiveRandomBits);
+
+                if (UD_Tinkering_Bytes.Options.doDebug)
+                {
+                    disassembleBitBag.Vomit(4, vomitSource, nameof(disassembleBitBag), ShowChance: true, Indent: 3, Toggle: doDebug);
+                    scavengerBitBag.Vomit(4, vomitSource, nameof(scavengerBitBag), ShowChance: true, Indent: 3, Toggle: doDebug);
+                    reverseEngineerBitBag.Vomit(4, vomitSource, nameof(reverseEngineerBitBag), ShowChance: true, Indent: 3, Toggle: doDebug);
+                    tinkeringSkillBitBag.Vomit(4, vomitSource, nameof(tinkeringSkillBitBag), ShowChance: true, Indent: 3, Toggle: doDebug);
+                }
+
+                int disassembleBitsToDraw = Stat.RandomCosmetic(32, 64);
+                int scavengerBitsToDraw = Stat.RandomCosmetic(32, 64);
+                int reverseEngineerBitsToDraw = Stat.RandomCosmetic(16, 32);
+                int tinkeringSkillBitsToDraw = Stat.RandomCosmetic(tinkerSKillLow, tinkerSkillHigh);
+
+                string disassembleBits = new(disassembleBitBag.DrawUptoN(disassembleBitsToDraw).ToArray());
+                string scavengerBits = new(scavengerBitBag.DrawUptoN(scavengerBitsToDraw).ToArray());
+                string reverseEngineerBits = new(reverseEngineerBitBag.DrawUptoN(reverseEngineerBitsToDraw).ToArray());
+                string tinkeringSkillBits = new(tinkeringSkillBitBag.DrawUptoN(tinkeringSkillBitsToDraw).ToArray());
+
+                Debug.LoopItem(4,
+                    nameof(hasDisassemble) + ": " +hasDisassemble + " (" +
+                    disassembleBitsToDraw + "), bits: <" + disassembleBits + ">",
                     Good: hasDisassemble, Indent: indent + 3, Toggle: doDebug);
 
-                Debug.LoopItem(4, $"{nameof(hasReverseEngineer)}", $"{hasDisassemble}",
+                Debug.LoopItem(4,
+                    nameof(hasScavenger) + ": " + hasScavenger + " (" +
+                    scavengerBitsToDraw + "), bits: <" + scavengerBits + ">",
+                    Good: hasScavenger, Indent: indent + 3, Toggle: doDebug);
+
+                Debug.LoopItem(4,
+                    nameof(hasReverseEngineer) + ": " + hasReverseEngineer + " (" +
+                    reverseEngineerBitsToDraw + "), bits: <" + reverseEngineerBits + ">",
                     Good: hasReverseEngineer, Indent: indent + 3, Toggle: doDebug);
 
-                Debug.LoopItem(4, $"{tinkeringSkill}] {nameof(tinkeringSkill)}",
+                Debug.LoopItem(4, 
+                    tinkeringSkill + "] " + nameof(tinkeringSkill) + " (" +
+                    tinkerSKillLow + "-" + tinkerSkillHigh + ": " + tinkeringSkillBitsToDraw + "), bits: <" + 
+                    tinkeringSkillBits + ">",
                     Indent: indent + 3, Toggle: doDebug);
+
+                Debug.Entry(4, $"Disassembling bits and throwing in Locker...", Indent: indent + 3, Toggle: doDebug);
+
+                bitLocker.AddBits(disassembleBits);
+                bitLocker.AddBits(scavengerBits);
+                bitLocker.AddBits(reverseEngineerBits);
+                bitLocker.AddBits(tinkeringSkillBits);
+
+                if (bitLocker.BitStorage.Any(kv => kv.Value > 0))
+                {
+                    Debug.Entry(4, $"Scrap found, disassembled, and stored...", Indent: indent + 2, Toggle: doDebug);
+                    if (UD_Tinkering_Bytes.Options.doDebug)
+                    {
+                        Debug.Entry(4, $"BitLocker contents:", Indent: indent + 2, Toggle: doDebug);
+                        foreach (char bit in BitType.BitOrder)
+                        {
+                            int count = 0;
+                            if (bitLocker.BitStorage.ContainsKey(bit))
+                            {
+                                count = bitLocker.BitStorage[bit];
+                            }
+                            Debug.LoopItem(4, BitType.TranslateBit(bit) + "] ", count.ToString(),
+                                Indent: indent + 3, Toggle: doDebug);
+                        }
+                    }
+                    return bitLocker;
+                }
 
                 Debug.Entry(4, 
                     "Iterating over " + nameof(bitList) + ", [" +
@@ -610,80 +732,162 @@ namespace XRL.World.Parts
             }
             return learned;
         }
-        public static bool LearnSkillRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
+        public static string GetVendorRecipeSeed(GameObject Vendor)
+        {
+            return The.Game?.GetWorldSeed() + "-" + Vendor.ID;
+        }
+        public static bool LearnRandomRecipes(
+            GameObject Vendor,
+            Raffle<TinkerData> RecipeDeck,
+            int Amount,
+            List<TinkerData> KnownRecipes)
+        {
+            if (Vendor == null || RecipeDeck.IsNullOrEmpty() || Amount < 1)
+            {
+                return false;
+            }
+            int indent = Debug.LastIndent;
+
+            KnownRecipes ??= new();
+            bool learned = false;
+            Debug.Entry(3, $"Drawing disks from deck...", Indent: indent + 1, Toggle: doDebug);
+            foreach (TinkerData recipeToKnow in RecipeDeck.DrawUptoN(Amount))
+            {
+                learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
+            }
+
+            Debug.LastIndent = indent;
+            return learned;
+        }
+        public static bool LearnTinkerXSkillRecipes(
+            GameObject Vendor,
+            string Tinkering_TinkerX,
+            int Amount,
+            List<TinkerData> KnownRecipes,
+            string RecipeSeed = null)
+        {
+            if (Vendor == null 
+                || !Tinkering_TinkerX.StartsWith(nameof(Skill.Tinkering) + "_") 
+                || !Vendor.HasSkill(Tinkering_TinkerX)
+                || !int.TryParse(Tinkering_TinkerX[^1].ToString(), out _))
+            {
+                return false;
+            }
+            KnownRecipes ??= new();
+
+            Raffle<TinkerData> recipeDeck = 
+                new(from datum in TinkerData.TinkerRecipes
+                    where DataDisk.GetRequiredSkill(datum.Tier) == Tinkering_TinkerX
+                    where !KnownRecipes.Contains(datum)
+                    select datum);
+
+            return LearnRandomRecipes(Vendor, recipeDeck, Amount, KnownRecipes);
+        }
+        public static bool IsRecipeLearnable(GameObject Vendor, TinkerData TinkerDatum, IEnumerable<TinkerData> KnownRecipes)
+        {
+            return Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerDatum.Tier))
+                && !KnownRecipes.Contains(TinkerDatum);
+        }
+        public static bool LearnSkillsRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
         {
             if (Vendor == null)
             {
                 return false;
-            }    
+            }
             KnownRecipes ??= new();
-            bool learned = false; 
-            List<TinkerData> avaialableRecipes = new(TinkerData.TinkerRecipes);
-            avaialableRecipes.RemoveAll(r => !Vendor.HasSkill(DataDisk.GetRequiredSkill(r.Tier)) && !KnownRecipes.Contains(r));
 
-            if (!avaialableRecipes.IsNullOrEmpty())
+            bool learned = false;
+            string vendorRecipeSeed = GetVendorRecipeSeed(Vendor) + "-" + nameof(LearnSkillsRecipes);
+
+            Debug.Entry(3,
+                $"Spinning up skill-based data disks for {Vendor?.DebugName ?? NULL} (" +
+                $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0, Toggle: doDebug);
+
+            int amount;
+            string tinkeringSkill = nameof(Tinkering_ReverseEngineer);
+            bool hasSkill = Vendor.HasSkill(tinkeringSkill);
+            if (Vendor.HasSkill(tinkeringSkill))
             {
-                Debug.LoopItem(3,
-                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_Tinker1)})",
-                    $"{Vendor.HasSkill(nameof(Tinkering_Tinker1))}",
-                    Good: Vendor.HasSkill(nameof(Tinkering_Tinker1)), Indent: 1, Toggle: doDebug);
+                amount = Stat.SeededRandom(vendorRecipeSeed + "-" + tinkeringSkill, 1, 3);
 
-                Debug.LoopItem(3,
-                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_Tinker2)})",
-                    $"{Vendor.HasSkill(nameof(Tinkering_Tinker2))}",
-                    Good: Vendor.HasSkill(nameof(Tinkering_Tinker2)), Indent: 1, Toggle: doDebug);
-
-                Debug.LoopItem(3,
-                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_Tinker3)})",
-                    $"{Vendor.HasSkill(nameof(Tinkering_Tinker3))}",
-                    Good: Vendor.HasSkill(nameof(Tinkering_Tinker3)), Indent: 1, Toggle: doDebug);
-
-                Debug.LoopItem(3,
-                    $"{nameof(Vendor.HasSkill)}({nameof(Tinkering_ReverseEngineer)})",
-                    $"{Vendor.HasSkill(nameof(Tinkering_ReverseEngineer))}",
-                    Good: Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)), Indent: 1, Toggle: doDebug);
-
-                int low = 2;
-                int high = 4;
-                if (Vendor.HasSkill(nameof(Tinkering_Tinker1)))
-                {
-                    high++;
-                }
-                if (Vendor.HasSkill(nameof(Tinkering_Tinker2)))
-                {
-                    low += 1;
-                    high += 2;
-                }
-                if (Vendor.HasSkill(nameof(Tinkering_Tinker3)))
-                {
-                    low += 1;
-                    high += 3;
-                }
-                if (Vendor.HasSkill(nameof(Tinkering_ReverseEngineer)))
-                {
-                    low = (int)Math.Floor(low * 1.5);
-                    high *= 2;
-                }
-                high = Math.Min(high, avaialableRecipes.Count);
-                low = Math.Min(low, high);
-                int numberToKnow = Stat.Random(low, high);
-
-                Debug.LoopItem(3,
-                    $"{nameof(low)}: {low}, " +
-                    $"{nameof(high)}: {high}, " +
-                    $"{nameof(numberToKnow)}: {numberToKnow}",
+                Debug.CheckYeh(3, 
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + amount,
                     Indent: 1, Toggle: doDebug);
 
-                string vendorRecipeSeed = $"{The.Game.GetWorldSeed()}-{Vendor.ID}";
-                Debug.Entry(3,
-                    $"Spinning up skill-based data disks for {Vendor?.DebugName ?? NULL} (" +
-                    $"{nameof(vendorRecipeSeed)}: {vendorRecipeSeed})...", Indent: 0, Toggle: doDebug);
-                Raffle<TinkerData> recipeDeck = new(vendorRecipeSeed, avaialableRecipes);
-                Debug.Entry(3, $"Drawing disks from deck...", Indent: 0, Toggle: doDebug);
-                foreach (TinkerData recipeToKnow in recipeDeck.DrawUptoN(numberToKnow))
-                {
-                    learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
-                }
+                IEnumerable<TinkerData> learnableRecipes =
+                    from datum in TinkerData.TinkerRecipes
+                    where IsRecipeLearnable(Vendor, datum, KnownRecipes)
+                    select datum;
+                Raffle<TinkerData> recipeDeck = new(GetVendorRecipeSeed(Vendor), learnableRecipes.ToList());
+                learned = LearnRandomRecipes(Vendor, recipeDeck, amount, KnownRecipes) || learned;
+            }
+            else
+            {
+                Debug.CheckNah(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + 0,
+                    Indent: 1, Toggle: doDebug);
+            }
+            tinkeringSkill = nameof(Tinkering_Tinker3);
+            hasSkill = Vendor.HasSkill(tinkeringSkill);
+            if (Vendor.HasSkill(tinkeringSkill))
+            {
+                amount = Stat.SeededRandom(vendorRecipeSeed + "-" + tinkeringSkill, 0, 2);
+
+                Debug.CheckYeh(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + amount,
+                    Indent: 1, Toggle: doDebug);
+
+                learned = LearnTinkerXSkillRecipes(Vendor, tinkeringSkill, amount, KnownRecipes, vendorRecipeSeed) || learned;
+            }
+            else
+            {
+                Debug.CheckNah(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + 0,
+                    Indent: 1, Toggle: doDebug);
+            }
+            tinkeringSkill = nameof(Tinkering_Tinker2);
+            hasSkill = Vendor.HasSkill(tinkeringSkill);
+            if (Vendor.HasSkill(tinkeringSkill))
+            {
+                amount = Stat.SeededRandom(vendorRecipeSeed + "-" + tinkeringSkill, 1, 3);
+
+                Debug.CheckYeh(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + amount,
+                    Indent: 1, Toggle: doDebug);
+
+                learned = LearnTinkerXSkillRecipes(Vendor, tinkeringSkill, amount, KnownRecipes, vendorRecipeSeed) || learned;
+            }
+            else
+            {
+                Debug.CheckNah(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + 0,
+                    Indent: 1, Toggle: doDebug);
+            }
+            tinkeringSkill = nameof(Tinkering_Tinker1);
+            hasSkill = Vendor.HasSkill(tinkeringSkill);
+            if (Vendor.HasSkill(tinkeringSkill))
+            {
+                amount = Stat.SeededRandom(vendorRecipeSeed + "-" + tinkeringSkill, 2, 4);
+
+                Debug.CheckYeh(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + amount,
+                    Indent: 1, Toggle: doDebug);
+
+                learned = LearnTinkerXSkillRecipes(Vendor, tinkeringSkill, amount, KnownRecipes, vendorRecipeSeed) || learned;
+            }
+            else
+            {
+                Debug.CheckNah(3,
+                    nameof(Vendor.HasSkill) + "(" + tinkeringSkill + "): " + hasSkill.ToString() + ", " +
+                    nameof(amount) + " to learn: " + 0,
+                    Indent: 1, Toggle: doDebug);
             }
             return learned;
         }
@@ -2039,7 +2243,7 @@ namespace XRL.World.Parts
 
                 LearnGiganticRecipe(E.Object, KnownRecipes);
 
-                LearnSkillRecipes(E.Object, KnownRecipes);
+                LearnSkillsRecipes(E.Object, KnownRecipes);
 
                 KnowImplantedRecipes(E.Object, InstalledRecipes);
             }
@@ -2055,7 +2259,7 @@ namespace XRL.World.Parts
 
                 LearnGiganticRecipe(E.Object, KnownRecipes);
 
-                LearnSkillRecipes(E.Object, KnownRecipes);
+                LearnSkillsRecipes(E.Object, KnownRecipes);
 
                 KnowImplantedRecipes(E.Object, InstalledRecipes);
             }
