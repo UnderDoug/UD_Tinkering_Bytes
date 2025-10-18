@@ -371,26 +371,30 @@ namespace XRL.World.Parts
                 Raffle<char> tinkeringSkillBitBag = GetBitRaffle(Weight: 0);
                 if (hasDisassemble)
                 {
-                    FillBitRaffle(ref disassembleBitBag, Weight: 64, TierCap: 0);
-                    FillBitRaffle(ref disassembleBitBag, Weight: 32, TierCap: 1);
-                    FillBitRaffle(ref disassembleBitBag, Weight: 16, TierCap: 2);
-                    FillBitRaffle(ref disassembleBitBag, Weight: 4, TierCap: 3);
-                    if (reverseEngineerBitBag.ActiveContains(bestBit))
+                    disassembleBitBag
+                        .FillBitRaffle(Weight: 64, TierCap: 0)
+                        .FillBitRaffle(Weight: 32, TierCap: 1)
+                        .FillBitRaffle(Weight: 16, TierCap: 2)
+                        .FillBitRaffle(Weight: 4, TierCap: 3);
+
+                    if (disassembleBitBag.ActiveContains(bestBit))
                     {
-                        reverseEngineerBitBag[bestBit] -= 2;
+                        disassembleBitBag[bestBit] -= 2;
                     }
                 }
                 if (hasScavenger)
                 {
-                    FillBitRaffle(ref scavengerBitBag, Weight: 64, TierCap: 0);
-                    FillBitRaffle(ref scavengerBitBag, Weight: 16, TierCap: 1);
+                    scavengerBitBag
+                        .FillBitRaffle(Weight: 64, TierCap: 0)
+                        .FillBitRaffle(Weight: 16, TierCap: 1);
                 }
                 if (hasReverseEngineer)
                 {
-                    FillBitRaffle(ref reverseEngineerBitBag, Weight: 16, TierCap: 0);
-                    FillBitRaffle(ref reverseEngineerBitBag, Weight: 32, TierCap: 1);
-                    FillBitRaffle(ref reverseEngineerBitBag, Weight: 16, TierCap: 2);
-                    FillBitRaffle(ref reverseEngineerBitBag, Weight: 8, TierCap: 3);
+                    reverseEngineerBitBag
+                        .FillBitRaffle(Weight: 16, TierCap: 0)
+                        .FillBitRaffle(Weight: 32, TierCap: 1)
+                        .FillBitRaffle(Weight: 16, TierCap: 2)
+                        .FillBitRaffle(Weight: 8, TierCap: 3);
                     if (reverseEngineerBitBag.ActiveContains(bestBit))
                     {
                         reverseEngineerBitBag[bestBit] -= 4;
@@ -401,7 +405,7 @@ namespace XRL.World.Parts
                 int tinkerSkillHigh = 8;
                 for (int i = tinkeringSkill; i >= 0; i--)
                 {
-                    FillBitRaffle(ref tinkeringSkillBitBag, Weight: tinkeringSkillWeight, TierCap: i);
+                    tinkeringSkillBitBag.FillBitRaffle(Weight: tinkeringSkillWeight, TierCap: i);
                     tinkeringSkillWeight *= 2;
                     tinkerSKillLow *= 2;
                     tinkerSkillHigh *= 2;
@@ -3192,10 +3196,12 @@ namespace XRL.World.Parts
                 AllRandomBitsDebug();
             }
             string flags = Flags.ToLower();
-            AllRandomBitsDebug(flags.Contains("-r"), flags.Contains("-l"));
+            AllRandomBitsDebug(flags.Contains("-r"), flags.Contains("-l"), flags.Contains("-s"));
         }
-        public static void AllRandomBitsDebug(bool OnlyRelevant = false, bool OnlyLogical = false)
+        public static void AllRandomBitsDebug(bool OnlyRelevant = false, bool OnlyLogical = false, bool SampleMode = false)
         {
+            bool drawBitsFromRaffle = DrawBitsFromRaffle;
+            DrawBitsFromRaffle = !SampleMode;
             GameObject sampleBep = GameObject.CreateSample("Bep");
             List<PowerEntry> allTinkeringPowers = SkillFactory.Factory.SkillByClass[nameof(Skill.Tinkering)]?.PowerList;
             if (OnlyRelevant)
@@ -3254,7 +3260,8 @@ namespace XRL.World.Parts
             int benchmarkRerolls = 10000;
 
             int? askRerolls = Popup.AskNumber(
-                Message: "How many rerolls do you want per set of skills?\n\n" +
+                Message: "Mode: " + (SampleMode ? nameof(Raffle<char>.SampleUptoNCosmetic) : nameof(Raffle<char>.DrawUptoNCosmetic)) + "\n\n" +
+                "How many rerolls do you want per set of skills?\n\n" +
                 "There are " + tinkeringSkillSets.Count.ToString("N0") + " combinations that this will be multiplied by.\n\n" +
                 "Default = {{W|" + defaultRerolls.ToString("N0") + "}} | " +
                 "Max = {{c|" + maxRerolls.ToString("N0") + "}} | " +
@@ -3358,12 +3365,13 @@ namespace XRL.World.Parts
             }
             finally
             {
+                DrawBitsFromRaffle = drawBitsFromRaffle;
                 RemoveAllTinkeringPowers(sampleBep);
                 sampleBep.Obliterate();
                 if (actuallyOutputLines > 0)
                 {
-                    var baseFileName = "UD_Tinkering_Bytes.RandomBitDebug" + (OnlyRelevant ? ".r" : "") + (OnlyLogical ? ".l" : "");
-                    var fileName = string.Format("{0}.{1:yyyyMMdd.HHmmss}.csv", "UD_Tinkering_Bytes.RandomBitDebug", DateTime.Now);
+                    var baseFileName = "UD_TB.RandomBitDebug" + (OnlyRelevant ? ".R" : "") + (OnlyLogical ? ".L" : "") + (SampleMode ? ".S" : ".D");
+                    var fileName = string.Format("{0}.{1:yyyyMMdd.HHmmss}.x{2:00000}.csv", baseFileName, DateTime.Now, bitLockerRerolls);
                     var fullFilePath = DataManager.SavePath(fileName);
                     string outputFileLocation = "";
                     if (new StreamWriter(fullFilePath) is StreamWriter writer)
@@ -3377,6 +3385,7 @@ namespace XRL.World.Parts
                     {
                         outputFileLocation = "Player.log";
                     }
+                    UnityEngine.Debug.LogError(fullFilePath);
                     UnityEngine.Debug.LogError(finalDebugOutput);
                     Popup.Show("Finished compiling " + actuallyOutputLines.Things("debug line") + ", go check " + outputFileLocation + " for the output.");
                 }

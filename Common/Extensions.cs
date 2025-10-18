@@ -62,6 +62,12 @@ namespace UD_Tinkering_Bytes
             return multipleItems ? "them" : Object.them;
         }
 
+        public static Raffle<char> FillBitRaffle(this Raffle<char> BitRaffle, int Weight, int? Tier = null, int? TierCap = null)
+        {
+            UD_VendorTinkering.FillBitRaffle(ref BitRaffle, Weight, Tier, TierCap);
+            return BitRaffle;
+        }
+
         public static BitLocker SortBits(this BitLocker BitLocker)
         {
             if (BitLocker == null)
