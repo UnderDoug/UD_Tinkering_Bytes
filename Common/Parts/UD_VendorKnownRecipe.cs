@@ -57,12 +57,16 @@ namespace XRL.World.Parts
         {
             if (EnableKnownRecipeCategoryMirroring)
             {
+                GameObject sampleObject = null;
                 if (KnownRecipe.Type == "Build"
-                    && GameObject.CreateSample(KnownRecipe.Blueprint) is GameObject sampleObject
-                    && ParentObject.TryGetPart(out Physics recipePhysics)
-                    && sampleObject.TryGetPart(out Physics samplePhysics))
+                    && ParentObject.TryGetPart(out Physics recipePhysics))
                 {
-                    recipePhysics.Category = samplePhysics?.Category ?? "Able To Tinker";
+                    sampleObject = TinkerInvoice.CreateTinkerSample(KnownRecipe.Blueprint);
+                    if (sampleObject.TryGetPart(out Physics samplePhysics)
+                        && samplePhysics?.Category is string sampleCategory)
+                    {
+                        recipePhysics.Category = sampleCategory;
+                    }
                 }
                 else
                 if (KnownRecipe.Type == "Mod"
@@ -70,6 +74,7 @@ namespace XRL.World.Parts
                 {
                     recipePhysics.Category = "Data Disks";
                 }
+                TinkerInvoice.ScrapTinkerSample(ref sampleObject);
             }
             return Data = KnownRecipe;
         }
@@ -239,7 +244,7 @@ namespace XRL.World.Parts
                     E.AddAction(
                         Name: "Mod Recipe",
                         Display: "mod an item with tinkering",
-                        Command: UD_VendorTinkering.COMMAND_MOD,
+                        Command: COMMAND_MOD,
                         PreferToHighlight: "tinkering",
                         Key: 'T',
                         Priority: -4,
@@ -248,14 +253,14 @@ namespace XRL.World.Parts
                 }
                 else
                 if (Data?.Type == "Build" 
-                    && GameObject.CreateSample(Data.Blueprint) is GameObject sampleObject)
+                    && TinkerInvoice.CreateTinkerSample(Data.Blueprint) is GameObject sampleObject)
                 {
                     if (sampleObject.Understood() || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
                     {
                         E.AddAction(
                             Name: "Build Recipe",
                             Display: "tinker item",
-                            Command: UD_VendorTinkering.COMMAND_BUILD,
+                            Command: COMMAND_BUILD,
                             PreferToHighlight: "tinker",
                             Key: 'T',
                             Priority: -4,
@@ -273,17 +278,13 @@ namespace XRL.World.Parts
                             ClearAndSetUpTradeUI: true,
                             FireOnItem: true);
                     }
-                    if (GameObject.Validate(ref sampleObject))
-                    {
-                        sampleObject.Obliterate();
-                    }
+                    TinkerInvoice.ScrapTinkerSample(ref sampleObject);
                 }
             }
             return base.HandleEvent(E);
         }
         public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
-            Debug.Entry(4, GetType().Name, 0, true);
             if (E.Command == COMMAND_IDENTIFY_BY_RECIPE
                 && E.Item is GameObject knownRecipeObject
                 && E.Vendor is GameObject vendor
@@ -339,9 +340,12 @@ namespace XRL.World.Parts
                                 player.UseDrams(dramsCost);
                                 vendor.GiveDrams(dramsCost);
 
+                                // this is necessary until lang hits main, =object.a= respects examiner obfuscation
+                                string anIdentifiedItem = Grammar.A(sampleItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
+
                                 string identifiedMsg =
                                     ("=subject.Name= =verb:identify:afterpronoun= this tinker recipe " +
-                                    "as =object.a= =object.refname=.")
+                                    "as " + anIdentifiedItem + ".")
                                         .StartReplace()
                                         .AddObject(vendor)
                                         .AddObject(sampleItem)

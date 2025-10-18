@@ -331,23 +331,25 @@ namespace XRL.World.Parts
                 fromEvent, 
                 Indent: indent + 1, Toggle: doDebug);
 
-            if (Tinker.TryGetPart(out BitLocker bitLocker) && ClearFirst)
+
+            BitLocker bitLocker = Tinker.RequirePart<BitLocker>().SortBits();
+            if (ClearFirst)
             {
-                Tinker.RemovePart(bitLocker);
+                Dictionary<char, int> bitStorage = new(bitLocker.BitStorage);
+                bitLocker.UseBits(bitStorage);
+            }
+            else
+            {
+                bitLocker.SortBits();
             }
 
-            bitLocker = Tinker.RequirePart<BitLocker>().SortBits();
-            List<char> bitList = BitType.BitOrder;
-            Dictionary<char, (int low, int high)> bitRanges = new();
-
-            Debug.Entry(4, $"Finding {nameof(bitRanges)} of scrap to disassemble...", Indent: indent + 2, Toggle: doDebug);
-            if (!bitList.IsNullOrEmpty())
+            Debug.Entry(4, $"Finding scrap to disassemble...", Indent: indent + 2, Toggle: doDebug);
+            if (!BitType.BitOrder.IsNullOrEmpty())
             {
-                Debug.CheckYeh(4, $"{nameof(bitList)} not null or empty", Indent: indent + 3, Toggle: doDebug);
-
                 bool hasDisassemble = Tinker.HasSkill(nameof(Tinkering_Disassemble));
-                bool hasScavenger = hasDisassemble && Tinker.HasSkill(nameof(Tinkering_Scavenger));
+                bool hasScavenger = Tinker.HasSkill(nameof(Tinkering_Scavenger));
                 bool hasReverseEngineer = hasDisassemble && Tinker.HasSkill(nameof(Tinkering_ReverseEngineer));
+                bool hasRepair = Tinker.HasSkill(nameof(Tinkering_Repair));
                 int tinkeringSkill = 0;
 
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
@@ -364,10 +366,12 @@ namespace XRL.World.Parts
                 }
 
                 char bestBit = BitType.BitOrder[^1];
+                char rechargeBit = BitType.BitOrder[0];
 
                 Raffle<char> disassembleBitBag = GetBitRaffle(Weight: 0);
                 Raffle<char> scavengerBitBag = GetBitRaffle(Weight: 0);
                 Raffle<char> reverseEngineerBitBag = GetBitRaffle(Weight: 0);
+                Raffle<char> repairBitBag = GetBitRaffle(Weight: 0);
                 Raffle<char> tinkeringSkillBitBag = GetBitRaffle(Weight: 0);
                 if (hasDisassemble)
                 {
@@ -400,19 +404,38 @@ namespace XRL.World.Parts
                         reverseEngineerBitBag[bestBit] -= 4;
                     }
                 }
+                if (hasRepair)
+                {
+                    repairBitBag
+                        .FillBitRaffle(Weight: 16, TierCap: 0)
+                        .FillBitRaffle(Weight: 32, TierCap: 1)
+                        .FillBitRaffle(Weight: 16, TierCap: 2)
+                        .FillBitRaffle(Weight: 8, TierCap: 3);
+                    if (repairBitBag.ActiveContains(bestBit))
+                    {
+                        repairBitBag[bestBit] -= 4;
+                    }
+                }
                 int tinkeringSkillWeight = 4;
-                int tinkerSKillLow = 4;
-                int tinkerSkillHigh = 8;
+                int tinkerSKillLow = 8;
+                int tinkerSkillHigh = 16;
                 for (int i = tinkeringSkill; i >= 0; i--)
                 {
                     tinkeringSkillBitBag.FillBitRaffle(Weight: tinkeringSkillWeight, TierCap: i);
                     tinkeringSkillWeight *= 2;
-                    tinkerSKillLow *= 2;
-                    tinkerSkillHigh *= 2;
+                    if (i > (tinkeringSkill / 2))
+                    {
+                        tinkerSKillLow *= 2;
+                        tinkerSkillHigh *= 2;
+                    }
                 }
                 if (tinkeringSkillBitBag.ActiveContains(bestBit))
                 {
                     tinkeringSkillBitBag[bestBit] -= 2;
+                }
+                if (tinkeringSkillBitBag.ActiveContains(rechargeBit))
+                {
+                    tinkeringSkillBitBag[rechargeBit] *= 2;
                 }
 
                 string vomitSource = nameof(UD_VendorTinkering) + "." + nameof(GiveRandomBits);
@@ -431,6 +454,9 @@ namespace XRL.World.Parts
                     reverseEngineerBitBag.VomitBits(4, vomitSource, nameof(reverseEngineerBitBag), ShowChance: true,
                         Indent: indent + 3, Toggle: doDebug);
 
+                    repairBitBag.VomitBits(4, vomitSource, nameof(repairBitBag), ShowChance: true,
+                        Indent: indent + 3, Toggle: doDebug);
+
                     tinkeringSkillBitBag.VomitBits(4, vomitSource, nameof(tinkeringSkillBitBag), ShowChance: true,
                         Indent: indent + 3, Toggle: doDebug);
                 }
@@ -440,32 +466,19 @@ namespace XRL.World.Parts
 
                 Debug.Entry(4, $"Time to vomit Bits", elapsed.TotalSeconds.Things("second"), Indent: indent + 2, Toggle: doDebug);
 
-                int disassembleBitsToDraw = Stat.RandomCosmetic(32, 64);
-                int scavengerBitsToDraw = Stat.RandomCosmetic(32, 64);
+                int disassembleBitsToDraw = Stat.RandomCosmetic(16, 32);
+                int scavengerBitsToDraw = Stat.RandomCosmetic(16, 32);
                 int reverseEngineerBitsToDraw = Stat.RandomCosmetic(16, 32);
+                int repairBitsToDraw = Stat.RandomCosmetic(16, 32);
                 int tinkeringSkillBitsToDraw = Stat.RandomCosmetic(tinkerSKillLow, tinkerSkillHigh);
 
                 sw.Start();
 
-                string disassembleBits = null;
-                string scavengerBits = null;
-                string reverseEngineerBits = null;
-                string tinkeringSkillBits = null;
-
-                if (DrawBitsFromRaffle)
-                {
-                    disassembleBits = new(disassembleBitBag.DrawUptoNCosmetic(disassembleBitsToDraw).ToArray());
-                    scavengerBits = new(scavengerBitBag.DrawUptoNCosmetic(scavengerBitsToDraw).ToArray());
-                    reverseEngineerBits = new(reverseEngineerBitBag.DrawUptoNCosmetic(reverseEngineerBitsToDraw).ToArray());
-                    tinkeringSkillBits = new(tinkeringSkillBitBag.DrawUptoNCosmetic(tinkeringSkillBitsToDraw).ToArray());
-                }
-                else
-                {
-                    disassembleBits = new(disassembleBitBag.SampleUptoNCosmetic(disassembleBitsToDraw).ToArray());
-                    scavengerBits = new(scavengerBitBag.SampleUptoNCosmetic(scavengerBitsToDraw).ToArray());
-                    reverseEngineerBits = new(reverseEngineerBitBag.SampleUptoNCosmetic(reverseEngineerBitsToDraw).ToArray());
-                    tinkeringSkillBits = new(tinkeringSkillBitBag.SampleUptoNCosmetic(tinkeringSkillBitsToDraw).ToArray());
-                }
+                string disassembleBits = new(disassembleBitBag.DrawUptoNCosmetic(disassembleBitsToDraw).ToArray());
+                string scavengerBits = new(scavengerBitBag.DrawUptoNCosmetic(scavengerBitsToDraw).ToArray());
+                string reverseEngineerBits = new(reverseEngineerBitBag.DrawUptoNCosmetic(reverseEngineerBitsToDraw).ToArray());
+                string repairBits = new(repairBitBag.DrawUptoNCosmetic(repairBitsToDraw).ToArray());
+                string tinkeringSkillBits = new(tinkeringSkillBitBag.DrawUptoNCosmetic(tinkeringSkillBitsToDraw).ToArray());
 
                 elapsed = sw.Elapsed;
                 sw.Stop();
@@ -476,6 +489,7 @@ namespace XRL.World.Parts
                 disassembleBitBag.Clear();
                 scavengerBitBag.Clear();
                 reverseEngineerBitBag.Clear();
+                repairBitBag.Clear();
                 tinkeringSkillBitBag.Clear();
 
                 Debug.LoopItem(4,
@@ -493,6 +507,11 @@ namespace XRL.World.Parts
                     reverseEngineerBitsToDraw + "), bits: <" + reverseEngineerBits + ">",
                     Good: hasReverseEngineer, Indent: indent + 3, Toggle: doDebug);
 
+                Debug.LoopItem(4,
+                    nameof(hasRepair) + ": " + hasRepair + " (" +
+                    repairBitsToDraw + "), bits: <" + repairBits + ">",
+                    Good: hasRepair, Indent: indent + 3, Toggle: doDebug);
+
                 Debug.LoopItem(4, 
                     tinkeringSkill + "] " + nameof(tinkeringSkill) + " (" +
                     tinkerSKillLow + "-" + tinkerSkillHigh + ": " + tinkeringSkillBitsToDraw + "), bits: <" + 
@@ -504,6 +523,7 @@ namespace XRL.World.Parts
                 bitLocker.AddBits(disassembleBits);
                 bitLocker.AddBits(scavengerBits);
                 bitLocker.AddBits(reverseEngineerBits);
+                bitLocker.AddBits(repairBits);
                 bitLocker.AddBits(tinkeringSkillBits);
 
                 if (bitLocker.BitStorage.Any(kv => kv.Value > 0))
@@ -608,9 +628,13 @@ namespace XRL.World.Parts
 
             KnownRecipes ??= new();
             bool learned = false;
-            Debug.Entry(3, $"Drawing disks from deck...", Indent: indent + 1, Toggle: doDebug);
             foreach (TinkerData recipeToKnow in RecipeDeck.DrawUptoN(Amount))
             {
+                string recipeName = recipeToKnow?.PartName ?? recipeToKnow?.Blueprint ?? "something";
+                string tinkerSkill = DataDisk.GetRequiredSkillHumanReadable(recipeToKnow.Tier).PadRight(10, ' ');
+                Debug.LoopItem(3,
+                    tinkerSkill + "] Learning " + recipeName,
+                    Indent: indent + 1, Toggle: doDebug);
                 learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
             }
 
@@ -634,7 +658,8 @@ namespace XRL.World.Parts
             KnownRecipes ??= new();
 
             Raffle<TinkerData> recipeDeck = 
-                new(from datum in TinkerData.TinkerRecipes
+                new(RecipeSeed,
+                    from datum in TinkerData.TinkerRecipes
                     where DataDisk.GetRequiredSkill(datum.Tier) == Tinkering_TinkerX
                     where !KnownRecipes.Contains(datum)
                     select datum);
@@ -2803,9 +2828,12 @@ namespace XRL.World.Parts
                                         player.UseDrams(dramsCost);
                                         vendor.GiveDrams(dramsCost);
 
+                                        // this is necessary until lang hits main, =object.a= respects examiner obfuscation
+                                        string anIdentifiedItem = Grammar.A(sampleItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
+
                                         string identifiedMsg =
                                             ("=subject.Name= =verb:identify:afterpronoun= the item on the data disk " +
-                                            "to be =object.a= =object.refname=.")
+                                            "as " + anIdentifiedItem + ".")
                                                 .StartReplace()
                                                 .AddObject(vendor)
                                                 .AddObject(sampleItem)
@@ -2898,8 +2926,12 @@ namespace XRL.World.Parts
                                     player.UseDrams(dramsCost);
                                     vendor.GiveDrams(dramsCost);
 
-                                    string identifiedMsg = ("=subject.Name= =verb:identify:afterpronoun= " +
-                                        "=object.name= to be =object.a= =object.refname=.")
+                                    // this is necessary until lang hits main, =object.a= respects examiner obfuscation
+                                    string anIdentifiedItem = Grammar.A(unknownItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
+
+                                    string identifiedMsg = 
+                                        ("=subject.Name= =verb:identify:afterpronoun= =object.name= " +
+                                        "as " + anIdentifiedItem + ".")
                                         .StartReplace()
                                         .AddObject(vendor)
                                         .AddObject(unknownItem)
@@ -3196,21 +3228,21 @@ namespace XRL.World.Parts
                 AllRandomBitsDebug();
             }
             string flags = Flags.ToLower();
-            AllRandomBitsDebug(flags.Contains("-r"), flags.Contains("-l"), flags.Contains("-s"));
+            AllRandomBitsDebug(flags.Contains("-r"), flags.Contains("-l"));
         }
-        public static void AllRandomBitsDebug(bool OnlyRelevant = false, bool OnlyLogical = false, bool SampleMode = false)
+
+        public static void AllRandomBitsDebug(bool OnlyRelevant = false, bool OnlyLogical = false)
         {
-            bool drawBitsFromRaffle = DrawBitsFromRaffle;
-            DrawBitsFromRaffle = !SampleMode;
             GameObject sampleBep = GameObject.CreateSample("Bep");
-            List<PowerEntry> allTinkeringPowers = SkillFactory.Factory.SkillByClass[nameof(Skill.Tinkering)]?.PowerList;
+            List<PowerEntry> tinkeringPowers = SkillFactory.Factory.SkillByClass[nameof(Skill.Tinkering)]?.PowerList;
             if (OnlyRelevant)
             {
-                allTinkeringPowers = new()
+                tinkeringPowers = new()
                 {
                     SkillFactory.Factory.PowersByClass[nameof(Tinkering_Disassemble)],
                     SkillFactory.Factory.PowersByClass[nameof(Tinkering_Scavenger)],
                     SkillFactory.Factory.PowersByClass[nameof(Tinkering_ReverseEngineer)],
+                    SkillFactory.Factory.PowersByClass[nameof(Tinkering_Repair)],
                     SkillFactory.Factory.PowersByClass[nameof(Tinkering_Tinker1)],
                     SkillFactory.Factory.PowersByClass[nameof(Tinkering_Tinker2)],
                     SkillFactory.Factory.PowersByClass[nameof(Tinkering_Tinker3)],
@@ -3219,7 +3251,7 @@ namespace XRL.World.Parts
             string finalDebugOutput = null;
             List<List<PowerEntry>> tinkeringSkillSets = new();
 
-            int numSkillSets = (int)Math.Pow(2.0, allTinkeringPowers.Count) -1;
+            int numSkillSets = (int)Math.Pow(2.0, tinkeringPowers.Count) -1;
             int binaryPermutationsPadding = Convert.ToString(numSkillSets, 2).Length;
             for (int i = 0; i < numSkillSets; i++)
             {
@@ -3233,10 +3265,10 @@ namespace XRL.World.Parts
                         continue;
                     }
                     if (!OnlyLogical
-                        || allTinkeringPowers[j].Requires.IsNullOrEmpty()
-                        || tinkeringSkillSet.Any(p => p.Class == allTinkeringPowers[j].Requires))
+                        || tinkeringPowers[j].Requires.IsNullOrEmpty()
+                        || tinkeringSkillSet.Any(p => p.Class == tinkeringPowers[j].Requires))
                     {
-                        tinkeringSkillSet.Add(allTinkeringPowers[j]);
+                        tinkeringSkillSet.Add(tinkeringPowers[j]);
                     }
                 }
                 if (!tinkeringSkillSet.IsNullOrEmpty()
@@ -3260,8 +3292,7 @@ namespace XRL.World.Parts
             int benchmarkRerolls = 10000;
 
             int? askRerolls = Popup.AskNumber(
-                Message: "Mode: " + (SampleMode ? nameof(Raffle<char>.SampleUptoNCosmetic) : nameof(Raffle<char>.DrawUptoNCosmetic)) + "\n\n" +
-                "How many rerolls do you want per set of skills?\n\n" +
+                Message: "How many rerolls do you want per set of skills?\n\n" +
                 "There are " + tinkeringSkillSets.Count.ToString("N0") + " combinations that this will be multiplied by.\n\n" +
                 "Default = {{W|" + defaultRerolls.ToString("N0") + "}} | " +
                 "Max = {{c|" + maxRerolls.ToString("N0") + "}} | " +
@@ -3365,12 +3396,11 @@ namespace XRL.World.Parts
             }
             finally
             {
-                DrawBitsFromRaffle = drawBitsFromRaffle;
                 RemoveAllTinkeringPowers(sampleBep);
                 sampleBep.Obliterate();
                 if (actuallyOutputLines > 0)
                 {
-                    var baseFileName = "UD_TB.RandomBitDebug" + (OnlyRelevant ? ".R" : "") + (OnlyLogical ? ".L" : "") + (SampleMode ? ".S" : ".D");
+                    var baseFileName = "UD_TB.RandomBitDebug" + (OnlyRelevant ? ".R" : "") + (OnlyLogical ? ".L" : "");
                     var fileName = string.Format("{0}.{1:yyyyMMdd.HHmmss}.x{2:00000}.csv", baseFileName, DateTime.Now, bitLockerRerolls);
                     var fullFilePath = DataManager.SavePath(fileName);
                     string outputFileLocation = "";
@@ -3446,7 +3476,7 @@ namespace XRL.World.Parts
                 for (int i = 0; i < Math.Max(1, BitLockerRerolls); i++)
                 {
                     RerollCounter = i;
-                    bitLocker = GiveRandomBits(SampleBep, false, suppressDebug: true);
+                    GiveRandomBits(SampleBep, false, suppressDebug: true);
                     string loadingString = "";
 
                     if (Benchmark != null)
@@ -3471,10 +3501,6 @@ namespace XRL.World.Parts
                         double granularBits = Math.Round((double)bitLocker.BitStorage[bit] / Math.Max(1, BitLockerRerolls), 2);
                         granularBitLockerOutput.Add(granularBits);
                         bitLocker.BitStorage[bit] = (int)granularBits;
-                    }
-                    else
-                    {
-
                     }
                 }
                 string granularBitsDebugString = "";
@@ -3505,7 +3531,7 @@ namespace XRL.World.Parts
                 if (Benchmark != null)
                 {
                     Benchmark.Stop();
-                    var benchmark = TimeSpan.FromMilliseconds(Benchmark.ElapsedMilliseconds);
+                    var benchmark = Benchmark.Elapsed;
                     double millisecs = Math.Round(benchmark.TotalMilliseconds, 2);
                     double seconds = Math.Round(benchmark.TotalSeconds, 2);
 
