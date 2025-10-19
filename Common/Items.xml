@@ -23,7 +23,7 @@
     <part Name="Description" Short="&quot;Things&quot; are as leaves on a summer breeze; knowledge lives on in the very being of all who think." />
     <builder Name="RandomTile" Tiles="Items/sw_unfurled_scroll1.bmp,Items/sw_unfurled_scroll2.bmp" />
     <property Name="NeverStack" Value="No stacks for me please." />
-    <part Name="UD_VendorKnownRecipe" />
+    <part Name="UD_VendorKnownRecipe" ImplantedTile="Items/sw_schemasoft.bmp" />
   </object>
 
   <!-- Tile="Items/sw_credit_wedge.bmp" -->
@@ -40,7 +40,7 @@
     <part Name="Physics" Weight="1" Category="Bytes" />
     <part Name="Description" Short="A neatly stacked and wrapped set of exactly *8 bits*." />
     <part Name="TinkerItem" CanBuild="true" BuildTier="0" />
-    <part Name="UD_TinkeringByte" Bit="R" />
+    <part Name="UD_TinkeringByte" />
     <tag Name="TinkerCategory" Value="bytes" />
     <tag Name="Tier" Value="0" />
     <tag Name="VendorTinker_ExpertiseValueOverride" Value="0" />
@@ -56,95 +56,95 @@
   </object>
 
   <object Name="A Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{R|A}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{R|A}}-{{y|byte}}"
           TileColor="&amp;R" ColorString="&amp;R"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="RRRRRRRR" />
-    <part Name="UD_TinkeringByte" Bit="R" />
+    <part Name="UD_TinkeringByte" />
   </object>
   <object Name="B Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{G|B}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{G|B}}-{{y|byte}}"
           TileColor="&amp;G" ColorString="&amp;G"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="GGGGGGGG" />
-    <part Name="UD_TinkeringByte" Bit="G" />
+    <part Name="UD_TinkeringByte" />
   </object>
   <object Name="C Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{B|C}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{B|C}}-{{y|byte}}"
           TileColor="&amp;B" ColorString="&amp;B"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="BBBBBBBB" />
-    <part Name="UD_TinkeringByte" Bit="B" />
+    <part Name="UD_TinkeringByte" />
   </object>
   <object Name="D Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{C|D}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{C|D}}-{{y|byte}}"
           TileColor="&amp;C" ColorString="&amp;C"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="CCCCCCCC" />
-    <part Name="UD_TinkeringByte" Bit="C" />
+    <part Name="UD_TinkeringByte" />
   </object>
   <object Name="1 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{r|1}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{r|1}}-{{y|byte}}"
           TileColor="&amp;r" ColorString="&amp;r"
           Tile="1_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="11111111" />
-    <part Name="UD_TinkeringByte" Bit="r" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="120" />
   </object>
   <object Name="2 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{g|2}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{g|2}}-{{y|byte}}"
           TileColor="&amp;g" ColorString="&amp;g"
           Tile="2_byte_cleo.png" />
     <part Name="TinkerItem" Bits="22222222" />
-    <part Name="UD_TinkeringByte" Bit="g" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="200" />
   </object>
   <object Name="3 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{b|3}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{b|3}}-{{y|byte}}"
           TileColor="&amp;b" ColorString="&amp;b"
           Tile="3_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="33333333" />
-    <part Name="UD_TinkeringByte" Bit="b" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="280" />
   </object>
   <object Name="4 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{c|4}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{c|4}}-{{y|byte}}"
           TileColor="&amp;c" ColorString="&amp;c"
           Tile="4_byte_cleo.png" />
     <part Name="TinkerItem" Bits="44444444" />
-    <part Name="UD_TinkeringByte" Bit="c" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="360" />
   </object>
   <object Name="5 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{K|5}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{K|5}}-{{y|byte}}"
           TileColor="&amp;K" ColorString="&amp;K"
           Tile="5_byte_cleo.png" />
     <part Name="TinkerItem" Bits="55555555" />
-    <part Name="UD_TinkeringByte" Bit="K" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="440" />
   </object>
   <object Name="6 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{W|6}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{W|6}}-{{y|byte}}"
           TileColor="&amp;W" ColorString="&amp;W"
           Tile="6_byte_cleo.png" />
     <part Name="TinkerItem" Bits="66666666" />
-    <part Name="UD_TinkeringByte" Bit="W" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="520" />
   </object>
   <object Name="7 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{Y|7}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{Y|7}}-{{y|byte}}"
           TileColor="&amp;Y" ColorString="&amp;Y"
           Tile="7_byte_cleo.png" />
     <part Name="TinkerItem" Bits="77777777" />
-    <part Name="UD_TinkeringByte" Bit="Y" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="600" />
   </object>
   <object Name="8 Byte" Inherits="BaseByte">
-    <part Name="Render" DisplayName="{{M|8}} {{y|byte}}"
+    <part Name="Render" DisplayName="{{M|8}}-{{y|byte}}"
           TileColor="&amp;M" ColorString="&amp;M"
           Tile="8_byte_cleo.png" />
     <part Name="TinkerItem" Bits="88888888" />
-    <part Name="UD_TinkeringByte" Bit="M" />
+    <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="680" />
   </object>
 
@@ -167,7 +167,7 @@
   <object Name="0 Byte Punnet" Inherits="BaseBytePunnet">
     <part Name="Render" DisplayName="{{R-G-B-C sequence|assorted}} {{y|punnet of bytes}}"
           TileColor="&amp;w" ColorString="&amp;w" />
-    <part Name="Description" Short="A tidily packed punnet of exactly 32 assorted bytes, equal to 256 assorted bits." />
+    <part Name="Description" Short="A tidily packed punnet of exactly 32 {{R-G-B-C sequence|assorted}} bytes, equal to 256 {{R-G-B-C sequence|assorted}} bits." />
     <part Name="Commerce" Value="300" />
     <part Name="UD_BytePunnet" Bytes="0" />
   </object>

@@ -21,6 +21,7 @@ using UD_Modding_Toolbox;
 
 using static UD_Modding_Toolbox.Const;
 using static UD_Tinkering_Bytes.Utils;
+using XRL.Liquids;
 
 namespace UD_Tinkering_Bytes
 {
@@ -713,7 +714,21 @@ namespace UD_Tinkering_Bytes
                     }
                     else
                     {
-                        string waterRitualLiquid = LiquidVolume.GetLiquid(Vendor.GetWaterRitualLiquid(player)).GetName();
+                        string liquidName = LiquidWater.ID;
+                        try
+                        {
+                            if (Vendor?.GetWaterRitualLiquid(player) is string retreivedValue)
+                            {
+                                liquidName = retreivedValue;
+                            }
+                        }
+                        catch (Exception x)
+                        {
+                            MetricsManager.LogModError(ThisMod, 
+                                "Failed " + nameof(GameObject.GetWaterRitualLiquid) + " for " + 
+                                Vendor?.DebugName ?? ("null " + nameof(Vendor)));
+                        }
+                        string waterRitualLiquid = LiquidVolume.GetLiquid(liquidName)?.GetName() ?? "";
                         SB.Append(" for my ").Append(waterRitualLiquid).Append(" ").Append(player.siblingTerm).Append("!");
                     }
                 }
@@ -1200,6 +1215,8 @@ namespace UD_Tinkering_Bytes
             {
                 return gameObjectBlueprint.InheritsFrom("Item")
                     && !gameObjectBlueprint.InheritsFrom("Corpse")
+                    && !gameObjectBlueprint.InheritsFrom("BaseByte")
+                    && !gameObjectBlueprint.InheritsFrom("BaseBytePunnet")
                     && !gameObjectBlueprint.InheritsFrom("Food")
                     && !gameObjectBlueprint.HasTagOrProperty("NoRepair")
                     && (!gameObjectBlueprint.HasTagOrProperty("NoEffects") || gameObjectBlueprint.HasStat("Hitpoints"))
@@ -1271,6 +1288,59 @@ namespace UD_Tinkering_Bytes
             }
 
             Popup.Show($"Stuff: Busted.");
+        }
+
+        [WishCommand(Command = "drain my stuff")]
+        public static void DrainMyStuff_WishHandler()
+        {
+            GameObject player = The.Player;
+            static bool itemThatCouldBeRecharged(GameObjectBlueprint gameObjectBlueprint)
+            {
+                return gameObjectBlueprint.InheritsFromSafe("Item")
+                    && (gameObjectBlueprint.InheritsFromSafe("Energy Cell") || (2.in10() && gameObjectBlueprint.HasPart(nameof(Capacitor))))
+                    && !gameObjectBlueprint.InheritsFromSafe("Corpse")
+                    && !gameObjectBlueprint.InheritsFromSafe("Food")
+                    && !gameObjectBlueprint.IsNatural()
+                    && !gameObjectBlueprint.HasTagOrProperty("BaseObject")
+                    && !gameObjectBlueprint.HasTagOrProperty("ExcludeFromDynamicEncounters")
+                    && gameObjectBlueprint.GetPartParameter<string>(nameof(Physics), nameof(Physics.Owner)) is null
+                    && (!gameObjectBlueprint.HasPartParameter(nameof(Physics), nameof(Physics.Takeable)) || gameObjectBlueprint.GetPartParameter<bool>(nameof(Physics), nameof(Physics.Takeable)));
+            }
+            for (int i = 0; i < 50; i++)
+            {
+                GameObject itemToDrain = GameObject.Create(EncountersAPI.GetABlueprintModel(itemThatCouldBeRecharged), Context: "Wish");
+                player.ReceiveObject(itemToDrain, Context: "Wish");
+            }
+            List<GameObject> playerItems = Event.NewGameObjectList(player.GetInventoryAndEquipment(GO => itemThatCouldBeRecharged(GO.GetBlueprint())));
+
+            if (playerItems.IsNullOrEmpty())
+            {
+                Popup.Show($"You oughtta get some stuff to drain, first.");
+                return;
+            }
+            try
+            {
+                foreach (GameObject playerItem in playerItems)
+                {
+                    GameObject playerItemFromStack = playerItem;
+                    for (int i = 0; i < playerItem.Count; i++)
+                    {
+                        if (playerItem.Count > 1)
+                        {
+                            playerItemFromStack = playerItem.SplitFromStack();
+                        }
+                        playerItemFromStack = playerItem.SplitFromStack(); 
+                        int roll = Stat.RandomCosmetic(1, 100);
+                        playerItemFromStack.UseCharge(playerItemFromStack.QueryCharge() * roll / 100);
+                    }
+                }
+            }
+            finally
+            {
+                playerItems?.Clear();
+            }
+
+            Popup.Show($"Stuff: Drained.");
         }
     }
 }

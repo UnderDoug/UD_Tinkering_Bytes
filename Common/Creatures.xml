@@ -85,20 +85,24 @@
     <skill Name="Tinkering_ReverseEngineer" />
     <skill Name="Tinkering_Tinker3" />
   </object>
-
-  <!-- Testing -->
+  
   <object Name="Une" Load="Merge">
     <skill Name="Tinkering" />
-    <!--skill Name="Tinkering_Repair" /-->
-    <!--skill Name="Tinkering_Tinker1" /-->
     <skill Name="Tinkering_Disassemble" />
-    <!--skill Name="Tinkering_DeployTurret" /-->
     <skill Name="Tinkering_LayMine" />
-    <!--skill Name="Tinkering_Tinker2" /-->
     <skill Name="Tinkering_Scavenger" />
-    <!--skill Name="Tinkering_ReverseEngineer" /-->
-    <!--skill Name="Tinkering_Tinker3" /-->
-    <!--part Name="CyberneticsHasImplants" Implants="Schemasoft4@head" /-->
+  </object>
+
+  <!-- Testing -->
+
+  <object Name="Une" Load="Merge">
+    <skill Name="Tinkering_Repair" />
+    <skill Name="Tinkering_Tinker1" />
+    <skill Name="Tinkering_DeployTurret" />
+    <skill Name="Tinkering_Tinker2" />
+    <skill Name="Tinkering_ReverseEngineer" />
+    <skill Name="Tinkering_Tinker3" />
+    <part Name="CyberneticsHasImplants" Implants="Schemasoft4@head" />
   </object>
   
 </objects>

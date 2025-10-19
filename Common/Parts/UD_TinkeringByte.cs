@@ -16,11 +16,25 @@ namespace XRL.World.Parts
 
         public static int BitsPerByte => 8;
 
-        public char Bit;
+        private char _Bit;
+        public char Bit
+        { 
+            get
+            {
+                if (_Bit != default
+                    && ParentObject is GameObject byteObject
+                    && byteObject.TryGetPart(out TinkerItem tinkerItem)
+                    && tinkerItem.Bits.Length > 0)
+                {
+                    _Bit = tinkerItem.Bits[^1];
+                }
+                return _Bit;
+            }
+        }
 
         public UD_TinkeringByte()
         {
-            Bit = 'r';
+            _Bit = default;
         }
 
         public static IEnumerable<GameObjectBlueprint> GetByteGameObjectBlueprints()
@@ -95,7 +109,10 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(AfterObjectCreatedEvent E)
         {
-            if (E.Object != null && E.Object == ParentObject && E.Object.TryGetPart(out Description description))
+            if (Bit != default 
+                && E.Object != null
+                && E.Object == ParentObject
+                && E.Object.TryGetPart(out Description description))
             {
                 string bits = "bit";
                 bool haveBits = false;
@@ -105,6 +122,7 @@ namespace XRL.World.Parts
                     bits = bitType.Description;
                     haveBits = true;
                 }
+                else
                 description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, haveBits ? bits : null));
             }
             return base.HandleEvent(E);

@@ -33,6 +33,10 @@ namespace XRL.World.Parts
 
         public bool FromImplant;
 
+        public string ImplantedTile;
+
+        protected bool ImplantedTileApplied;
+
         [NonSerialized]
         public string ObjectName;
 
@@ -40,12 +44,14 @@ namespace XRL.World.Parts
         private static StringBuilder SB = new();
 
         [NonSerialized]
-        private static BitCost Cost = new();
+        private static BitCost BitCost = new();
 
         public UD_VendorKnownRecipe()
         {
             Data = null;
             FromImplant = false;
+            ImplantedTile = null;
+            ImplantedTileApplied = false;
         }
 
         public override bool CanGenerateStacked()
@@ -55,6 +61,7 @@ namespace XRL.World.Parts
 
         public TinkerData SetData(TinkerData KnownRecipe)
         {
+            ApplyImplantedTile();
             if (EnableKnownRecipeCategoryMirroring)
             {
                 GameObject sampleObject = null;
@@ -77,6 +84,19 @@ namespace XRL.World.Parts
                 TinkerInvoice.ScrapTinkerSample(ref sampleObject);
             }
             return Data = KnownRecipe;
+        }
+
+        protected void ApplyImplantedTile()
+        {
+            if (FromImplant && !ImplantedTileApplied)
+            {
+                if (ParentObject.Render is Render render
+                    && !ImplantedTile.IsNullOrEmpty())
+                {
+                    render.Tile = ImplantedTile;
+                    ImplantedTileApplied = true;
+                }
+            }
         }
 
         public override bool AllowStaticRegistration()
@@ -137,10 +157,10 @@ namespace XRL.World.Parts
                 if (isUnderstood || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
                 {
                     SB.Append(" <");
-                    Cost.Clear();
-                    Cost.Import(TinkerItem.GetBitCostFor(Data.Blueprint));
-                    ModifyBitCostEvent.Process(ParentObject.InInventory ?? The.Player, Cost, "DataDisk");
-                    Cost.ToStringBuilder(SB);
+                    BitCost.Clear();
+                    BitCost.Import(TinkerItem.GetBitCostFor(Data.Blueprint));
+                    ModifyBitCostEvent.Process(ParentObject.InInventory ?? The.Player, BitCost, "DataDisk");
+                    BitCost.ToStringBuilder(SB);
                     SB.Append('>');
                 }
             }
@@ -156,6 +176,9 @@ namespace XRL.World.Parts
             {
                 E.AddBase(SB.ToString(), 5);
             }
+
+            ApplyImplantedTile();
+
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(GetShortDescriptionEvent E)

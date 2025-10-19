@@ -331,7 +331,6 @@ namespace XRL.World.Parts
                 fromEvent, 
                 Indent: indent + 1, Toggle: doDebug);
 
-
             BitLocker bitLocker = Tinker.RequirePart<BitLocker>().SortBits();
             if (ClearFirst)
             {
@@ -1444,7 +1443,7 @@ namespace XRL.World.Parts
             ApplicableRecipes = new();
             IsVendorOwnedRecipe = new();
             GameObject player = The.Player;
-            List<GameObject> vendorHeldRecipeObjects = Vendor?.Inventory?.GetObjectsViaEventList(
+            List<GameObject> vendorHeldKnownRecipeObjects = Vendor?.Inventory?.GetObjectsViaEventList(
                 GO => GO.TryGetPart(out UD_VendorKnownRecipe knownRecipe)
                 && knownRecipe.Data.Type == "Mod");
 
@@ -1456,7 +1455,7 @@ namespace XRL.World.Parts
                 GO => GO.TryGetPart(out DataDisk D)
                 && D.Data.Type == "Mod");
 
-            if (vendorHeldRecipeObjects.IsNullOrEmpty()
+            if (vendorHeldKnownRecipeObjects.IsNullOrEmpty()
                 && vendorHeldDataDiskObjects.IsNullOrEmpty()
                 && playerHeldDataDiskObjects.IsNullOrEmpty())
             {
@@ -1493,15 +1492,17 @@ namespace XRL.World.Parts
                             .ToString();
 
                         applicableRecipes.Add(playerHeldDataDisk.Data, shopperOwnedTag);
-                        IsVendorOwnedRecipe.Add(false);
+                        IsVendorOwnedRecipe.Add(false); 
+                        
+                        LineIcons.Add(playerHeldDataDiskObject.RenderForUI());
                     }
                 }
             }
-            if (!vendorHeldRecipeObjects.IsNullOrEmpty())
+            if (!vendorHeldKnownRecipeObjects.IsNullOrEmpty())
             {
-                foreach (GameObject vendorHeldRecipeObject in vendorHeldRecipeObjects)
+                foreach (GameObject vendorHeldKnownRecipeObject in vendorHeldKnownRecipeObjects)
                 {
-                    if (vendorHeldRecipeObject.TryGetPart(out UD_VendorKnownRecipe vendorHeldRecipePart)
+                    if (vendorHeldKnownRecipeObject.TryGetPart(out UD_VendorKnownRecipe vendorHeldRecipePart)
                         && IsModApplicableAndNotAlreadyInDictionary(
                             Vendor: Vendor,
                             ApplicableItem: ApplicableItem,
@@ -1511,6 +1512,8 @@ namespace XRL.World.Parts
                     {
                         applicableRecipes.Add(vendorHeldRecipePart.Data, "known by trader");
                         IsVendorOwnedRecipe.Add(true);
+
+                        LineIcons.Add(vendorHeldKnownRecipeObject.RenderForUI());
                     }
                 }
             }
@@ -1528,6 +1531,8 @@ namespace XRL.World.Parts
                     {
                         applicableRecipes.Add(vendorHeldDataDisk.Data, "trader inventory");
                         IsVendorOwnedRecipe.Add(true);
+
+                        LineIcons.Add(vendorHeldDataDiskObject.RenderForUI());
                     }
                 }
             }
@@ -1549,7 +1554,7 @@ namespace XRL.World.Parts
                 return false;
             }
             BitCost recipeBitCost = new();
-            GameObject sampleDiskObject = null;
+            GameObject sampleRecipeObject = null;
             foreach ((TinkerData applicableRecipe, string context) in applicableRecipes)
             {
                 recipeBitCost = new();
@@ -1571,11 +1576,11 @@ namespace XRL.World.Parts
                 LineItems.Add(lineItem);
                 ApplicableRecipes.Add(applicableRecipe);
 
-                sampleDiskObject = TinkerData.createDataDisk(applicableRecipe);
+                sampleRecipeObject = TinkerData.createDataDisk(applicableRecipe);
 
-                LineIcons.Add(sampleDiskObject.RenderForUI());
+                // LineIcons.Add(sampleRecipeObject.RenderForUI());
             }
-            TinkerInvoice.ScrapTinkerSample(ref sampleDiskObject);
+            TinkerInvoice.ScrapTinkerSample(ref sampleRecipeObject);
             return true;
         }
         public bool TryGetApplicableRecipes(
@@ -1921,18 +1926,18 @@ namespace XRL.World.Parts
                 return false;
             }
             GameObject player = The.Player;
-            bool AnyParts = false;
-            bool AnyRechargeable = false;
-            bool AnyRecharged = false;
+            bool anyParts = false;
+            bool anyRechargeable = false;
+            bool anyRecharged = false;
             foreach (var rechargablePart in Item.GetPartsDescendedFrom<IRechargeable>())
             {
-                AnyParts = true;
+                anyParts = true;
                 if (!rechargablePart.CanBeRecharged())
                 {
                     continue;
                 }
 
-                AnyRechargeable = true;
+                anyRechargeable = true;
                 int rechargeAmount = rechargablePart.GetRechargeAmount();
                 if (rechargeAmount <= 0)
                 {
@@ -1968,8 +1973,8 @@ namespace XRL.World.Parts
 
                 if (rechargeBitSupplier == null)
                 {
-                    AnyParts = false;
-                    AnyRechargeable = false;
+                    anyParts = false;
+                    anyRechargeable = false;
                     continue;
                 }
                 bool vendorSuppliesBits = rechargeBitSupplier == Vendor;
@@ -1978,11 +1983,13 @@ namespace XRL.World.Parts
 
                 int bitCount = BitLocker.GetBitCount(rechargeBitSupplier, rechargeBit);
 
+                string bitTypeBitString = BitType.GetString(bits) + " bit";
+
                 if (bitCount == 0)
                 {
                     string noBitsMsg =
-                        ("=subject.Name= =verb:don't:afterpronoun= have any " + BitType.GetString(bits) + " bits," +
-                        " which are required for recharging =object.t=.\n\n" +
+                        ("=subject.Name= =verb:don't:afterpronoun= have any " + bitTypeBitString.Pluralize() + ", " +
+                        "which are required for recharging =object.t=.\n\n" +
                         "=subject.Subjective= =verb:have:afterpronoun=:\n" +
                         bitSupplierBitLocker.GetBitsString())
                             .StartReplace()
@@ -1992,33 +1999,44 @@ namespace XRL.World.Parts
 
                     Popup.ShowFail(Message: noBitsMsg);
 
-                    AnyParts = false;
-                    AnyRechargeable = false;
+                    anyParts = false;
+                    anyRechargeable = false;
                     continue;
                 }
 
                 int availableBitsToRecharge = Math.Min(bitCount, bitsToRechargeFully);
 
-                string howManyBitsMsg =
-                    ("It would take " + bitsToRechargeFully.Things(BitType.GetString(bits) + " bit").Color("C") +
-                    " to fully recharge =item.t=. =object.Name= =verb:have:afterpronoun= " + bitCount.Color("C") + ". " +
-                    "How many =verb:do:afterpronoun= =subject.name= want to use?")
-                        .StartReplace()
-                        .AddObject(player)
-                        .AddObject(rechargeBitSupplier)
-                        .AddObject(Item, "item")
-                        .ToString();
+                string bitsToRechargeFullyString = bitsToRechargeFully.Things(bitTypeBitString).Color("C");
+
+                string takesToRechargeString = ("It would take " + bitsToRechargeFullyString + " for =vendor.Name= to fully recharge =subject.t=.")
+                    .StartReplace()
+                    .AddObject(Item)
+                    .AddObject(player)
+                    .AddObject(rechargeBitSupplier, "vendor")
+                    .ToString();
+
+                string supplierHasBitsString = ("=subject.Subjective= =verb:have:afterpronoun= " + bitCount.Color("C") + ".")
+                    .StartReplace()
+                    .AddObject(rechargeBitSupplier)
+                    .ToString();
+
+                string howManyBitsString = "How many =verb:do:afterpronoun= =subject.name= want to use?"
+                    .StartReplace()
+                    .AddObject(player)
+                    .ToString();
+
+                string howManyBitsToUseMsg = takesToRechargeString + "\n" + supplierHasBitsString + " " + howManyBitsString;
 
                 int chosenBitsToUse = Popup.AskNumber(
-                    Message: howManyBitsMsg,
+                    Message: howManyBitsToUseMsg,
                     Start: availableBitsToRecharge,
                     Max: availableBitsToRecharge)
                     .GetValueOrDefault();
 
                 if (chosenBitsToUse < 1)
                 {
-                    AnyParts = false;
-                    AnyRechargeable = false;
+                    anyParts = false;
+                    anyRechargeable = false;
                     continue;
                 }
 
@@ -2031,23 +2049,18 @@ namespace XRL.World.Parts
                 };
                 int totalDramsCost = tinkerInvoice.GetTotalCost();
                 
-                if (IsTooExpensive(
+                if (!IsTooExpensive(
                     Vendor: Vendor,
                     Shopper: player,
                     DramsCost: totalDramsCost,
                     ToDoWhat: "recharge this item.",
-                    TinkerInvoice: tinkerInvoice))
-                {
-                    AnyParts = false;
-                    AnyRechargeable = false;
-                    continue;
-                }
-                if (ConfirmTinkerService(
-                    Vendor: Vendor,
-                    Shopper: player,
-                    DramsCost: totalDramsCost,
-                    DoWhat: "recharge this item",
-                    TinkerInvoice: tinkerInvoice))
+                    TinkerInvoice: tinkerInvoice)
+                    && ConfirmTinkerService(
+                        Vendor: Vendor,
+                        Shopper: player,
+                        DramsCost: totalDramsCost,
+                        DoWhat: "recharge this item",
+                        TinkerInvoice: tinkerInvoice))
                 {
                     bitSupplierBitLocker.UseBits(bitCost);
 
@@ -2059,11 +2072,13 @@ namespace XRL.World.Parts
 
                     rechargablePart.AddCharge((chosenBitsToUse < bitsToRechargeFully) ? (chosenBitsToUse * rechargeValue) : rechargeAmount);
 
+                    bool fullyRecharged = rechargablePart.GetRechargeAmount() == 0;
+
                     PlayUISound("Sounds/Abilities/sfx_ability_energyCell_recharge");
 
-                    string partiallyOrFully = ((chosenBitsToUse < bitsToRechargeFully) ? "partially " : "");
-                    string endMark = (!partiallyOrFully.IsNullOrEmpty() ? "!" : ".");
-                    string rechargedMsg = ("=subject.Name= " + partiallyOrFully + "recharged =object.t=" + endMark)
+                    string partiallyOrFully = !fullyRecharged ? "partially " : "";
+                    string endMark = !fullyRecharged ? "." : "!";
+                    string rechargedMsg = ("=subject.Name= " + partiallyOrFully + "=verb:recharge:afterpronoun= =object.t=" + endMark)
                         .StartReplace()
                         .AddObject(Vendor)
                         .AddObject(Item)
@@ -2071,22 +2086,26 @@ namespace XRL.World.Parts
 
                     Popup.Show(rechargedMsg);
 
-
-                    AnyRecharged = true;
+                    anyRecharged = true;
                     break;
                 }
-            }
-            if (!AnyRecharged)
-            {
-                if (!AnyParts)
+                else
                 {
-                    Popup.ShowFail("=subject.T= =verb:isn't:afterpronoun= an energy cell and does not have a rechargeable capacitor."
+                    anyParts = false;
+                    anyRechargeable = false;
+                }
+            }
+            if (!anyRecharged)
+            {
+                if (!anyParts)
+                {
+                    Popup.ShowFail("=subject.T= =verb:isn't= an energy cell and does not have a rechargeable capacitor."
                         .StartReplace()
                         .AddObject(Item)
                         .ToString());
                 }
                 else
-                if (!AnyRechargeable)
+                if (!anyRechargeable)
                 {
                     Popup.ShowFail("=subject.T= can't be recharged that way."
                         .StartReplace()
@@ -2096,7 +2115,7 @@ namespace XRL.World.Parts
             }
             Item.CheckStack();
             Item.InInventory.CheckStacks();
-            return AnyRecharged;
+            return anyRecharged;
         }
 
         public override void Register(GameObject Object, IEventRegistrar Registrar)
@@ -2323,6 +2342,7 @@ namespace XRL.World.Parts
                         }
                     }
                 }
+
                 GiveRandomBits(E.Object, FromEvent: E);
 
                 foreach (GameObject item in Vendor.Inventory.GetObjectsViaEventList(GO => GO.HasPart<UD_HeldForPlayer>()))
@@ -3060,8 +3080,8 @@ namespace XRL.World.Parts
                         if (!bitSupplierBitLocker.HasBits(bitCost))
                         {
                             string missingRequiredBitsMsg =
-                                ("=subject.Name= =verb:do:afterpronoun= not have the required <" + bitCost + "> bits!\n\n" +
-                                "=subject.Subjective= =verb:have:afterpronoun=:\n" + bitSupplierBitLocker.GetBitsString())
+                                ("=subject.Name= =subject.verb:don't= have the required <" + bitCost + "> bits!\n\n" +
+                                "=subject.Subjective= =subject.verb:have:afterpronoun=:\n" + bitSupplierBitLocker.GetBitsString())
                                     .StartReplace()
                                     .AddObject(bitSupplier)
                                     .ToString();
@@ -3178,6 +3198,61 @@ namespace XRL.World.Parts
                 LearnGiganticRecipe(ParentObject, KnownRecipes);
                 KnowImplantedRecipes(ParentObject, InstalledRecipes);
             }
+        }
+
+        [WishCommand(Command = "UD_TB bestow random bits")]
+        public static void BestowRandomBitsWish(string Count)
+        {
+            Cell playerCell = The.Player.CurrentCell;
+            int playerX = playerCell.X;
+            int playerY = playerCell.Y;
+
+            if (PickTarget.ShowPicker(
+                Style: PickTarget.PickStyle.EmptyCell,
+                StartX: playerX,
+                StartY: playerY,
+                Label: "Pick a cell with objects") is not Cell pickedCell)
+            {
+                return;
+            }
+            if (Popup.PickGameObject(
+                Title: "~ Pick target of Random Bit Bestowal ~",
+                Objects: pickedCell?.GetObjects(GO => GO.IsCreature || GO.HasPart<AnimatedObject>() || GO.InheritsFrom("Fungus")),
+                AllowEscape: true) is not GameObject pickedObject)
+            {
+                return;
+            }
+            int amount = 0;
+            if (!Count.IsNullOrEmpty()
+                && int.TryParse(Count, out int count))
+            {
+                amount = Math.Min(Math.Max(0, count), 100);
+            }
+            if (amount < 1)
+            {
+                if (Popup.AskNumber(
+                    Message: "How many times?",
+                    Start: 1,
+                    Max: 100) is not int pickedNumber)
+                {
+                    return;
+                }
+                amount = Math.Min(Math.Max(0, pickedNumber), 100);
+            }
+            
+            for (int i = 0; i < amount; i++)
+            {
+                 GiveRandomBits(pickedObject, false);
+            }
+            if (pickedObject?.RequirePart<BitLocker>() is BitLocker blitLocker)
+            {
+                Popup.Show(blitLocker?.GetBitsString());
+            }
+        }
+        [WishCommand(Command = "UD_TB bestow random bits")]
+        public static void BestowRandomBitsWish()
+        {
+            BestowRandomBitsWish(null);
         }
 
         [WishCommand(Command = "UD_TB give random bits")]

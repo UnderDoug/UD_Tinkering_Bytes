@@ -44,7 +44,7 @@ namespace XRL.World.Parts
             Bytes = null;
         }
 
-        public static bool IsWildCardByte(string Bytes)
+        public static bool IsWildCardBytes(string Bytes)
         {
             return !Bytes.IsNullOrEmpty()
                 && (Bytes == "*"
@@ -52,6 +52,10 @@ namespace XRL.World.Parts
                     || Bytes.Contains("-")
                     || Bytes.Contains("<")
                     || Bytes.Contains(">"));
+        }
+        public bool HasWildCardBytes()
+        {
+            return IsWildCardBytes(Bytes);
         }
 
         public static IEnumerable<char> GetByteChars()
@@ -113,7 +117,7 @@ namespace XRL.World.Parts
 
             if (!Bytes.IsNullOrEmpty())
             {
-                if (IsWildCardByte(Bytes))
+                if (IsWildCardBytes(Bytes))
                 {
                     string bytesRange;
                     if (BytesMap.ContainsKey(Bytes))
@@ -222,7 +226,7 @@ namespace XRL.World.Parts
                 bool haveBits = false;
                 if (render != null)
                 {
-                    if (Bytes.Length > 1)
+                    if (Bytes.Length > 1 || HasWildCardBytes())
                     {
                         bytes = render.DisplayName.Replace("punnet of ", "");
                     }
@@ -236,7 +240,11 @@ namespace XRL.World.Parts
                     }
                     render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                 }
-                if (!Bytes.IsNullOrEmpty() && Bytes.Length == 1)
+                if (!Bytes.IsNullOrEmpty()
+                    && Bytes.Length == 1
+                    && !HasWildCardBytes()
+                    && BitType.ReverseCharTranslateBit(Bytes[0]) is char bit
+                    && bit != '?')
                 {
                     BitType bitType = BitType.BitMap[BitType.ReverseCharTranslateBit(Bytes[0])];
                     bits = bitType.Description;
