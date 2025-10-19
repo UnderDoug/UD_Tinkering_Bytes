@@ -55,35 +55,40 @@
     <part Name="ItemElements" Elements="circuitry::2" />
   </object>
 
-  <object Name="A Byte" Inherits="BaseByte">
+  <object Name="A-Byte" Inherits="BaseByte"
+          PreviousName="A Byte">
     <part Name="Render" DisplayName="{{R|A}}-{{y|byte}}"
           TileColor="&amp;R" ColorString="&amp;R"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="RRRRRRRR" />
     <part Name="UD_TinkeringByte" />
   </object>
-  <object Name="B Byte" Inherits="BaseByte">
+  <object Name="B-Byte" Inherits="BaseByte"
+          PreviousName="B Byte">
     <part Name="Render" DisplayName="{{G|B}}-{{y|byte}}"
           TileColor="&amp;G" ColorString="&amp;G"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="GGGGGGGG" />
     <part Name="UD_TinkeringByte" />
   </object>
-  <object Name="C Byte" Inherits="BaseByte">
+  <object Name="C-Byte" Inherits="BaseByte"
+          PreviousName="C Byte">
     <part Name="Render" DisplayName="{{B|C}}-{{y|byte}}"
           TileColor="&amp;B" ColorString="&amp;B"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="BBBBBBBB" />
     <part Name="UD_TinkeringByte" />
   </object>
-  <object Name="D Byte" Inherits="BaseByte">
+  <object Name="D-Byte" Inherits="BaseByte"
+          PreviousName="D Byte">
     <part Name="Render" DisplayName="{{C|D}}-{{y|byte}}"
           TileColor="&amp;C" ColorString="&amp;C"
           Tile="0_byte_cleo_v2.png" />
     <part Name="TinkerItem" Bits="CCCCCCCC" />
     <part Name="UD_TinkeringByte" />
   </object>
-  <object Name="1 Byte" Inherits="BaseByte">
+  <object Name="1-Byte" Inherits="BaseByte"
+          PreviousName="1 Byte">
     <part Name="Render" DisplayName="{{r|1}}-{{y|byte}}"
           TileColor="&amp;r" ColorString="&amp;r"
           Tile="1_byte_cleo_v2.png" />
@@ -91,7 +96,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="120" />
   </object>
-  <object Name="2 Byte" Inherits="BaseByte">
+  <object Name="2-Byte" Inherits="BaseByte"
+          PreviousName="2 Byte">
     <part Name="Render" DisplayName="{{g|2}}-{{y|byte}}"
           TileColor="&amp;g" ColorString="&amp;g"
           Tile="2_byte_cleo.png" />
@@ -99,7 +105,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="200" />
   </object>
-  <object Name="3 Byte" Inherits="BaseByte">
+  <object Name="3-Byte" Inherits="BaseByte"
+          PreviousName="3 Byte">
     <part Name="Render" DisplayName="{{b|3}}-{{y|byte}}"
           TileColor="&amp;b" ColorString="&amp;b"
           Tile="3_byte_cleo_v2.png" />
@@ -107,7 +114,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="280" />
   </object>
-  <object Name="4 Byte" Inherits="BaseByte">
+  <object Name="4-Byte" Inherits="BaseByte"
+          PreviousName="4 Byte">
     <part Name="Render" DisplayName="{{c|4}}-{{y|byte}}"
           TileColor="&amp;c" ColorString="&amp;c"
           Tile="4_byte_cleo.png" />
@@ -115,7 +123,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="360" />
   </object>
-  <object Name="5 Byte" Inherits="BaseByte">
+  <object Name="5-Byte" Inherits="BaseByte"
+          PreviousName="5 Byte">
     <part Name="Render" DisplayName="{{K|5}}-{{y|byte}}"
           TileColor="&amp;K" ColorString="&amp;K"
           Tile="5_byte_cleo.png" />
@@ -123,7 +132,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="440" />
   </object>
-  <object Name="6 Byte" Inherits="BaseByte">
+  <object Name="6-Byte" Inherits="BaseByte"
+          PreviousName="6 Byte">
     <part Name="Render" DisplayName="{{W|6}}-{{y|byte}}"
           TileColor="&amp;W" ColorString="&amp;W"
           Tile="6_byte_cleo.png" />
@@ -131,7 +141,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="520" />
   </object>
-  <object Name="7 Byte" Inherits="BaseByte">
+  <object Name="7-Byte" Inherits="BaseByte"
+          PreviousName="7 Byte">
     <part Name="Render" DisplayName="{{Y|7}}-{{y|byte}}"
           TileColor="&amp;Y" ColorString="&amp;Y"
           Tile="7_byte_cleo.png" />
@@ -139,7 +150,8 @@
     <part Name="UD_TinkeringByte" />
     <part Name="Commerce" Value="600" />
   </object>
-  <object Name="8 Byte" Inherits="BaseByte">
+  <object Name="8-Byte" Inherits="BaseByte"
+          PreviousName="8 Byte">
     <part Name="Render" DisplayName="{{M|8}}-{{y|byte}}"
           TileColor="&amp;M" ColorString="&amp;M"
           Tile="8_byte_cleo.png" />

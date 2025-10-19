@@ -101,8 +101,8 @@ namespace XRL.World.Parts
                     pluralItems += Item.IsPlural ? Item.ShortDisplayName : Grammar.Pluralize(Item.ShortDisplayName);
                 }
                 string confirmDisassemble =
-                    ("=verb:Is:afterpronoun= =subject.name= sure =subject.subjective= " +
-                    "=verb:want:afterpronoun= =object.name= to disassemble " + pluralItems + "?")
+                    ("=subject.verb:Is= =subject.name= sure =subject.subjective= " +
+                    "=subject.verb:want:afterpronoun= =object.name= to disassemble " + pluralItems + "?")
                         .StartReplace()
                         .AddObject(The.Player)
                         .AddObject(Vendor)
@@ -138,7 +138,7 @@ namespace XRL.World.Parts
         {
             if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
             {
-                string notItemOwnerMsg = "=subject.T= =verb:isn't:afterpronoun= owned by =object.t=."
+                string notItemOwnerMsg = "=subject.T= =subject.verb:isn't= owned by =object.t=."
                     .StartReplace()
                     .AddObject(Item)
                     .AddObject(The.Player)
@@ -150,8 +150,8 @@ namespace XRL.World.Parts
                         .ToString();
 
                 string confirmNotOwnedMsg =
-                    ("=verb:Is:afterpronoun= =subject.name= sure =subject.subjective= " +
-                    "=verb:want:afterpronoun= =object.name= to disassemble " + themIt + "?")
+                    ("=subject.verb:Is= =subject.name= sure =subject.subjective= " +
+                    "=subject.verb:want:afterpronoun= =object.name= to disassemble " + themIt + "?")
                         .StartReplace()
                         .AddObject(The.Player)
                         .AddObject(Vendor)
@@ -194,7 +194,7 @@ namespace XRL.World.Parts
                 && container.Owner != Item.Owner
                 && !container.HasPropertyOrTag("DontWarnOnDisassemble"))
             {
-                string notContainerOwnerMsg = "=subject.T= =verb:isn't:afterpronoun= owned by =object.name=."
+                string notContainerOwnerMsg = "=subject.T= =subject.verb:isn't= owned by =object.name=."
                     .StartReplace()
                     .AddObject(Item)
                     .AddObject(The.Player)
@@ -210,8 +210,8 @@ namespace XRL.World.Parts
                     .ToString();
 
                 string confirmContainerMsg =
-                    ("=verb:Is:afterpronoun= =subject.subjective= sure =subject.subjective= " +
-                    "=verb:want:afterpronoun= =object.name= to disassemble " + itemsAnItem +
+                    ("=subject.verb:Is= =subject.subjective= sure =subject.subjective= " +
+                    "=subject.verb:want:afterpronoun= =object.name= to disassemble " + itemsAnItem +
                     " inside " + containerIt + "?")
                         .StartReplace()
                         .AddObject(The.Player)
@@ -399,7 +399,7 @@ namespace XRL.World.Parts
                     if (tooExpensive || (!multipleItems && itemCount > 1))
                     {
                         string tooExpensiveMsg =
-                            ("=subject.Name= =verb:don't:afterpronoun= have the required " + dramsCost + " to have " +
+                            ("=subject.Name= =subject.verb:don't= have the required " + dramsCost + " to have " +
                             "=object.name= disassemble " + "item".ThisTheseN(amountToDisassemble, multipleItems) + "\n\n" + ".")
                                 .StartReplace()
                                 .AddObject(player)
@@ -413,7 +413,7 @@ namespace XRL.World.Parts
                             int maxAsk = Math.Min(maxAfford, maxHave);
                             string realCostPerItemString = RealCostPerItem.Things("dram").Color("C");
                             string canAfford = "can afford";
-                            string doesHave = "=verb:have:afterpronoun=";
+                            string doesHave = "=subject.verb:have=";
                             bool haveCountSmaller = maxAsk == maxHave;
                             string whyMax = haveCountSmaller ? doesHave : canAfford;
                             string itemRefName = Item.GetReferenceDisplayName(Short: true);

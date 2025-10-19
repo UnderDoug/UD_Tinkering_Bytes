@@ -1088,6 +1088,32 @@ namespace XRL.World.Parts
                 Multiple: Multiple);
         }
 
+        public static string GetSupplierPickerTinkerDataTitle(TinkerData TinkerData)
+        {
+            if (TinkerData == null || TinkerData.DisplayName == null)
+            {
+                return null;
+            }
+            string modPrefix = "";
+            string numberMadePrefix = "";
+            if (TinkerData.Type == "Mod")
+            {
+                modPrefix = "[{{W|Mod}}] ";
+            }
+            else
+            if (TinkerData.Type == "Build"
+                && TinkerInvoice.CreateTinkerSample(TinkerData.Blueprint) is GameObject sampleObject)
+            {
+                if (sampleObject.TryGetPart(out TinkerItem tinkerItem)
+                    && tinkerItem.NumberMade > 1)
+                {
+                    numberMadePrefix = $"{Grammar.Cardinal(tinkerItem.NumberMade)} ";
+                }
+                TinkerInvoice.ScrapTinkerSample(ref sampleObject);
+            }
+            return modPrefix + numberMadePrefix + TinkerData.DisplayName;
+        }
+
         public static bool PickRecipeIngredientSupplier(
             GameObject Vendor,
             GameObject ForObject,
@@ -1106,19 +1132,8 @@ namespace XRL.World.Parts
             GameObject temporaryIngredientObject = null;
             if (!TinkerData.Ingredient.IsNullOrEmpty())
             {
-                string modPrefix = TinkerData.Type == "Mod" ? "[{{W|Mod}}] " : "";
-
-                string numberMadePrefix = null;
-                if (TinkerData.Type == "Build"
-                    && ForObject != null
-                    && ForObject.TryGetPart(out TinkerItem tinkerItem)
-                    && tinkerItem.NumberMade > 1)
-                {
-                    numberMadePrefix = $"{Grammar.Cardinal(tinkerItem.NumberMade)} ";
-                }
-
-                string title = modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n";
-                title += "| 1 Ingredient Required |".Color("Y") + "\n";
+                string title = GetSupplierPickerTinkerDataTitle(TinkerData) + "\n" +
+                    "| 1 Ingredient Required |".Color("Y") + "\n";
 
                 List<string> recipeIngredientBlueprints = TinkerData.Ingredient.CachedCommaExpansion().ToList();
 
@@ -1162,7 +1177,7 @@ namespace XRL.World.Parts
                 {
                     if (temporaryIngredientObject != null)
                     {
-                        string tempObjectFailMsg = "=subject.t= =verb:are:afterpronoun= too unstable to craft with."
+                        string tempObjectFailMsg = "=subject.t= =subject.verb:are= too unstable to craft with."
                             .StartReplace()
                             .AddObject(temporaryIngredientObject)
                             .ToString();
@@ -1180,7 +1195,7 @@ namespace XRL.World.Parts
                             }
                             ingredientName += TinkeringHelpers.TinkeredItemShortDisplayName(recipeIngredient);
                         }
-                        string noIngredientMsg = ("=subject.Name= =verb:don't:afterpronoun= have the required ingredient: " + ingredientName)
+                        string noIngredientMsg = ("=subject.Name= =subject.verb:don't= have the required ingredient: " + ingredientName)
                             .StartReplace()
                             .AddObject(RecipeIngredientSupplier)
                             .ToString();
@@ -1226,31 +1241,31 @@ namespace XRL.World.Parts
                 SelectedIngredient: out SelectedIngredient,
                 Context: Context);
         }
-
-        public static bool PickRecipeBitsSupplier(
+       
+        public static bool PickBitsSupplier(
             GameObject Vendor,
             GameObject ForObject,
-            TinkerData TinkerData,
             BitCost BitCost,
             out GameObject RecipeBitSupplier,
-            out BitLocker BitSupplierBitLocker)
+            out BitLocker BitSupplierBitLocker,
+            string Title = null,
+            string Context = null,
+            bool CheckHasBits = true)
         {
             BitSupplierBitLocker = null;
 
-            string modPrefix = TinkerData.Type == "Mod" ? "[{{W|Mod}}] " : "";
-
-            string numberMadePrefix = null;
-            if (TinkerData.Type == "Build"
-                && ForObject != null
-                && ForObject.TryGetPart(out TinkerItem tinkerItem)
-                && tinkerItem.NumberMade > 1)
+            if (!Title.IsNullOrEmpty())
             {
-                numberMadePrefix = Grammar.Cardinal(tinkerItem.NumberMade) + " ";
+                Title += "\n";
             }
-
-            string title = modPrefix + numberMadePrefix + TinkerData.DisplayName + "\n"
+            string title = (Title
                 + "| Bit Cost |".Color("y") + "\n"
-                + "<" + BitCost + ">" + "\n";
+                + "<" + BitCost + ">" + "\n")
+                    .StartReplace()
+                    .AddObject(The.Player)
+                    .AddObject(Vendor)
+                    .AddObject(ForObject, "item")
+                    .ToString();
 
             RecipeBitSupplier = PickASupplier(
                 Vendor: Vendor,
@@ -1266,37 +1281,31 @@ namespace XRL.World.Parts
 
             BitSupplierBitLocker = RecipeBitSupplier.RequirePart<BitLocker>();
 
-            ModifyBitCostEvent.Process(RecipeBitSupplier, BitCost, "Build");
-
-            if (!BitSupplierBitLocker.HasBits(BitCost))
+            if (!Context.IsNullOrEmpty())
             {
-                string missingRequiredBitsMsg = 
-                    ("=subject.Name= =verb:do:afterpronoun= not have the required <" + BitCost + "> bits!\n\n" +
-                    "=subject.Subjective= =verb:have:afterpronoun=:\n" + BitSupplierBitLocker.GetBitsString())
-                        .StartReplace()
-                        .AddObject(RecipeBitSupplier)
-                        .ToString();
-
-                Popup.ShowFail(missingRequiredBitsMsg);
-                return false;
+                ModifyBitCostEvent.Process(RecipeBitSupplier, BitCost, Context);
             }
 
-            return true;
+            return !CheckHasBits || BitSupplierHasBits(RecipeBitSupplier, BitSupplierBitLocker, BitCost);
         }
-        public bool PickRecipeBitsSupplier(
+        public bool PickBitsSupplier(
             GameObject ForObject,
-            TinkerData TinkerData,
             BitCost BitCost,
             out GameObject RecipeBitSupplier,
-            out BitLocker BitSupplierBitLocker)
+            out BitLocker BitSupplierBitLocker,
+            string Title = null,
+            string Context = null,
+            bool CheckHasBits = true)
         {
-            return PickRecipeBitsSupplier(
+            return PickBitsSupplier(
                 Vendor: ParentObject,
                 ForObject: ForObject,
-                TinkerData: TinkerData,
                 BitCost: BitCost,
                 RecipeBitSupplier: out RecipeBitSupplier,
-                BitSupplierBitLocker: out BitSupplierBitLocker);
+                BitSupplierBitLocker: out BitSupplierBitLocker,
+                Title: Title,
+                Context: Context,
+                CheckHasBits: CheckHasBits);
         }
 
         public static bool PickRecipeIngredient(
@@ -1364,6 +1373,30 @@ namespace XRL.World.Parts
             return SelectedIngredient != null;
         }
 
+        public static bool BitSupplierHasBits(
+            GameObject BitSupplier,
+            BitLocker BitSupplierBitLocker,
+            BitCost BitCost,
+            bool Silent = false)
+        {
+            if (!BitSupplierBitLocker.HasBits(BitCost))
+            {
+                string missingRequiredBitsMsg =
+                    ("=subject.Name= =subject.verb:don't= have the required <" + BitCost + "> bits!\n\n" +
+                    "=subject.Subjective= =subject.verb:have:afterpronoun=:\n" + BitSupplierBitLocker.GetBitsString())
+                        .StartReplace()
+                        .AddObject(BitSupplier)
+                        .ToString();
+
+                if (!Silent)
+                {
+                    Popup.ShowFail(missingRequiredBitsMsg);
+                }
+                return false;
+            }
+            return true;
+        }
+
         public static bool TryGetApplicableItems(
             GameObject Actor,
             TinkerData ApplicableRecipe,
@@ -1382,7 +1415,7 @@ namespace XRL.World.Parts
             if (ApplicableItems.IsNullOrEmpty())
             {
                 string noApplicableItemsMsg =
-                    ("=subject.Name= =verb:don't:afterpronoun= have any items " +
+                    ("=subject.Name= =subject.verb:don't= have any items " +
                     "that can be modified with " + modName + ".")
                         .StartReplace()
                         .AddObject(Actor)
@@ -1459,7 +1492,7 @@ namespace XRL.World.Parts
                 && vendorHeldDataDiskObjects.IsNullOrEmpty()
                 && playerHeldDataDiskObjects.IsNullOrEmpty())
             {
-                string noModsKnownMsg = "=subject.Name= =verb:do:afterpronoun= not know any item modifications."
+                string noModsKnownMsg = "=subject.Name= =subject.verb:don't= know any item modification recipes."
                     .StartReplace()
                     .AddObject(Vendor)
                     .ToString();
@@ -1486,7 +1519,7 @@ namespace XRL.World.Parts
                             ExistingRecipes: applicableRecipes,
                             InstalledRecipes: InstalledRecipes))
                     {
-                        string shopperOwnedTag = "=subject.t's= inventory"
+                        string shopperOwnedTag = "=subject.name's= inventory"
                             .StartReplace()
                             .AddObject(player)
                             .ToString();
@@ -1538,7 +1571,7 @@ namespace XRL.World.Parts
             }
             if (applicableRecipes.IsNullOrEmpty())
             {
-                string noModsKnownForItemMsg = "=subject.Name= =verb:do:afterpronoun= not know any item modifications for =object.t=."
+                string noModsKnownForItemMsg = "=subject.Name= =subject.verb:don't= know any item modifications for =object.t=."
                     .StartReplace()
                     .AddObject(Vendor)
                     .AddObject(ApplicableItem)
@@ -1602,6 +1635,95 @@ namespace XRL.World.Parts
                 IsVendorOwnedRecipe: out IsVendorOwnedRecipe);
         }
 
+        public static bool VendorHasSkillToIdentify(GameObject Vendor, string What, bool Silent = false)
+        {
+            if (GetIdentifyLevel(Vendor) <= 0)
+            {
+                if (!Silent)
+                {
+                    string tinkerUnableIdentifyMsg = "=subject.Name= =subject.verb:don't= have the skill to identify " + What + "."
+                        .StartReplace()
+                        .AddObject(Vendor)
+                        .ToString();
+
+                    Popup.Show(tinkerUnableIdentifyMsg);
+                }
+                return false;
+            }
+            return true;
+        }
+        public bool VendorHasSkillToIdentify(string What, bool Silent = false)
+        {
+            return VendorHasSkillToIdentify(ParentObject, What, Silent);
+        }
+
+        public static bool ItemNotUnderstoodByShopper(GameObject Shopper, GameObject Item, string What, bool Silent = false)
+        {
+            if (Item.Understood() || (!Shopper.IsPlayer() && GetIdentifyLevel(Shopper) >= Item.GetComplexity()))
+            {
+                if (!Silent)
+                {
+                    string alreadyKnowItemMsg = "=subject.Name= already =subject.verb:understand= " + What + "."
+                    .StartReplace()
+                    .AddObject(Shopper)
+                    .ToString();
+
+                    Popup.ShowFail(alreadyKnowItemMsg);
+                }
+                return false;
+            }
+            return true;
+        }
+
+        public static bool IsShopperCapableOfUnderstanding(GameObject Vendor, GameObject Shopper, bool Silent = false)
+        {
+            if (Vendor == null || Shopper == null)
+            {
+                return false;
+            }
+            if (Shopper.HasPart<Dystechnia>())
+            {
+                string dystechniaFailMsg = "=subject.Name= can't understand =object.name's= explanation."
+                    .StartReplace()
+                    .AddObject(Shopper)
+                    .AddObject(Vendor)
+                    .ToString();
+
+                if (!Silent)
+                {
+                    Popup.ShowFail(dystechniaFailMsg);
+                }
+                return false;
+            }
+            return true;
+        }
+        public bool IsShopperCapableOfUnderstanding(GameObject Shopper, bool Silent = false)
+        {
+            return IsShopperCapableOfUnderstanding(ParentObject, Shopper, Silent);
+        }
+
+        public static bool VendorCanExplain(GameObject Vendor, GameObject Item, string What, bool Silent = false)
+        {
+            if (GetIdentifyLevel(Vendor) < Item.GetComplexity())
+            {
+                if (!Silent)
+                {
+                    string tooComplexForTinkerFailMsg = What + " is too complex for =subject.name= to explain."
+                        .StartReplace()
+                        .AddObject(Vendor)
+                        .ToString();
+
+                    Popup.ShowFail(tooComplexForTinkerFailMsg);
+                }
+                return false;
+            }
+            return true;
+        }
+        public bool VendorCanExplain(GameObject Item, string What, bool Silent = false)
+        {
+            return VendorCanExplain(ParentObject, Item, What, Silent);
+        }
+
         public static bool IsTooExpensive(
             GameObject Vendor,
             GameObject Shopper,
@@ -1618,7 +1740,7 @@ namespace XRL.World.Parts
                 {
                     string dramsCostString = DramsCost.Things("dram").Color("C");
                     string baseFailMsg =
-                        ("=shopper.Name= =verb:don't:afterpronoun= have the required " + dramsCostString +
+                        ("=shopper.Name= =shopper.verb:don't= have the required " + dramsCostString +
                         " to have =vendor.name= " + ToDoWhat);
 
                     string tinkerInvoiceMsg = TinkerInvoice != null ? ("\n\n" + TinkerInvoice) : "";
@@ -1727,6 +1849,10 @@ namespace XRL.World.Parts
             if (Vendor == null || TinkerInvoice == null || TinkerInvoice.Recipe is not TinkerData tinkerDatum)
             {
                 Popup.ShowFail("That trader or recipe doesn't exist (this is an error).");
+                MetricsManager.LogModError(Utils.ThisMod, "Missing one | " + 
+                    nameof(Vendor) + ": " + (Vendor == null).ToString() + ", " + 
+                    nameof(TinkerInvoice) + ": " + (TinkerInvoice == null).ToString() + ", " + 
+                    nameof(tinkerDatum) + ": " + (TinkerInvoice?.Recipe == null).ToString() + ".");
                 return false;
             }
             GameObject tinkerSampleItem = TinkerInvoice.CreateTinkerSample(tinkerDatum.Blueprint);
@@ -1745,7 +1871,7 @@ namespace XRL.World.Parts
                     GameObject ingredientObject = TinkerInvoice.SelectedIngredient;
                     if (!RecipeIngredientSupplier.RemoveFromInventory(ingredientObject))
                     {
-                        string invalidIngredientMsg = "=subject.Name= cannot use =object.t= as an ingredient!="
+                        string invalidIngredientMsg = "=subject.Name= can't use =object.t= as an ingredient!="
                             .StartReplace()
                             .AddObject(Vendor)
                             .AddObject(ingredientObject)
@@ -1793,7 +1919,7 @@ namespace XRL.World.Parts
                     : "=object.a= " + singleShortKnownDisplayName;
 
 
-                string itemTinkeredMsg = ("=subject.Name= =verb:tinker:afterpronoun= up " + whatWasTinkeredUp + "!")
+                string itemTinkeredMsg = ("=subject.Name= =subject.verb:tinker= up " + whatWasTinkeredUp + "!")
                     .StartReplace()
                     .AddObject(Vendor)
                     .AddObject(tinkerSampleItem)
@@ -1804,7 +1930,7 @@ namespace XRL.World.Parts
                 {
                     string themIt = tinkerSampleItem.themIt();
                     comeBackToPickItUp += 
-                        ("\n\n" + "Once =subject.name= =verb:have:afterpronoun= the drams for " 
+                        ("\n\n" + "Once =subject.name= =subject.verb:have= the drams for "
                         + themIt + ", come back to pick " + themIt + " up!")
                             .StartReplace()
                             .AddObject(player)
@@ -1884,7 +2010,7 @@ namespace XRL.World.Parts
                     SoundManager.PlayUISound("Sounds/Abilities/sfx_ability_tinkerModItem");
 
                     string didModMsg = 
-                        ("=subject.Name= =verb:mod:afterpronoun= " + itemNameBeforeMod + " to be " +
+                        ("=subject.Name= =subject.verb:mod= " + itemNameBeforeMod + " to be " +
                         (ModPart.GetModificationDisplayName() ?? tinkerData.DisplayName).Color("C"))
                             .StartReplace()
                             .AddObject(Vendor)
@@ -1918,6 +2044,29 @@ namespace XRL.World.Parts
             }
             return didMod;
         }
+
+        public static bool VendorDoIdentify(GameObject Vendor, GameObject UnknownItem, int DramsCost, string IdentifyWhat)
+        {
+            The.Player.UseDrams(DramsCost);
+            Vendor.GiveDrams(DramsCost);
+
+            // this is necessary until lang hits main, =object.a= respects examiner obfuscation
+            string anIdentifiedItem = Grammar.A(UnknownItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
+
+            string identifiedMsg = ("=subject.Name= =subject.verb:identify= " + IdentifyWhat + " as " + anIdentifiedItem + ".")
+                .StartReplace()
+                .AddObject(Vendor)
+                .AddObject(UnknownItem, "item")
+                .ToString();
+
+            if (UnknownItem.MakeUnderstood())
+            {
+                Popup.Show(identifiedMsg);
+                return true;
+            }
+            return false;
+        }
+
         public static bool VendorDoRecharge(GameObject Vendor, GameObject Item)
         {
             if (Vendor == null || Item == null)
@@ -1957,29 +2106,21 @@ namespace XRL.World.Parts
 
                 Item.SplitStack(1, Item.InInventory);
 
-                string title =
-                    ("Recharge =subject.t= \n" +
-                    "| Bit Cost |".Color("y") + "\n" +
-                    "<" + bitCost + ">")
-                        .StartReplace()
-                        .AddObject(Item)
-                        .ToString();
-                GameObject rechargeBitSupplier = PickASupplier(
+
+                if (!PickBitsSupplier(
                     Vendor: Vendor,
                     ForObject: Item,
-                    Title: title,
-                    CenterIntro: true,
-                    BitCost: bitCost);
-
-                if (rechargeBitSupplier == null)
+                    BitCost: bitCost,
+                    RecipeBitSupplier: out GameObject rechargeBitSupplier,
+                    BitSupplierBitLocker: out BitLocker bitSupplierBitLocker,
+                    Title: "Recharge =subject.t=",
+                    CheckHasBits: false))
                 {
                     anyParts = false;
                     anyRechargeable = false;
                     continue;
                 }
                 bool vendorSuppliesBits = rechargeBitSupplier == Vendor;
-
-                BitLocker bitSupplierBitLocker = rechargeBitSupplier.RequirePart<BitLocker>();
 
                 int bitCount = BitLocker.GetBitCount(rechargeBitSupplier, rechargeBit);
 
@@ -1988,9 +2129,9 @@ namespace XRL.World.Parts
                 if (bitCount == 0)
                 {
                     string noBitsMsg =
-                        ("=subject.Name= =verb:don't:afterpronoun= have any " + bitTypeBitString.Pluralize() + ", " +
+                        ("=subject.Name= =subject.verb:don't= have any " + bitTypeBitString.Pluralize() + ", " +
                         "which are required for recharging =object.t=.\n\n" +
-                        "=subject.Subjective= =verb:have:afterpronoun=:\n" +
+                        "=subject.Subjective= =subject.verb:have:afterpronoun=:\n" +
                         bitSupplierBitLocker.GetBitsString())
                             .StartReplace()
                             .AddObject(rechargeBitSupplier)
@@ -2015,12 +2156,12 @@ namespace XRL.World.Parts
                     .AddObject(rechargeBitSupplier, "vendor")
                     .ToString();
 
-                string supplierHasBitsString = ("=subject.Subjective= =verb:have:afterpronoun= " + bitCount.Color("C") + ".")
+                string supplierHasBitsString = ("=subject.Subjective= =subject.verb:have:afterpronoun= " + bitCount.Color("C") + ".")
                     .StartReplace()
                     .AddObject(rechargeBitSupplier)
                     .ToString();
 
-                string howManyBitsString = "How many =verb:do:afterpronoun= =subject.name= want to use?"
+                string howManyBitsString = "How many =subject.verb:do= =subject.name= want to use?"
                     .StartReplace()
                     .AddObject(player)
                     .ToString();
@@ -2078,7 +2219,7 @@ namespace XRL.World.Parts
 
                     string partiallyOrFully = !fullyRecharged ? "partially " : "";
                     string endMark = !fullyRecharged ? "." : "!";
-                    string rechargedMsg = ("=subject.Name= " + partiallyOrFully + "=verb:recharge:afterpronoun= =object.t=" + endMark)
+                    string rechargedMsg = ("=subject.Name= " + partiallyOrFully + "=subject.verb:recharge= =object.t=" + endMark)
                         .StartReplace()
                         .AddObject(Vendor)
                         .AddObject(Item)
@@ -2099,7 +2240,7 @@ namespace XRL.World.Parts
             {
                 if (!anyParts)
                 {
-                    Popup.ShowFail("=subject.T= =verb:isn't= an energy cell and does not have a rechargeable capacitor."
+                    Popup.ShowFail("=subject.T= =subject.verb:isn't= an energy cell and does not have a rechargeable capacitor."
                         .StartReplace()
                         .AddObject(Item)
                         .ToString());
@@ -2113,8 +2254,8 @@ namespace XRL.World.Parts
                         .ToString());
                 }
             }
-            Item.CheckStack();
-            Item.InInventory.CheckStacks();
+            Item?.CheckStack();
+            Item?.InInventory?.CheckStacks();
             return anyRecharged;
         }
 
@@ -2544,12 +2685,13 @@ namespace XRL.World.Parts
 
                                 BitCost bitCost = TinkerInvoice.GetBuildBitCost(tinkerRecipe);
 
-                                if (!PickRecipeBitsSupplier(
+                                if (!PickBitsSupplier(
                                     ForObject: sampleItem,
-                                    TinkerData: tinkerRecipe,
                                     BitCost: bitCost,
                                     RecipeBitSupplier: out GameObject recipeBitSupplier,
-                                    BitSupplierBitLocker: out BitLocker bitSupplierBitLocker))
+                                    BitSupplierBitLocker: out BitLocker bitSupplierBitLocker,
+                                    Title: GetSupplierPickerTinkerDataTitle(tinkerRecipe),
+                                    Context: tinkerRecipe.Type))
                                 {
                                     return false;
                                 }
@@ -2739,12 +2881,13 @@ namespace XRL.World.Parts
 
                                     BitCost bitCost = TinkerInvoice.GetModBitCostForObject(tinkerRecipe, selectedObject);
 
-                                    if (!PickRecipeBitsSupplier(
+                                    if (!PickBitsSupplier(
                                         ForObject: selectedObject,
-                                        TinkerData: tinkerRecipe,
                                         BitCost: bitCost,
                                         RecipeBitSupplier: out GameObject recipeBitSupplier,
-                                        BitSupplierBitLocker: out BitLocker bitSupplierBitLocker))
+                                        BitSupplierBitLocker: out BitLocker bitSupplierBitLocker,
+                                        Title: GetSupplierPickerTinkerDataTitle(tinkerRecipe),
+                                        Context: tinkerRecipe.Type))
                                     {
                                         return false;
                                     }
@@ -2798,194 +2941,78 @@ namespace XRL.World.Parts
                     if (E.Command == COMMAND_IDENTIFY_BY_DATADISK
                         && E.Item is GameObject dataDiskObject
                         && dataDiskObject.TryGetPart(out DataDisk dataDiskPart)
-                        && dataDiskPart.Data is TinkerData diskDatum)
+                        && dataDiskPart.Data is TinkerData diskDatum
+                        && diskDatum.Type == "Build")
                     {
-                        int identifyLevel = GetIdentifyLevel(vendor);
-                        bool diskIsBuild = diskDatum.Type == "Build";
-                        if (identifyLevel > 0
-                            && diskIsBuild
-                            && TinkerInvoice.CreateTinkerSample(diskDatum.Blueprint) is GameObject sampleItem)
+                        if (TinkerInvoice.CreateTinkerSample(diskDatum.Blueprint) is not GameObject sampleItem)
                         {
+                            return false;
+                        }
+                        else
+                        { 
                             try
                             {
-                                if (!sampleItem.Understood())
+                                if (!VendorHasSkillToIdentify("schematics on data disks")
+                                    && !ItemNotUnderstoodByShopper(player, sampleItem, "the item on this data disk")
+                                    && !IsShopperCapableOfUnderstanding(player)
+                                    && !VendorCanExplain(sampleItem, "The item on this data disk"))
                                 {
-                                    int complexity = sampleItem.GetComplexity();
-                                    int examineDifficulty = sampleItem.GetExamineDifficulty();
-                                    if (player.HasPart<Dystechnia>())
-                                    {
-                                        string dystechniaFailMsg = "=subject.Name= can't understand =object.name's= explanation."
-                                            .StartReplace()
-                                            .AddObject(player)
-                                            .AddObject(vendor)
-                                            .ToString();
-
-                                        Popup.ShowFail(dystechniaFailMsg);
-                                        return false;
-                                    }
-                                    if (identifyLevel < complexity)
-                                    {
-                                        string tooComplexForTinkerFailMsg = "The item on this data disk is too complex for =subject.name= to explain."
-                                            .StartReplace()
-                                            .AddObject(vendor)
-                                            .ToString();
-
-                                        Popup.ShowFail(tooComplexForTinkerFailMsg);
-                                        return false;
-                                    }
-                                    tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
-                                    int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
-                                    if (!IsTooExpensive(
+                                    return false;
+                                }
+                                tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
+                                int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
+                                string itemOnDataDisk = "the item on this data disk";
+                                return !IsTooExpensive(
+                                    Shopper: player,
+                                    DramsCost: dramsCost,
+                                    ToDoWhat: "identify " + itemOnDataDisk + ".")
+                                    && ConfirmTinkerService(
+                                        Vendor: vendor,
                                         Shopper: player,
                                         DramsCost: dramsCost,
-                                        ToDoWhat: "identify the item on this data disk.")
-                                        && ConfirmTinkerService(
-                                            Vendor: vendor,
-                                            Shopper: player,
-                                            DramsCost: dramsCost,
-                                            DoWhat: "identify the item on this data disk"))
-                                    {
-                                        player.UseDrams(dramsCost);
-                                        vendor.GiveDrams(dramsCost);
-
-                                        // this is necessary until lang hits main, =object.a= respects examiner obfuscation
-                                        string anIdentifiedItem = Grammar.A(sampleItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
-
-                                        string identifiedMsg =
-                                            ("=subject.Name= =verb:identify:afterpronoun= the item on the data disk " +
-                                            "as " + anIdentifiedItem + ".")
-                                                .StartReplace()
-                                                .AddObject(vendor)
-                                                .AddObject(sampleItem)
-                                                .ToString();
-
-                                        Popup.Show(identifiedMsg);
-
-                                        sampleItem.MakeUnderstood();
-
-                                        return true;
-                                    }
-                                    return false;
-                                }
-                                else
-                                {
-                                    string alreadyKnowItemMsg = "=subject.Name= already =verb:understand:afterpronoun= the item on this data disk."
-                                        .StartReplace()
-                                        .AddObject(player)
-                                        .ToString();
-
-                                    Popup.ShowFail(alreadyKnowItemMsg);
-                                    return false;
-                                }
+                                        DoWhat: "identify " + itemOnDataDisk)
+                                    && VendorDoIdentify(
+                                        Vendor: vendor,
+                                        UnknownItem: sampleItem,
+                                        DramsCost: dramsCost,
+                                        IdentifyWhat: itemOnDataDisk);
                             }
                             finally
                             {
                                 TinkerInvoice.ScrapTinkerSample(ref sampleItem);
                             }
                         }
-                        else
-                        {
-                            string tinkerUnableIdentifyMsg =
-                                ("=subject.Name= =verb:don't:afterpronoun= have the skill " +
-                                "to identify schematics on data disks.")
-                                .StartReplace()
-                                .AddObject(vendor)
-                                .ToString();
-
-                            Popup.Show(tinkerUnableIdentifyMsg);
-                            return false;
-                        }
                     }
                     else
                     if (E.Command == COMMAND_IDENTIFY_SCALING
                         && E.Item is GameObject unknownItem)
                     {
-                        int identifyLevel = GetIdentifyLevel(vendor);
-                        if (identifyLevel > 0)
+                        if (!VendorHasSkillToIdentify("items")
+                            && !ItemNotUnderstoodByShopper(player, unknownItem, "this item")
+                            && !IsShopperCapableOfUnderstanding(player)
+                            && !VendorCanExplain(unknownItem, "This =object.name="))
                         {
-                            if (!unknownItem.Understood())
-                            {
-                                int complexity = unknownItem.GetComplexity();
-                                int examineDifficulty = unknownItem.GetExamineDifficulty();
-                                if (player.HasPart<Dystechnia>())
-                                {
-                                    string dystechniaFailMsg = "=subject.Name= can't understand =object.name's= explanation."
-                                            .StartReplace()
-                                            .AddObject(player)
-                                            .AddObject(vendor)
-                                            .ToString();
-
-                                    Popup.ShowFail(dystechniaFailMsg);
-                                    return false;
-                                }
-                                if (identifyLevel < complexity)
-                                {
-                                    string tooComplexForTinkerFailMsg = "This =object.name= is too complex for =subject.name= to identify."
-                                        .StartReplace()
-                                        .AddObject(vendor)
-                                        .AddObject(unknownItem)
-                                        .ToString();
-
-                                    Popup.ShowFail(tooComplexForTinkerFailMsg);
-                                    return false;
-                                }
-                                tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: unknownItem);
-                                int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
-                                if (!IsTooExpensive(
-                                    Shopper: player,
-                                    DramsCost: dramsCost,
-                                    ToDoWhat: "identify this =item.name=.",
-                                    WithItem: unknownItem)
-                                    && ConfirmTinkerService(
-                                        Vendor: vendor,
-                                        Shopper: player,
-                                        DramsCost: dramsCost,
-                                        DoWhat: "identify =item.t=",
-                                        WithItem: unknownItem))
-                                {
-                                    player.UseDrams(dramsCost);
-                                    vendor.GiveDrams(dramsCost);
-
-                                    // this is necessary until lang hits main, =object.a= respects examiner obfuscation
-                                    string anIdentifiedItem = Grammar.A(unknownItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
-
-                                    string identifiedMsg = 
-                                        ("=subject.Name= =verb:identify:afterpronoun= =object.name= " +
-                                        "as " + anIdentifiedItem + ".")
-                                        .StartReplace()
-                                        .AddObject(vendor)
-                                        .AddObject(unknownItem)
-                                        .ToString();
-
-                                    Popup.Show(identifiedMsg);
-
-                                    unknownItem.MakeUnderstood();
-
-                                    return true;
-                                }
-                                return false;
-                            }
-                            else
-                            {
-                                string alreadyKnowItemMsg = "=subject.Name= already =verb:understand:afterpronoun= this item."
-                                    .StartReplace()
-                                    .AddObject(player)
-                                    .ToString();
-
-                                Popup.ShowFail(alreadyKnowItemMsg);
-                                return false;
-                            }
-                        }
-                        else
-                        {
-                            string tinkerUnableIdentifyMsg = "=subject.Name= =verb:don't:afterpronoun= have the skill to identify items."
-                                .StartReplace()
-                                .AddObject(vendor)
-                                .ToString();
-
-                            Popup.Show(tinkerUnableIdentifyMsg);
                             return false;
                         }
+                        tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: unknownItem);
+                        int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
+                        string thisItemName = "this =item.name=";
+                        return !IsTooExpensive(
+                            Shopper: player,
+                            DramsCost: dramsCost,
+                            ToDoWhat: "identify " + thisItemName + ".",
+                            WithItem: unknownItem)
+                            && ConfirmTinkerService(
+                                Vendor: vendor,
+                                Shopper: player,
+                                DramsCost: dramsCost,
+                                DoWhat: "identify " + thisItemName,
+                                WithItem: unknownItem)
+                            && VendorDoIdentify(
+                                Vendor: vendor,
+                                UnknownItem: unknownItem,
+                                DramsCost: dramsCost,
+                                IdentifyWhat: thisItemName);
                     }
                     else
                     if (E.Command == COMMAND_REPAIR_SCALING
@@ -2998,7 +3025,7 @@ namespace XRL.World.Parts
                         }
                         if (!IsRepairableEvent.Check(vendor, repairableItem, null, vendorRepairSkill, null))
                         {
-                            string notBrokenFailMsg = "=subject.T= =verb:are:afterpronoun= not broken!"
+                            string notBrokenFailMsg = "=subject.T= =subject.verb:are= not broken!"
                                 .StartReplace()
                                 .AddObject(repairableItem)
                                 .ToString();
@@ -3008,7 +3035,7 @@ namespace XRL.World.Parts
                         }
                         if (vendor.GetTotalConfusion() > 0)
                         {
-                            string tooConfusedFailMsg = "=subject.Name= =verb:are:afterpronoun= too confused to repair =object.t=."
+                            string tooConfusedFailMsg = "=subject.Name= =subject.verb:are= too confused to repair =object.t=."
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(repairableItem)
@@ -3033,10 +3060,10 @@ namespace XRL.World.Parts
 
                         if (!Tinkering_Repair.IsRepairableBy(repairableItem, vendor, bitCost, vendorRepairSkill, null))
                         {
-                            string tooComplexFailMsg = "=object.T= =verb:are:afterpronoun= too complex for =subject.name= to repair."
+                            string tooComplexFailMsg = "=subject.T= =subject.verb:are= too complex for =object.name= to repair."
                                 .StartReplace()
-                                .AddObject(vendor)
                                 .AddObject(repairableItem)
+                                .AddObject(vendor)
                                 .ToString();
 
                             Popup.ShowFail(tooComplexFailMsg);
@@ -3046,7 +3073,7 @@ namespace XRL.World.Parts
                         }
                         if (vendor.HasTagOrProperty("NoRepair"))
                         {
-                            string irrepairableFailMsg = "=subject.T= cannot be repaired."
+                            string irrepairableFailMsg = "=subject.T= can't be repaired."
                                 .StartReplace()
                                 .AddObject(repairableItem)
                                 .ToString();
@@ -3055,40 +3082,17 @@ namespace XRL.World.Parts
                             return false;
                         }
 
-                        string bitSupplierTitle = ("Repair =subject.t=\n" + "| Bit Cost |".Color("y") + "\n" + "<" + bitCost + ">")
-                            .StartReplace()
-                            .AddObject(repairableItem)
-                            .ToString();
-
-                        GameObject bitSupplier = PickASupplier(
-                            Vendor: vendor,
+                        if (!PickBitsSupplier(
                             ForObject: repairableItem,
-                            Title: bitSupplierTitle,
-                            CenterIntro: true,
-                            BitCost: bitCost);
-
-                        if (bitSupplier == null)
+                            BitCost: bitCost,
+                            RecipeBitSupplier: out GameObject bitSupplier,
+                            BitSupplierBitLocker: out BitLocker bitSupplierBitLocker,
+                            Title: "Repair =item.t=",
+                            Context: "Repair"))
                         {
                             return false;
                         }
                         bool vendorSuppliesBits = bitSupplier == vendor;
-
-                        BitLocker bitSupplierBitLocker = bitSupplier.RequirePart<BitLocker>();
-
-                        ModifyBitCostEvent.Process(vendor, bitCost, "Repair");
-
-                        if (!bitSupplierBitLocker.HasBits(bitCost))
-                        {
-                            string missingRequiredBitsMsg =
-                                ("=subject.Name= =subject.verb:don't= have the required <" + bitCost + "> bits!\n\n" +
-                                "=subject.Subjective= =subject.verb:have:afterpronoun=:\n" + bitSupplierBitLocker.GetBitsString())
-                                    .StartReplace()
-                                    .AddObject(bitSupplier)
-                                    .ToString();
-
-                            Popup.ShowFail(missingRequiredBitsMsg);
-                            return false;
-                        }
 
                         tinkerInvoice = new(vendor, TinkerInvoice.REPAIR, null, bitCost, repairableItem)
                         {
@@ -3096,19 +3100,16 @@ namespace XRL.World.Parts
                         };
                         int totalDramsCost = tinkerInvoice.GetTotalCost();
                         string dramsCostString = totalDramsCost.Things("dram").Color("C");
-                        if (IsTooExpensive(
+                        if (!IsTooExpensive(
                             Shopper: player,
                             DramsCost: totalDramsCost,
-                            ToDoWhat: "repair this item."))
-                        {
-                            return false;
-                        }
-                        if (ConfirmTinkerService(
-                            Vendor: vendor,
-                            Shopper: player,
-                            DramsCost: totalDramsCost,
-                            DoWhat: "repair this item",
-                            TinkerInvoice: tinkerInvoice))
+                            ToDoWhat: "repair this item.")
+                            && ConfirmTinkerService(
+                                Vendor: vendor,
+                                Shopper: player,
+                                DramsCost: totalDramsCost,
+                                DoWhat: "repair this item",
+                                TinkerInvoice: tinkerInvoice))
                         {
                             bitSupplierBitLocker.UseBits(bitCost);
 
@@ -3117,7 +3118,7 @@ namespace XRL.World.Parts
 
                             vendor.PlayWorldOrUISound("Sounds/Misc/sfx_interact_artifact_repair");
 
-                            string repairedMsg = "=subject.Name= =verb:repair:afterpronoun= =object.t=."
+                            string repairedMsg = "=subject.Name= =subject.verb:repair= =object.t=."
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(repairableItem)

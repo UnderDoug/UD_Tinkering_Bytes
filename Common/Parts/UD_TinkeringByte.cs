@@ -21,7 +21,7 @@ namespace XRL.World.Parts
         { 
             get
             {
-                if (_Bit != default
+                if (_Bit == default
                     && ParentObject is GameObject byteObject
                     && byteObject.TryGetPart(out TinkerItem tinkerItem)
                     && tinkerItem.Bits.Length > 0)
@@ -122,8 +122,8 @@ namespace XRL.World.Parts
                     bits = bitType.Description;
                     haveBits = true;
                 }
-                else
-                description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, haveBits ? bits : null));
+                string pluralBits = haveBits ? bits : null;
+                description._Short = description._Short.Replace("*8 bits*", BitsPerByte.Things(bits, pluralBits));
             }
             return base.HandleEvent(E);
         }

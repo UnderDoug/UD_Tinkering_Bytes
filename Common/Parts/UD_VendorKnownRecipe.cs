@@ -315,101 +315,45 @@ namespace XRL.World.Parts
                 && Data is TinkerData recipeDatum
                 && recipeDatum.Type == "Build")
             {
-                int identifyLevel = GetIdentifyLevel(vendor);
-                if (identifyLevel > 0
-                    && TinkerInvoice.CreateTinkerSample(recipeDatum.Blueprint) is GameObject sampleItem)
+                TinkerInvoice tinkerInvoice = null;
+                if (TinkerInvoice.CreateTinkerSample(recipeDatum.Blueprint) is not GameObject sampleItem)
                 {
-                    TinkerInvoice tinkerInvoice = null;
-                    try
-                    {
-                        if (!sampleItem.Understood())
-                        {
-                            int complexity = sampleItem.GetComplexity();
-                            int examineDifficulty = sampleItem.GetExamineDifficulty();
-                            if (player.HasPart<Dystechnia>())
-                            {
-                                string dystechniaFailMsg = "=subject.Name= can't understand =object.name's= explanation."
-                                    .StartReplace()
-                                    .AddObject(player)
-                                    .AddObject(vendor)
-                                    .ToString();
-
-                                Popup.ShowFail(dystechniaFailMsg);
-                                return false;
-                            }
-                            if (identifyLevel < complexity)
-                            {
-                                string tooComplexForTinkerFailMsg = "This tinker recipe is too complex for =subject.name= to explain."
-                                    .StartReplace()
-                                    .AddObject(vendor)
-                                    .ToString();
-
-                                Popup.ShowFail(tooComplexForTinkerFailMsg);
-                                return false;
-                            }
-                            tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
-                            int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
-                            if (!IsTooExpensive(
-                                Vendor: vendor,
-                                Shopper: player,
-                                DramsCost: dramsCost,
-                                ToDoWhat: "identify this tinker recipe.")
-                                && ConfirmTinkerService(
-                                    Vendor: vendor,
-                                    Shopper: player,
-                                    DramsCost: dramsCost,
-                                    DoWhat: "identify this tinker recipe"))
-                            {
-                                player.UseDrams(dramsCost);
-                                vendor.GiveDrams(dramsCost);
-
-                                // this is necessary until lang hits main, =object.a= respects examiner obfuscation
-                                string anIdentifiedItem = Grammar.A(sampleItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
-
-                                string identifiedMsg =
-                                    ("=subject.Name= =verb:identify:afterpronoun= this tinker recipe " +
-                                    "as " + anIdentifiedItem + ".")
-                                        .StartReplace()
-                                        .AddObject(vendor)
-                                        .AddObject(sampleItem)
-                                        .ToString();
-
-                                Popup.Show(identifiedMsg);
-
-                                sampleItem.MakeUnderstood();
-
-                                return true;
-                            }
-                            return false;
-                        }
-                        else
-                        {
-                            string alreadyKnowItemMsg = "=subject.Name= already =verb:understand:afterpronoun= what this tinker recipe creates."
-                                .StartReplace()
-                                .AddObject(player)
-                                .ToString();
-
-                            Popup.ShowFail(alreadyKnowItemMsg);
-                            return false;
-                        }
-                    }
-                    finally
-                    {
-                        tinkerInvoice?.Clear();
-                        TinkerInvoice.ScrapTinkerSample(ref sampleItem);
-                    }
+                    return false;
                 }
                 else
                 {
-                    string tinkerUnableIdentifyMsg =
-                        ("=subject.Name= =verb:don't:afterpronoun= have the skill " +
-                        "to identify tinkering recipes.")
-                        .StartReplace()
-                        .AddObject(vendor)
-                        .ToString();
-
-                    Popup.Show(tinkerUnableIdentifyMsg);
-                    return false;
+                    try
+                    {
+                        if (!VendorHasSkillToIdentify(vendor, "tinkering recipes")
+                            && !ItemNotUnderstoodByShopper(player, sampleItem, "what this tinker recipe creates")
+                            && !IsShopperCapableOfUnderstanding(vendor, player)
+                            && !VendorCanExplain(vendor, sampleItem, "This tinker recipe"))
+                        {
+                            return false;
+                        }
+                        tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
+                        int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
+                        string thisTinkerRecipe = "this tinker recipe";
+                        return !IsTooExpensive(
+                            Vendor: vendor,
+                            Shopper: player,
+                            DramsCost: dramsCost,
+                            ToDoWhat: "identify " + thisTinkerRecipe + ".")
+                            && ConfirmTinkerService(
+                                Vendor: vendor,
+                                Shopper: player,
+                                DramsCost: dramsCost,
+                                DoWhat: "identify " + thisTinkerRecipe)
+                            && VendorDoIdentify(
+                                Vendor: vendor,
+                                UnknownItem: sampleItem,
+                                DramsCost: dramsCost,
+                                IdentifyWhat: thisTinkerRecipe);
+                    }
+                    finally
+                    {
+                        TinkerInvoice.ScrapTinkerSample(ref sampleItem);
+                    }
                 }
             }
             return base.HandleEvent(E);
