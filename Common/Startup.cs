@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using System;
 
 using Qud.UI;
 
@@ -6,20 +8,128 @@ using XRL;
 using XRL.UI;
 using XRL.World;
 using XRL.World.Parts;
+using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
+
+using Version = XRL.Version;
 
 using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
-using XRL.World.Parts.Skill;
-using System.Linq;
-using System;
 
 namespace UD_Tinkering_Bytes
 {
+    [HasModSensitiveStaticCache]
+    [HasGameBasedStaticCache]
+    [HasCallAfterGameLoaded]
     public static class Startup
     {
+        private static string ThisModGameStatePrefix => Utils.ThisMod.ID + "::";
+
         public static bool SaveStartedWithVendorActions => UD_Vendor_Actions.Startup.SaveStartedWithVendorActions;
-        public static bool SaveStartedWithTinkeringBytes => (bool)The.Game?.GetBooleanGameState(nameof(UD_Tinkering_Bytes_GameBasedInitialiser));
+        public static bool SaveStartedWithTinkeringBytes
+        {
+            get => (The.Game?.GetBooleanGameState(ThisModGameStatePrefix + nameof(GameBasedCacheInit))).GetValueOrDefault();
+            private set => The.Game?.SetBooleanGameState(ThisModGameStatePrefix + nameof(GameBasedCacheInit), value);
+        }
+
+        public static Version? LastModVersionSaved
+        {
+            get => The.Game?.GetObjectGameState(ThisModGameStatePrefix + nameof(Version)) as Version?;
+            private set => The.Game?.SetObjectGameState(ThisModGameStatePrefix + nameof(Version), value);
+        }
+
+        public static bool LearnAllTheBytesGameState
+        {
+            get => (The.Game?.GetBooleanGameState(ThisModGameStatePrefix + nameof(LearnAllTheBytes))).GetValueOrDefault();
+            set => The.Game?.SetBooleanGameState(ThisModGameStatePrefix + nameof(LearnAllTheBytes), value);
+        }
+
+        public static bool NeedVersionMismatchWarning => false;
+
+        [GameBasedStaticCache]
+        [ModSensitiveStaticCache]
+        public static bool ModVersionWarningIssued = false;
+
+        // Start-up calls in order that they happen.
+
+        [ModSensitiveCacheInit]
+        public static void ModSensitiveCacheInit()
+        {
+            // Called at game startup and whenever mod configuration changes
+        }
+
+        [GameBasedCacheInit]
+        public static void GameBasedCacheInit()
+        {
+            // Called once when world is first generated.
+
+            // The.Game registered events should go here.
+
+            SaveStartedWithTinkeringBytes = true;
+            LastModVersionSaved = Utils.ThisMod.Manifest.Version;
+
+            Utils.ForceByteBitCost();
+        }
+
+        // [PlayerMutator]
+
+        // The.Player.FireEvent("GameRestored");
+        // AfterGameLoadedEvent.Send(Return);  // Return is the game.
+
+        [CallAfterGameLoaded]
+        public static void OnLoadGameCallback()
+        {
+            // Gets called every time the game is loaded but not during generation
+            if (!SaveStartedWithVendorActions || !SaveStartedWithTinkeringBytes)
+            {
+                The.Player?.RequireSkill<UD_Basics>();
+                if ((bool)!The.Game?.GetBooleanGameState(nameof(LearnAllTheBytes)))
+                {
+                    LearnAllTheBytes.AddByteBlueprints(The.Player);
+                }
+            }
+            Utils.ForceByteBitCost();
+
+            if (Options.EnableWarningsForBigJumpsInModVersion && Utils.ThisMod.Manifest.Version is Version newestVersion)
+            {
+                if (LastModVersionSaved is not Version savedVersion
+                    || newestVersion.Minor > savedVersion.Minor
+                    || newestVersion.Major > savedVersion.Major)
+                {
+                    if (NeedVersionMismatchWarning && !ModVersionWarningIssued)
+                    {
+                        ModManifest thisModManifest = Utils.ThisMod.Manifest;
+                        savedVersion = LastModVersionSaved.GetValueOrDefault();
+                        Popup.Show(thisModManifest.Title + " version mismatch:\n\n" +
+                            "The version of " + thisModManifest.Title.Strip() + " used by this save is " +
+                            "{{C|v" + savedVersion + "}} while the one currently enabled is {{C|v" + newestVersion + "}}." +
+                            "\n\nSee this mod's {{C|\"Change Notes\"}} on the {{b|steam workshop}} for information on its backwards compatibility." +
+                            "\n\nTo revert this save to its pre-migration state use {{hotkey|alt + F4}} to exit the game without saving " +
+                            "(this should work in most circumstances)." +
+                            "\n\nThere is an option to turn off these warnings.");
+                        ModVersionWarningIssued = true;
+                    }
+                }
+                else
+                {
+                    ModVersionWarningIssued = false;
+                }
+                LastModVersionSaved = Utils.ThisMod.Manifest.Version;
+            }
+        }
+    }
+
+    // [ModSensitiveCacheInit]
+
+    // [GameBasedCacheInit]
+
+    [PlayerMutator]
+    public class UD_Tinkering_Bytes_OnPlayerLoad : IPlayerMutator
+    {
+        public void mutate(GameObject player)
+        {
+            // Gets called once when the player is first generated
+        }
     }
 
     [PlayerMutator]
@@ -40,12 +150,12 @@ namespace UD_Tinkering_Bytes
         {
             if (player == null)
             {
-                MetricsManager.LogModError(Utils.ThisMod, 
+                MetricsManager.LogModError(Utils.ThisMod,
                     $"{nameof(LearnAllTheBytes)}.{nameof(AddByteBlueprints)}:" +
                     $" supplied {nameof(player)} was null");
                 return;
             }
-            if ((bool)The.Game?.GetBooleanGameState(nameof(LearnAllTheBytes)))
+            if (Startup.LearnAllTheBytesGameState)
             {
                 return;
             }
@@ -60,78 +170,9 @@ namespace UD_Tinkering_Bytes
                     TinkerData.LearnBlueprint(byteBlueprint.Name);
                 }
             }
-            The.Game?.SetBooleanGameState(nameof(LearnAllTheBytes), true);
+            Startup.LearnAllTheBytesGameState = true;
         }
     }
 
-    // Start-up calls in order that they happen.
-
-    [HasModSensitiveStaticCache]
-    public static class UD_Tinkering_Bytes_ModBasedInitialiser
-    {
-        [ModSensitiveCacheInit]
-        public static void AdditionalSetup()
-        {
-            // Called at game startup and whenever mod configuration changes
-        }
-    }
-
-    [HasGameBasedStaticCache]
-    public static class UD_Tinkering_Bytes_GameBasedInitialiser
-    {
-        [GameBasedCacheInit]
-        public static void AdditionalSetup()
-        {
-            // Called once when world is first generated.
-
-            // The.Game registered events should go here.
-
-            Utils.ForceByteBitCost();
-        }
-    }
-
-    [PlayerMutator]
-    public class UD_Tinkering_Bytes_OnPlayerLoad : IPlayerMutator
-    {
-        public void mutate(GameObject player)
-        {
-            // Gets called once when the player is first generated
-        }
-    }
-
-    [HasCallAfterGameLoaded]
-    public class UD_Tinkering_Bytes_OnLoadGameHandler
-    {
-        [CallAfterGameLoaded]
-        public static void OnLoadGameCallback()
-        {
-            // Gets called every time the game is loaded but not during generation
-            if (!Startup.SaveStartedWithVendorActions || !Startup.SaveStartedWithTinkeringBytes)
-            {
-                The.Player?.RequireSkill<UD_Basics>();
-                if ((bool)!The.Game?.GetBooleanGameState(nameof(LearnAllTheBytes)))
-                {
-                    LearnAllTheBytes.AddByteBlueprints(The.Player);
-                }
-            }
-            Utils.ForceByteBitCost();
-            /* 
-            List<TinkerData> playerKnownRecipes = new(TinkerData.KnownRecipes);
-            TinkerData.KnownRecipes.Clear();
-            foreach (TinkerData playerKnownRecipe in playerKnownRecipes)
-            {
-                if (!TinkerData.KnownRecipes.Any(datum => datum.IsSameDatumAs(playerKnownRecipe)))
-                {
-                    TinkerData.KnownRecipes.Add(playerKnownRecipe);
-                    continue;
-                }
-                MetricsManager.LogModWarning(Utils.ThisMod, 
-                    $"{nameof(OnLoadGameCallback)} found duplicate " +
-                    $"{nameof(TinkerData)}.{nameof(TinkerData.KnownRecipes)} entry, " +
-                    $"{playerKnownRecipe.DisplayName.Strip()}," +
-                    $" while loading game.");
-            }
-            */
-        }
-    }
+    // [CallAfterGameLoaded]
 }

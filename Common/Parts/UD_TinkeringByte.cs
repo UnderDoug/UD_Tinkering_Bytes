@@ -12,12 +12,14 @@ namespace XRL.World.Parts
     [Serializable]
     public class UD_TinkeringByte : IScribedPart, IModEventHandler<GetVendorTinkeringBonusEvent>
     {
+        private Version? MigrateFrom = null;
+
         public static bool WantTinkerBonusMax = true;
 
         public static int BitsPerByte => 8;
 
-        private char _Bit;
-        public char Bit
+        private char _Bit; // added v0.1.0
+        public char Bit // added v0.1.0 (retreives itself)
         { 
             get
             {

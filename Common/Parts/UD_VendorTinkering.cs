@@ -1,17 +1,13 @@
 ﻿using ConsoleLib.Console;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using UD_Modding_Toolbox;
-using UD_Tinkering_Bytes;
-using UD_Vendor_Actions;
+
 using XRL.Language;
 using XRL.Rules;
 using XRL.UI;
-using XRL.UI.ObjectFinderClassifiers;
 using XRL.Wish;
 using XRL.World.Anatomy;
 using XRL.World.Capabilities;
@@ -19,11 +15,18 @@ using XRL.World.Parts.Mutation;
 using XRL.World.Parts.Skill;
 using XRL.World.Skills;
 using XRL.World.Tinkering;
-using static UD_Modding_Toolbox.Const;
-using static UD_Tinkering_Bytes.Options;
+
 using static XRL.World.Parts.Skill.Tinkering;
-using Debug = UD_Modding_Toolbox.Debug;
+
+using UD_Vendor_Actions;
+using UD_Modding_Toolbox;
+using static UD_Modding_Toolbox.Const;
+
+using UD_Tinkering_Bytes;
 using Utils = UD_Tinkering_Bytes.Utils;
+using Debug = UD_Modding_Toolbox.Debug;
+using static UD_Tinkering_Bytes.Options;
+using Startup = UD_Tinkering_Bytes.Startup;
 
 namespace XRL.World.Parts
 {
@@ -37,9 +40,10 @@ namespace XRL.World.Parts
     {
         private static bool doDebug = true;
 
-        public static bool DrawBitsFromRaffle = true;
-
-        private static bool SaveStartedWithVendorActions => UD_Vendor_Actions.Startup.SaveStartedWithVendorActions;
+        private static bool SaveStartedWithVendorActions => Startup.SaveStartedWithVendorActions;
+        private static bool SaveStartedWithTinkeringBytes => Startup.SaveStartedWithTinkeringBytes;
+        
+        private Version? MigrateFrom = null;
 
         private static TimeSpan DebugWishBenchmark = TimeSpan.Zero;
 
@@ -72,13 +76,13 @@ namespace XRL.World.Parts
 
         public List<TinkerData> KnownMods => new(GetKnownRecipes(D => D.Type == "Mod"));
 
-        public bool LearnsOneStockedDataDiskOnRestock;
-
-        public int RestockLearnChance;
-
         public bool ScribesKnownRecipesOnRestock;
 
         public int RestockScribeChance;
+
+        public bool LearnsOneStockedDataDiskOnRestock; // added v0.1.0
+
+        public int RestockLearnChance; // added v0.1.0
 
         public UD_VendorTinkering()
         {
@@ -482,7 +486,7 @@ namespace XRL.World.Parts
                 elapsed = sw.Elapsed;
                 sw.Stop();
 
-                Debug.Entry(4, "Time to " + (DrawBitsFromRaffle ? "Draw" : "Sample") + " Bits", elapsed.TotalSeconds.Things("second"),
+                Debug.Entry(4, "Time to Draw Bits", elapsed.TotalSeconds.Things("second"),
                     Indent: indent + 2, Toggle: doDebug);
 
                 disassembleBitBag.Clear();

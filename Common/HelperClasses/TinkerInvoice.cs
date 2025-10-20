@@ -726,7 +726,7 @@ namespace UD_Tinkering_Bytes
                         {
                             MetricsManager.LogModError(ThisMod, 
                                 "Failed " + nameof(GameObject.GetWaterRitualLiquid) + " for " + 
-                                Vendor?.DebugName ?? ("null " + nameof(Vendor)));
+                                Vendor?.DebugName ?? ("null " + nameof(Vendor)) + ".\n" + x);
                         }
                         string waterRitualLiquid = LiquidVolume.GetLiquid(liquidName)?.GetName() ?? "";
                         SB.Append(" for my ").Append(waterRitualLiquid).Append(" ").Append(player.siblingTerm).Append("!");
@@ -744,7 +744,7 @@ namespace UD_Tinkering_Bytes
                 SB.AppendLine();
                 SB.Append(dividerLineK).AppendLine();
                 SB.Append(Vendor.T()).Append(" will tinker and hold ").Append("item".ThisTheseN(NumberMade));
-                SB.Append(" for a desposit of ").Append(DramsCostString(depositCost));
+                SB.Append(" for a desposit of ").Append(DramsCostString(depositCost)).Append(".");
             }
 
             return Event.FinalizeString(SB);

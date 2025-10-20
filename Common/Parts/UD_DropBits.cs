@@ -6,11 +6,10 @@ using XRL.World.Capabilities;
 using XRL.World.Tinkering;
 
 using UD_Modding_Toolbox;
-using static UD_Modding_Toolbox.Const;
 using UD_Vendor_Actions;
+using static UD_Modding_Toolbox.Const;
 
 using UD_Tinkering_Bytes;
-
 using static UD_Tinkering_Bytes.Utils;
 
 namespace XRL.World.Parts
@@ -23,10 +22,10 @@ namespace XRL.World.Parts
         public int BitChance = 25; // chance per bit that an indifidual bit will be dropped.
 
         public int BurntChanceModifier = 50; // chance a burnt creature will drop an individual bit
-        // a bit of a creature that has a BitChance of 70 and BurntChanceModifier of 50 will frop 35% of the time.
+        // a bit of a creature that has a BitChance of 70 and BurntChanceModifier of 50 will drop 35% of the time.
 
         public int VaporizedChanceModifier = 10; // chance a vaporized creature will drop an individual bit
-        // a bit of a creature that has a BitChance of 70 and VaporizedChanceModifier of 10 will frop 7% of the time.
+        // a bit of a creature that has a BitChance of 70 and VaporizedChanceModifier of 10 will drop 7% of the time.
 
         public int BuildBitsChance = 100;
 
@@ -101,7 +100,7 @@ namespace XRL.World.Parts
                     }
                     catch (Exception x)
                     {
-                        MetricsManager.LogException(nameof(bitLocker.BitStorage), x);
+                        MetricsManager.LogModError(ThisMod, x);
                     }
                 }
 

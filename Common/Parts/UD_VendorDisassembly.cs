@@ -19,6 +19,8 @@ namespace XRL.World.Parts
     {
         private static bool doDebug = true;
 
+        private Version? MigrateFrom = null;
+
         public const string COMMAND_DISASSEMBLE = "CmdVendorDisassemble";
         public const string COMMAND_DISASSEMBLE_ALL = "CmdVendorDisassembleAll";
 
@@ -26,7 +28,6 @@ namespace XRL.World.Parts
 
         public List<TinkerData> KnownRecipes => ParentObject?.GetPart<UD_VendorTinkering>()?.KnownRecipes;
 
-        // Disassembly 
         public Disassembly Disassembly;
 
         public UD_VendorDisassembly()
@@ -49,7 +50,7 @@ namespace XRL.World.Parts
                 && (AutoAct.ShouldHostilesInterrupt("o")
                     || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
             {
-                string hostilesMessage = "=subject.Name= cannot disassemble so many items at once with hostiles nearby."
+                string hostilesMessage = "=subject.Name= can't disassemble so many items at once with hostiles nearby."
                     .StartReplace()
                     .AddObject(Vendor)
                     .ToString();

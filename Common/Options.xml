@@ -94,6 +94,29 @@
   Mod Options
   -->
   <option
+        ID="Option_UD_Tinkering_Bytes_EnableWarningsForBigJumpsInModVersion"
+        DisplayText="Enable warning popups when loading a save with a &quot;minor&quot; or &quot;major&quot; version mismatch."
+        Category="Mod: UD Tinkering Bytes"
+        Type="Checkbox"
+        Default="Yes" >
+    <helptext>
+      Some updates are less incremental than others and when a lot of stuff has changed, it's not uncommon for things to break when migrating from a previous version to a newer one.
+
+      With this option enabled, during the process of loading a save, when this mod checks whether the mod version has changed, if there's a version mismatch where the &quot;minor&quot; or &quot;major&quot; version has increased, a warning will be issued before control is given to the player.
+      
+      The warning advises that there's been a &quot;bigger than usual&quot; update to the mod, and recommends a new save, or downgrading the mod to see out the saved run in question.
+
+      In a version number, v{{R|0}}.{{W|1}}.{{G|2}}, the 0 is the &quot;{{R|major}} version&quot;, the 1 is the &quot;{{W|minor}} version&quot;, and the 2 &quot;{{G|build}} version&quot;.
+
+      {{Y|This option has no effect on whether or not this mod will attempt to perform a migration}}.
+
+      {{C|Vendor}} {{G|Action}} Events has an identical option.
+
+      The default is {{W|Enabled}}.
+    </helptext>
+  </option>
+  
+  <option
         ID="Option_UD_Tinkering_Bytes_SelectTinkerBitLockerInlineDisplay"
         DisplayText="Select in-line display style for tinker trader {{UD_bitlocker|bit locker}} pseudo-item."
         Category="Mod: UD Tinkering Bytes"

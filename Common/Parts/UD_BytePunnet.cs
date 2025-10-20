@@ -18,6 +18,8 @@ namespace XRL.World.Parts
     [Serializable]
     public class UD_BytePunnet : IScribedPart
     {
+        private Version? MigrateFrom = null;
+
         public const string COMMAND_UNPACK = "UnpackBytePunnet";
         public const string COMMAND_UNPACK_ALL = "UnpackAllBytePunnets";
         public const string BYTE_BLUEPRINT_END = " Byte";

@@ -2,13 +2,13 @@
     "id": "UD_Tinkering_Bytes",
     "title": "{{C|Tinkering}} {{UD_bytes|Bytes}}",
     "description": "Adds a craftable item for each of the tinkering bits that represent 8 of that bit (a byte).\n\nAlso gives creatures with the tinker skills the ability to mod items for a fee.",
-    "version": "0.0.3",
+    "version": "0.1.0",
     "author": "{{K-g-G-Y-G-g-K alternation|UnderDoug}}",
     "tags": "Tinkering,Extension,Quality of life",
     "PreviewImage": "preview.png",
     "LoadAfter": [ "UD_Modding_Toolbox", "UD_Vendor_Actions" ],
     "Dependencies": {
-        "UD_Modding_Toolbox": ">=0.0.2",
+        "UD_Modding_Toolbox": ">=0.1.0",
         "UD_Vendor_Actions": ">=0.0.3"
     },
     "Directories": [

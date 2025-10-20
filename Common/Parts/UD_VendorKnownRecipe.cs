@@ -33,10 +33,6 @@ namespace XRL.World.Parts
 
         public bool FromImplant;
 
-        public string ImplantedTile;
-
-        protected bool ImplantedTileApplied;
-
         [NonSerialized]
         public string ObjectName;
 
@@ -50,8 +46,6 @@ namespace XRL.World.Parts
         {
             Data = null;
             FromImplant = false;
-            ImplantedTile = null;
-            ImplantedTileApplied = false;
         }
 
         public override bool CanGenerateStacked()
@@ -61,7 +55,6 @@ namespace XRL.World.Parts
 
         public TinkerData SetData(TinkerData KnownRecipe)
         {
-            ApplyImplantedTile();
             if (EnableKnownRecipeCategoryMirroring)
             {
                 GameObject sampleObject = null;
@@ -84,19 +77,6 @@ namespace XRL.World.Parts
                 TinkerInvoice.ScrapTinkerSample(ref sampleObject);
             }
             return Data = KnownRecipe;
-        }
-
-        protected void ApplyImplantedTile()
-        {
-            if (FromImplant && !ImplantedTileApplied)
-            {
-                if (ParentObject.Render is Render render
-                    && !ImplantedTile.IsNullOrEmpty())
-                {
-                    render.Tile = ImplantedTile;
-                    ImplantedTileApplied = true;
-                }
-            }
         }
 
         public override bool AllowStaticRegistration()
@@ -176,8 +156,6 @@ namespace XRL.World.Parts
             {
                 E.AddBase(SB.ToString(), 5);
             }
-
-            ApplyImplantedTile();
 
             return base.HandleEvent(E);
         }

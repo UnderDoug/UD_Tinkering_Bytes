@@ -35,6 +35,7 @@ namespace UD_Tinkering_Bytes
         [OptionFlag] public static int SelectTinkerBitLockerInlineDisplay;
 
         // Checkbox settings
+        [OptionFlag] public static bool EnableWarningsForBigJumpsInModVersion;
         [OptionFlag] public static bool EnableKnownRecipeCategoryMirroring;
         [OptionFlag] public static bool EnableOverrideTinkerRepair;
         [OptionFlag] public static bool DisableBB14284Patch_RepairInvertedPerformance;
