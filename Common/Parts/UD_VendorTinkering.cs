@@ -60,7 +60,7 @@ namespace XRL.World.Parts
 
         public const string BITLOCK_DISPLAY = "UD_BitLocker_Display";
 
-        public bool WantVendorActions => (bool)ParentObject?.HasSkill(nameof(Skill.Tinkering)) && (bool)!ParentObject?.IsPlayer();
+        public bool WantVendorActions => !(ParentObject?.IsPlayer()).GetValueOrDefault();
 
         private List<TinkerData> _KnownRecipes;
         public List<TinkerData> KnownRecipes
@@ -90,11 +90,11 @@ namespace XRL.World.Parts
 
         public UD_VendorTinkering()
         {
-            LearnsOneStockedDataDiskOnRestock = true;
-            RestockLearnChance = 35;
-
             ScribesKnownRecipesOnRestock = true;
-            RestockScribeChance = 15;
+            RestockScribeChance = 10;
+
+            LearnsOneStockedDataDiskOnRestock = true;
+            RestockLearnChance = 25;
         }
 
         public override void AddedAfterCreation()
@@ -138,47 +138,52 @@ namespace XRL.World.Parts
             GameObject Vendor,
             TinkerData TinkerData,
             List<TinkerData> KnownRecipes,
+            bool IgnoreSkillRequirement = false,
             bool CreateDisk = false)
         {
             KnownRecipes ??= new();
-            if (Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerData.Tier))
+            if ((IgnoreSkillRequirement || Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerData.Tier)))
                 && !KnownRecipes.Any(datum => datum.IsSameDatumAs(TinkerData)))
             {
                 KnownRecipes.Add(TinkerData);
             }
             return KnownRecipes.Contains(TinkerData) && (!CreateDisk || ScribeDisk(Vendor, TinkerData));
         }
-        public bool LearnTinkerData(TinkerData TinkerData, bool CreateDisk = false)
+        public bool LearnTinkerData(TinkerData TinkerData, bool IgnoreSkillRequirement = false, bool CreateDisk = false)
         {
             return LearnTinkerData(
                 Vendor: ParentObject,
                 TinkerData: TinkerData,
                 KnownRecipes: KnownRecipes,
+                IgnoreSkillRequirement: IgnoreSkillRequirement,
                 CreateDisk: CreateDisk);
         }
-        public static bool LearnDataDisk(GameObject Vendor, DataDisk DataDisk, List<TinkerData> KnownRecipes)
+        public static bool LearnDataDisk(GameObject Vendor, DataDisk DataDisk, List<TinkerData> KnownRecipes, bool IgnoreSkillRequirement = false)
         {
             return LearnTinkerData(
                 Vendor: Vendor,
                 TinkerData: DataDisk.Data,
                 KnownRecipes: KnownRecipes,
+                IgnoreSkillRequirement: IgnoreSkillRequirement,
                 CreateDisk: false);
         }
-        public bool LearnDataDisk(DataDisk DataDisk)
+        public bool LearnDataDisk(DataDisk DataDisk, bool IgnoreSkillRequirement = false)
         {
             return LearnDataDisk(
                 Vendor: ParentObject,
                 DataDisk: DataDisk,
+                IgnoreSkillRequirement: IgnoreSkillRequirement,
                 KnownRecipes: KnownRecipes);
         }
         public static bool LearnFromDataDisk(
             GameObject Vendor,
             GameObject DataDiskObject,
             List<TinkerData> KnownRecipes,
+            bool IgnoreSkillRequirement = false,
             bool ConsumeDisk = false)
         {
             if (DataDiskObject.TryGetPart(out DataDisk dataDisk)
-                && LearnDataDisk(Vendor, dataDisk, KnownRecipes))
+                && LearnDataDisk(Vendor, dataDisk, KnownRecipes, IgnoreSkillRequirement))
             {
                 if (ConsumeDisk)
                 {
@@ -188,16 +193,20 @@ namespace XRL.World.Parts
             }
             return false;
         }
-        public bool LearnFromDataDisk(GameObject DataDiskObject, bool ConsumeDisk = false)
+        public bool LearnFromDataDisk(GameObject DataDiskObject, bool IgnoreSkillRequirement = false, bool ConsumeDisk = false)
         {
             return LearnFromDataDisk(
                 Vendor: ParentObject,
                 DataDiskObject: DataDiskObject,
                 KnownRecipes: KnownRecipes,
+                IgnoreSkillRequirement: IgnoreSkillRequirement,
                 ConsumeDisk: ConsumeDisk);
         }
 
-        public static IEnumerable<TinkerData> FindTinkerableDataDiskData(GameObject Vendor, Predicate<TinkerData> Filter = null)
+        public static IEnumerable<TinkerData> FindTinkerableDataDiskData(
+            GameObject Vendor,
+            bool IgnoreSkillRequirement = false,
+            Predicate<TinkerData> Filter = null)
         {
             if (Vendor != null && Vendor.TryGetPart(out UD_VendorTinkering vendorTinkering))
             {
@@ -208,7 +217,7 @@ namespace XRL.World.Parts
                     foreach (GameObject dataDiskObject in dataDiskObjects)
                     {
                         if (dataDiskObject.TryGetPart(out DataDisk dataDisk)
-                            && Vendor.HasSkill(dataDisk.GetRequiredSkill())
+                            && (IgnoreSkillRequirement || Vendor.HasSkill(dataDisk.GetRequiredSkill()))
                             && (Filter == null || Filter(dataDisk.Data)))
                         {
                             yield return dataDisk.Data;
@@ -264,7 +273,10 @@ namespace XRL.World.Parts
             {
                 return false;
             }
-            GameObject newDataDisk = TinkerData.createDataDisk(TinkerData);
+            if (TinkerData.createDataDisk(TinkerData) is not GameObject newDataDisk)
+            {
+                return false;
+            }
             if (IsStock)
             {
                 newDataDisk.SetIntProperty("_stock", 1);
@@ -2274,18 +2286,23 @@ namespace XRL.World.Parts
         }
         public override bool WantEvent(int ID, int Cascade)
         {
+            if (!WantVendorActions)
+            {
+                return base.WantEvent(ID, Cascade);
+            }
             return base.WantEvent(ID, Cascade)
-                || (WantVendorActions && ID == AfterObjectCreatedEvent.ID)
-                || (WantVendorActions && ID == AnimateEvent.ID)
+                || ID == AfterObjectCreatedEvent.ID
+                || ID == AnimateEvent.ID
+                || ID == AfterGameLoadedEvent.ID
                 || ID == ImplantAddedEvent.ID
                 || ID == ImplantRemovedEvent.ID
                 || ID == GetShortDescriptionEvent.ID
-                || (WantVendorActions && ID == StockedEvent.ID)
-                || (WantVendorActions && ID == StartTradeEvent.ID)
-                || (WantVendorActions && ID == UD_AfterVendorActionEvent.ID)
-                || (WantVendorActions && ID == UD_EndTradeEvent.ID)
-                || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
-                || (WantVendorActions && ID == UD_VendorActionEvent.ID);
+                || ID == StockedEvent.ID
+                || ID == StartTradeEvent.ID
+                || ID == UD_AfterVendorActionEvent.ID
+                || ID == UD_EndTradeEvent.ID
+                || ID == UD_GetVendorActionsEvent.ID
+                || ID == UD_VendorActionEvent.ID;
         }
         public override bool HandleEvent(AllowTradeWithNoInventoryEvent E)
         {
@@ -2324,6 +2341,27 @@ namespace XRL.World.Parts
                 LearnSkillsRecipes(E.Object, KnownRecipes);
 
                 KnowImplantedRecipes(E.Object, InstalledRecipes);
+            }
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(AfterGameLoadedEvent E)
+        {
+            if (MigrateFrom != null
+                && MigrateFrom < new Version("0.1.0")
+                && ParentObject is GameObject vendor
+                && vendor.GetBlueprint() is GameObjectBlueprint vendorBlueprint)
+            {
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this,
+                    Field: ref LearnsOneStockedDataDiskOnRestock,
+                    FieldName: nameof(LearnsOneStockedDataDiskOnRestock),
+                    Blueprint: vendorBlueprint);
+
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this,
+                    Field: ref RestockLearnChance,
+                    FieldName: nameof(RestockLearnChance),
+                    Blueprint: vendorBlueprint);
             }
             return base.HandleEvent(E);
         }
@@ -3174,6 +3212,11 @@ namespace XRL.World.Parts
         }
         public override void Read(GameObject Basis, SerializationReader Reader)
         {
+            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
+            if (modVersion < new Version("0.1.0"))
+            {
+                MigrateFrom = modVersion;
+            }
             base.Read(Basis, Reader);
 
             KnownRecipes = Reader.ReadList<TinkerData>();

@@ -2,21 +2,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using UD_Modding_Toolbox;
+using UD_Vendor_Actions;
 using XRL;
-using XRL.UI;
-using XRL.Rules;
 using XRL.Language;
 using XRL.Messages;
+using XRL.Rules;
+using XRL.UI;
 using XRL.World;
 using XRL.World.Parts;
 using XRL.World.Parts.Skill;
-using XRL.World.Tinkering;
 using XRL.World.Text;
-
-using UD_Modding_Toolbox;
-using UD_Vendor_Actions;
-
+using XRL.World.Tinkering;
+using static UAP_AudioQueue;
 using static UD_Tinkering_Bytes.Options;
 
 namespace UD_Tinkering_Bytes
@@ -28,6 +26,10 @@ namespace UD_Tinkering_Bytes
         public Disassembly Disassembly => Disassembler?.GetPart<UD_VendorDisassembly>()?.Disassembly;
 
         public GameObject Disassembler;
+
+        protected UD_VendorDisassembly VendorDisassmebly => Disassembler?.GetPart<UD_VendorDisassembly>();
+
+        public bool IgnoresSkillRequirement => (VendorDisassmebly?.ReverseEngineerIgnoresSkillRequirement).GetValueOrDefault();
 
         public List<TinkerData> KnownRecipes => Disassembler?.GetPart<UD_VendorTinkering>()?.KnownRecipes;
 
@@ -65,6 +67,62 @@ namespace UD_Tinkering_Bytes
             return true;
         }
 
+        public int GetTinkeringBonus(GameObject Item, string Type, int BaseRating, int Bonus, ref bool Interrupt)
+        {
+            return GetTinkeringBonusEvent.GetFor(
+                Actor: Disassembler,
+                Item: Item,
+                Type: Type,
+                BaseRating: BaseRating,
+                Bonus: Bonus,
+                Interrupt: ref Interrupt);
+        }
+        public int GetDisassemblyBonus(GameObject Item, int BaseRating, int Bonus, ref bool Interrupt)
+        {
+            return GetTinkeringBonus(
+                Item: Item,
+                Type: "Disassemble",
+                BaseRating: BaseRating,
+                Bonus: Bonus,
+                Interrupt: ref Interrupt);
+        }
+        public int GetReverseEngineerBonus(GameObject Item, int BaseRating, int Bonus, ref bool Interrupt)
+        {
+            return GetTinkeringBonus(
+                Item: Item,
+                Type: "ReverseEngineer",
+                BaseRating: BaseRating,
+                Bonus: Bonus,
+                Interrupt: ref Interrupt);
+        }
+        public int GetVendorTinkeringBonus(GameObject Item, string Type, int BaseRating, int Bonus, ref bool Interrupt)
+        {
+            return GetVendorTinkeringBonusEvent.GetFor(
+                Vendor: Disassembler,
+                Item: Item,
+                Type: Type,
+                BaseRating: BaseRating,
+                Bonus: Bonus,
+                Interrupt: ref Interrupt);
+        }
+        public int GetVendorDisassemblyBonus(GameObject Item, int BaseRating, int Bonus, ref bool Interrupt)
+        {
+            return GetVendorTinkeringBonus(
+                Item: Item,
+                Type: "Disassemble",
+                BaseRating: BaseRating,
+                Bonus: Bonus,
+                Interrupt: ref Interrupt);
+        }
+        public int GetVendorReverseEngineerBonus(GameObject Item, int BaseRating, int Bonus, ref bool Interrupt)
+        {
+            return GetVendorTinkeringBonus(
+                Item: Item,
+                Type: "ReverseEngineer",
+                BaseRating: BaseRating,
+                Bonus: Bonus,
+                Interrupt: ref Interrupt);
+        }
         public override bool Continue()
         {
             Disassembler?.Brain?.Goals?.Clear();
@@ -188,10 +246,10 @@ namespace UD_Tinkering_Bytes
                     {
                         int disassembleBonus = Disassembler.GetIntProperty("DisassembleBonus");
                         Disassembly.BitChance = 50;
-                        disassembleBonus = GetTinkeringBonusEvent.GetFor(Disassembler, Item, "Disassemble", Disassembly.BitChance, disassembleBonus, ref interrupt);
+                        disassembleBonus = GetDisassemblyBonus(Item, Disassembly.BitChance, disassembleBonus, ref interrupt);
                         if (!interrupt)
                         {
-                            disassembleBonus = GetVendorTinkeringBonusEvent.GetFor(Disassembler, Item, "Disassemble", disassembleBonus, disassembleBonus, ref interrupt);
+                            disassembleBonus = GetVendorDisassemblyBonus(Item, Disassembly.BitChance, disassembleBonus, ref interrupt);
                         }
                         if (interrupt)
                         {
@@ -264,10 +322,11 @@ namespace UD_Tinkering_Bytes
                 if (learnableBuildRecipe != null || (learnableModRecipes != null && learnableModRecipes.Count > 0))
                 {
                     reverseEngineerChance = 15;
-                    reverseEngineerBonus = GetTinkeringBonusEvent.GetFor(Disassembler, Item, "ReverseEngineer", reverseEngineerChance, reverseEngineerBonus, ref interrupt);
+                    reverseEngineerBonus = GetReverseEngineerBonus(Item, reverseEngineerBonus, reverseEngineerBonus, ref interrupt);
+
                     if (!interrupt)
                     {
-                        reverseEngineerBonus = GetVendorTinkeringBonusEvent.GetFor(Disassembler, Item, "ReverseEngineer", reverseEngineerBonus, reverseEngineerBonus, ref interrupt);
+                        reverseEngineerBonus = GetVendorReverseEngineerBonus(Item, reverseEngineerBonus, reverseEngineerBonus, ref interrupt);
                     }
                     if (interrupt)
                     {
@@ -387,9 +446,10 @@ namespace UD_Tinkering_Bytes
                                 if (learnableBuildRecipe != null)
                                 {
                                     bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
-                                    if (vendorTinkering.LearnTinkerData(learnableBuildRecipe, shouldScribeRecipe))
+                                    if (vendorTinkering.LearnTinkerData(learnableBuildRecipe, IgnoresSkillRequirement, shouldScribeRecipe))
                                     {
-                                        Debug.CheckYeh(4, $"{learnableBuildRecipe.DisplayName} \"Learned\"", Indent: indent + 3, Toggle: doDebug);
+                                        Debug.CheckYeh(4, $"{learnableBuildRecipe?.Blueprint ?? Const.NULL} \"Learned\"",
+                                            Indent: indent + 3, Toggle: doDebug);
                                     }
                                 }
                                 if (!learnableModRecipes.IsNullOrEmpty())
@@ -397,9 +457,10 @@ namespace UD_Tinkering_Bytes
                                     foreach (TinkerData learnableMod in learnableModRecipes)
                                     {
                                         bool shouldScribeRecipe = vendorTinkering.ScribesKnownRecipesOnRestock && vendorTinkering.RestockScribeChance.in100();
-                                        if (vendorTinkering.LearnTinkerData(learnableMod, shouldScribeRecipe))
+                                        if (vendorTinkering.LearnTinkerData(learnableMod, IgnoresSkillRequirement, shouldScribeRecipe))
                                         {
-                                            Debug.CheckYeh(4, $"{learnableMod?.DisplayName?.Strip() ?? Const.NULL} \"Learned\"", Indent: indent + 3, Toggle: doDebug);
+                                            Debug.CheckYeh(4, $"{learnableMod?.PartName ?? Const.NULL} \"Learned\"",
+                                                Indent: indent + 3, Toggle: doDebug);
                                         }
                                     }
                                 }

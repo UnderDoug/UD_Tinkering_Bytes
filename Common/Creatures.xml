@@ -21,11 +21,7 @@
     <skill Name="UD_Basics" />
   </object>
   
-  <!-- Adding Disassemble to a few more NPCs-->
-  <object Name="Barathrumite Tinker" Load="Merge">
-    <skill Name="Tinkering_Disassemble" />
-  </object>
-  
+  <!-- Adding some tinkering skills to a few more NPCs-->
   <object Name="HumanTinker_Village0" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
   </object>
@@ -37,15 +33,56 @@
   <object Name="DiskMerchant" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
     <skill Name="Tinkering_ReverseEngineer" />
+    <part Name="UD_VendorTinkering"
+          ScribesKnownRecipesOnRestock="true"
+          RestockScribeChance="20" />
+    <part Name="UD_VendorDisassembly"
+          ReverseEngineerIgnoresSkillRequirement="true"
+          ReverseEngineerBonus="10" />
   </object>
   
   <object Name="Shem -1" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
   </object>
+
+  <object Name="Barathrumite" Load="Merge">
+    <skill Name="Tinkering" />
+    <skill Name="Tinkering_Scavenger" />
+    <skill Name="Tinkering_Disassemble" />
+    <skill Name="Tinkering_Repair" />
+  </object>
+  
+  <object Name="Barathrumite Tinker" Load="Merge">
+    <part Name="UD_VendorDisassembly"
+          DisassembleBonus="10" />
+  </object>
   
   <object Name="Neek" Load="Merge">
-    <skill Name="Tinkering_Disassemble" />
     <skill Name="Tinkering_ReverseEngineer" />
+    <part Name="UD_VendorDisassembly"
+          DisassembleBonus="20"
+          ReverseEngineerBonus="25"
+          ReverseEngineerIgnoresSkillRequirement="true" />
+  </object>
+  
+  <object Name="Jacobo" Load="Merge">
+    <part Name="UD_VendorTinkering"
+          LearnsOneStockedDataDiskOnRestock="false"
+          ScribesKnownRecipesOnRestock="true"
+          RestockScribeChance="20" />
+  </object>
+  
+  <object Name="Sparafucile" Load="Merge">
+    <skill Name="Tinkering_ReverseEngineer" />
+    <part Name="UD_VendorTinkering"
+          ScribesKnownRecipesOnRestock="true"
+          RestockScribeChance="20" />
+  </object>
+  
+  <object Name="Mafeo" Load="Merge">
+    <skill Name="Tinkering_ReverseEngineer" />
+    <part Name="UD_VendorTinkering"
+          LearnsOneStockedDataDiskOnRestock="false" />
   </object>
   
   <object Name="Mechnamist rummager" Load="Merge">
@@ -84,6 +121,10 @@
     <skill Name="Tinkering_Scavenger" />
     <skill Name="Tinkering_ReverseEngineer" />
     <skill Name="Tinkering_Tinker3" />
+    <part Name="UD_VendorDisassembly"
+          DisassembleBonus="100"
+          ReverseEngineerBonus="25"
+          ReverseEngineerIgnoresSkillRequirement="true" />
   </object>
   
   <object Name="Une" Load="Merge">

@@ -8,14 +8,16 @@ using XRL.World.Tinkering;
 using XRL.World.Capabilities;
 
 using UD_Modding_Toolbox;
-using UD_Tinkering_Bytes;
 using UD_Vendor_Actions;
+
+using UD_Tinkering_Bytes;
+using Utils = UD_Tinkering_Bytes.Utils;
 
 namespace XRL.World.Parts
 {
     [AlwaysHandlesVendor_UD_VendorActions]
     [Serializable]
-    public class UD_VendorDisassembly : IScribedPart, I_UD_VendorActionEventHandler
+    public class UD_VendorDisassembly : IScribedPart, I_UD_VendorActionEventHandler, IModEventHandler<GetVendorTinkeringBonusEvent>
     {
         private static bool doDebug = true;
 
@@ -30,9 +32,24 @@ namespace XRL.World.Parts
 
         public Disassembly Disassembly;
 
+        public int DisassembleBonus; // Added v0.1.0
+
+        public int ReverseEngineerBonus; // Added v0.1.0
+
+        public bool ReverseEngineerIgnoresSkillRequirement; // Added v0.1.0
+
+        public bool ScribesReverseEngineeredRecipes; // Added v0.1.0
+
+        public int ReverseEngineeredScribeChance; // Added v0.1.0
+
         public UD_VendorDisassembly()
         {
             ResetDisassembly();
+            DisassembleBonus = 0;
+            ReverseEngineerBonus = 0;
+            ReverseEngineerIgnoresSkillRequirement = false;
+            ScribesReverseEngineeredRecipes = false;
+            ReverseEngineeredScribeChance = 0;
         }
 
         public virtual void ResetDisassembly()
@@ -289,14 +306,55 @@ namespace XRL.World.Parts
         public override bool WantEvent(int ID, int Cascade)
         {
             return base.WantEvent(ID, Cascade)
+                || ID == AfterGameLoadedEvent.ID
                 || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
-                || (WantVendorActions && ID == UD_VendorActionEvent.ID);
+                || (WantVendorActions && ID == UD_VendorActionEvent.ID)
+                || (WantVendorActions && ID == GetVendorTinkeringBonusEvent.ID);
         }
         public override bool HandleEvent(AllowTradeWithNoInventoryEvent E)
         {
             if (E.Trader != null && ParentObject == E.Trader && WantVendorActions)
             {
                 return true;
+            }
+            return base.HandleEvent(E);
+        }
+        public override bool HandleEvent(AfterGameLoadedEvent E)
+        {
+            if (MigrateFrom != null
+                && MigrateFrom < new Version("0.1.0")
+                && ParentObject is GameObject vendor
+                && vendor.GetBlueprint() is GameObjectBlueprint vendorBlueprint)
+            {
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this, 
+                    Field: ref DisassembleBonus,
+                    FieldName: nameof(DisassembleBonus),
+                    Blueprint: vendorBlueprint);
+
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this, 
+                    Field: ref ReverseEngineerBonus,
+                    FieldName: nameof(ReverseEngineerBonus),
+                    Blueprint: vendorBlueprint);
+
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this, 
+                    Field: ref ReverseEngineerIgnoresSkillRequirement,
+                    FieldName: nameof(ReverseEngineerIgnoresSkillRequirement),
+                    Blueprint: vendorBlueprint);
+
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this, 
+                    Field: ref ScribesReverseEngineeredRecipes,
+                    FieldName: nameof(ScribesReverseEngineeredRecipes),
+                    Blueprint: vendorBlueprint);
+
+                UD_Modding_Toolbox.Utils.MigratePartFieldFromBlueprint(
+                    Part: this, 
+                    Field: ref ReverseEngineeredScribeChance,
+                    FieldName: nameof(ReverseEngineeredScribeChance),
+                    Blueprint: vendorBlueprint);
             }
             return base.HandleEvent(E);
         }
@@ -490,6 +548,26 @@ namespace XRL.World.Parts
                 return false;
             }
             return base.HandleEvent(E);
+        }
+        public virtual bool HandleEvent(GetVendorTinkeringBonusEvent E)
+        {
+            if (E.Vendor != null
+                && E.Vendor == ParentObject
+                && E.Type == "ReverseEngineer")
+            {
+                E.Bonus += ReverseEngineerBonus;
+            }
+            return base.HandleEvent(E);
+        }
+
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
+            if (modVersion < new Version("0.1.0"))
+            {
+                MigrateFrom = modVersion;
+            }
+            base.Read(Basis, Reader);
         }
     }
 }
