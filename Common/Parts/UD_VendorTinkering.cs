@@ -38,6 +38,10 @@ namespace XRL.World.Parts
         , I_UD_VendorActionEventHandler
         , IModEventHandler<UD_EndTradeEvent>
     {
+        // TODO:
+        // add flag for ignoring skill req when learning recipe (schem drafters?)
+        // debug wish for recipe skill reqs.
+
         private static bool doDebug = true;
 
         private static bool SaveStartedWithVendorActions => Startup.SaveStartedWithVendorActions;
@@ -137,7 +141,7 @@ namespace XRL.World.Parts
             bool CreateDisk = false)
         {
             KnownRecipes ??= new();
-            if (Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerData.Tier)) 
+            if (Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerData.Tier))
                 && !KnownRecipes.Any(datum => datum.IsSameDatumAs(TinkerData)))
             {
                 KnownRecipes.Add(TinkerData);

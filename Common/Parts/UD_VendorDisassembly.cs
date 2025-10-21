@@ -201,10 +201,11 @@ namespace XRL.World.Parts
                     .AddObject(The.Player)
                     .ToString();
 
-                string itemsAnItem = MultipleItems ? "items" : "=subject.a= =subject.t="
+                string itemsAnItem = MultipleItems ? "items" : "=subject.a==subject.t="
                     .StartReplace()
                     .AddObject(Item)
                     .ToString();
+
                 string containerIt = "=subject.objective="
                     .StartReplace()
                     .AddObject(container)
