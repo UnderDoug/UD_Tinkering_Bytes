@@ -28,11 +28,11 @@
   
   <object Name="Grenadier" Load="Merge">
     <skill Name="Tinkering_Disassemble" />
-    <intproperty Name="IdentifiesStock" Value="3" />
+    <intproperty Name="CanIdentifyStock" Value="3" />
   </object>
   
   <object Name="Gunsmith" Load="Merge">
-    <intproperty Name="IdentifiesStock" Value="3" />
+    <intproperty Name="CanIdentifyStock" Value="3" />
   </object>
   
   <object Name="DiskMerchant" Load="Merge">

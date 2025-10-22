@@ -168,7 +168,7 @@ namespace XRL.World.Parts
                         .AddObject(HeldFor, "object")
                         .ToString();
 
-                    E.AddTag(heldForTag);
+                    E.AddTag(heldForTag, DescriptionBuilder.ORDER_ADJUST_VERY_LATE + DescriptionBuilder.ORDER_ADJUST_VERY_LATE);
                 }
             }
             return base.HandleEvent(E);

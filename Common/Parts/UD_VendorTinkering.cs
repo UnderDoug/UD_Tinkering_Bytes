@@ -59,6 +59,8 @@ namespace XRL.World.Parts
 
         public const string BITLOCK_DISPLAY = "UD_BitLocker_Display";
 
+        public const string CAN_IDENTIFY_STOCK = "CanIdentifyStock";
+
         public bool WantVendorActions => !(ParentObject?.IsPlayer()).GetValueOrDefault();
 
         private List<TinkerData> _KnownRecipes;
@@ -221,7 +223,7 @@ namespace XRL.World.Parts
 
         public IEnumerable<TinkerData> GetKnownRecipes(Predicate<TinkerData> Filter = null, bool IncludeInstalled = true)
         {
-            int indent = Debug.LastIndent;
+            Debug.GetIndent(out int indent);
             bool doDebug = false;
             Debug.Entry(3, 
                 $"{nameof(UD_VendorTinkering)}.{nameof(GetKnownRecipes)}(" +
@@ -254,7 +256,8 @@ namespace XRL.World.Parts
                     }
                 }
             }
-            Debug.LastIndent = indent;
+
+            Debug.SetIndent(indent);
             yield break;
         }
 
@@ -455,19 +458,19 @@ namespace XRL.World.Parts
 
                 if (UD_Tinkering_Bytes.Options.doDebug)
                 {
-                    disassembleBitBag.VomitBits(4, vomitSource, nameof(disassembleBitBag), ShowChance: true,
+                    disassembleBitBag.VomitBits(4, vomitSource, nameof(disassembleBitBag), ShowChance: true, Short: true,
                         Indent: indent + 3, Toggle: doDebug);
 
-                    scavengerBitBag.VomitBits(4, vomitSource, nameof(scavengerBitBag), ShowChance: true,
+                    scavengerBitBag.VomitBits(4, vomitSource, nameof(scavengerBitBag), ShowChance: true, Short: true,
                         Indent: indent + 3, Toggle: doDebug);
 
-                    reverseEngineerBitBag.VomitBits(4, vomitSource, nameof(reverseEngineerBitBag), ShowChance: true,
+                    reverseEngineerBitBag.VomitBits(4, vomitSource, nameof(reverseEngineerBitBag), ShowChance: true, Short: true,
                         Indent: indent + 3, Toggle: doDebug);
 
-                    repairBitBag.VomitBits(4, vomitSource, nameof(repairBitBag), ShowChance: true,
+                    repairBitBag.VomitBits(4, vomitSource, nameof(repairBitBag), ShowChance: true, Short: true,
                         Indent: indent + 3, Toggle: doDebug);
 
-                    tinkeringSkillBitBag.VomitBits(4, vomitSource, nameof(tinkeringSkillBitBag), ShowChance: true,
+                    tinkeringSkillBitBag.VomitBits(4, vomitSource, nameof(tinkeringSkillBitBag), ShowChance: true, Short: true,
                         Indent: indent + 3, Toggle: doDebug);
                 }
 
@@ -630,7 +633,9 @@ namespace XRL.World.Parts
             GameObject Vendor,
             Raffle<TinkerData> RecipeDeck,
             int Amount,
-            List<TinkerData> KnownRecipes)
+            List<TinkerData> KnownRecipes,
+            bool IgnoreSkillRequirements = false,
+            bool CreateDisk = false)
         {
             if (Vendor == null || RecipeDeck.IsNullOrEmpty() || Amount < 1)
             {
@@ -647,7 +652,7 @@ namespace XRL.World.Parts
                 Debug.LoopItem(3,
                     tinkerSkill + "] Learning " + recipeName,
                     Indent: indent + 1, Toggle: doDebug);
-                learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes) || learned;
+                learned = LearnTinkerData(Vendor, recipeToKnow, KnownRecipes, IgnoreSkillRequirements, CreateDisk) || learned;
             }
 
             Debug.LastIndent = indent;
@@ -658,7 +663,9 @@ namespace XRL.World.Parts
             string Tinkering_TinkerX,
             int Amount,
             List<TinkerData> KnownRecipes,
-            string RecipeSeed = null)
+            string RecipeSeed = null,
+            bool IgnoreSkillRequirements = false,
+            bool CreateDisk = false)
         {
             if (Vendor == null 
                 || !Tinkering_TinkerX.StartsWith(nameof(Skill.Tinkering) + "_") 
@@ -676,16 +683,20 @@ namespace XRL.World.Parts
                     where !KnownRecipes.Contains(datum)
                     select datum);
 
-            return LearnRandomRecipes(Vendor, recipeDeck, Amount, KnownRecipes);
+            return LearnRandomRecipes(Vendor, recipeDeck, Amount, KnownRecipes, IgnoreSkillRequirements, CreateDisk);
         }
         public static bool IsRecipeLearnable(GameObject Vendor, TinkerData TinkerDatum, IEnumerable<TinkerData> KnownRecipes)
         {
             return Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerDatum.Tier))
                 && !KnownRecipes.Contains(TinkerDatum);
         }
-        public static bool LearnSkillsRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
+        public static bool LearnSkillsRecipes(
+            GameObject Vendor,
+            List<TinkerData> KnownRecipes, 
+            bool IgnoreSkillRequirements = false,
+            bool CreateDisk = false)
         {
-            if (Vendor == null)
+            if (Vendor == null || !IsVendorTinker(Vendor))
             {
                 return false;
             }
@@ -718,7 +729,13 @@ namespace XRL.World.Parts
                     where IsRecipeLearnable(Vendor, datum, KnownRecipes)
                     select datum;
                 Raffle<TinkerData> recipeDeck = new(GetVendorRecipeSeed(Vendor), learnableRecipes.ToList());
-                learned = LearnRandomRecipes(Vendor, recipeDeck, amount, KnownRecipes) || learned;
+                learned = LearnRandomRecipes(
+                    Vendor: Vendor,
+                    RecipeDeck: recipeDeck,
+                    Amount: amount,
+                    KnownRecipes: KnownRecipes,
+                    IgnoreSkillRequirements: IgnoreSkillRequirements,
+                    CreateDisk: CreateDisk) || learned;
             }
             else
             {
@@ -738,7 +755,14 @@ namespace XRL.World.Parts
                     nameof(amount) + " to learn: " + amount,
                     Indent: 1, Toggle: doDebug);
 
-                learned = LearnTinkerXSkillRecipes(Vendor, tinkeringSkill, amount, KnownRecipes, vendorRecipeSeed) || learned;
+                learned = LearnTinkerXSkillRecipes(
+                    Vendor: Vendor,
+                    Tinkering_TinkerX: tinkeringSkill,
+                    Amount: amount,
+                    KnownRecipes: KnownRecipes,
+                    RecipeSeed: vendorRecipeSeed,
+                    IgnoreSkillRequirements: IgnoreSkillRequirements,
+                    CreateDisk: CreateDisk) || learned;
             }
             else
             {
@@ -758,7 +782,14 @@ namespace XRL.World.Parts
                     nameof(amount) + " to learn: " + amount,
                     Indent: 1, Toggle: doDebug);
 
-                learned = LearnTinkerXSkillRecipes(Vendor, tinkeringSkill, amount, KnownRecipes, vendorRecipeSeed) || learned;
+                learned = LearnTinkerXSkillRecipes(
+                    Vendor: Vendor,
+                    Tinkering_TinkerX: tinkeringSkill,
+                    Amount: amount,
+                    KnownRecipes: KnownRecipes,
+                    RecipeSeed: vendorRecipeSeed,
+                    IgnoreSkillRequirements: IgnoreSkillRequirements,
+                    CreateDisk: CreateDisk) || learned;
             }
             else
             {
@@ -778,7 +809,14 @@ namespace XRL.World.Parts
                     nameof(amount) + " to learn: " + amount,
                     Indent: 1, Toggle: doDebug);
 
-                learned = LearnTinkerXSkillRecipes(Vendor, tinkeringSkill, amount, KnownRecipes, vendorRecipeSeed) || learned;
+                learned = LearnTinkerXSkillRecipes(
+                    Vendor: Vendor,
+                    Tinkering_TinkerX: tinkeringSkill,
+                    Amount: amount,
+                    KnownRecipes: KnownRecipes,
+                    RecipeSeed: vendorRecipeSeed,
+                    IgnoreSkillRequirements: IgnoreSkillRequirements,
+                    CreateDisk: CreateDisk) || learned;
             }
             else
             {
@@ -866,9 +904,9 @@ namespace XRL.World.Parts
                     }
                 }
             }
-            foreach (IPart part in Vendor.LoopParts())
+            foreach (BaseSkill skill in Vendor.GetPartsDescendedFrom<BaseSkill>())
             {
-                if (part.Name.StartsWith(tinkering))
+                if (skill.Name.StartsWith(tinkering))
                 {
                     return true;
                 }
@@ -884,7 +922,9 @@ namespace XRL.World.Parts
             GameObject Vendor,
             List<TinkerData> KnownRecipes,
             List<TinkerData> InstalledRecipes,
-            MinEvent FromEvent = null)
+            MinEvent FromEvent = null,
+            bool IgnoreSkillRequirements = false,
+            bool CreateDisks = false)
         {
             if (!IsVendorTinker(Vendor)
                 || KnownRecipes == null
@@ -899,7 +939,7 @@ namespace XRL.World.Parts
 
             LearnGiganticRecipe(Vendor, KnownRecipes);
 
-            LearnSkillsRecipes(Vendor, KnownRecipes);
+            LearnSkillsRecipes(Vendor, KnownRecipes, IgnoreSkillRequirements, CreateDisks);
 
             KnowImplantedRecipes(Vendor, InstalledRecipes);
 
@@ -907,7 +947,20 @@ namespace XRL.World.Parts
         }
         public bool InitializeVendorTinker(MinEvent FromEvent = null)
         {
-            return InitializeVendorTinker(ParentObject, KnownRecipes, InstalledRecipes, FromEvent);
+            bool ignoreSkillRequirements = false;
+            bool createDisks = false;
+            if (ParentObject.GetPart<UD_VendorDisassembly>() is UD_VendorDisassembly vendorDisassembly)
+            {
+                ignoreSkillRequirements = vendorDisassembly.ReverseEngineerIgnoresSkillRequirement;
+                createDisks = vendorDisassembly.ScribesReverseEngineeredRecipes;
+            }
+            return InitializeVendorTinker(
+                Vendor: ParentObject,
+                KnownRecipes: KnownRecipes,
+                InstalledRecipes: InstalledRecipes,
+                FromEvent: FromEvent,
+                IgnoreSkillRequirements: ignoreSkillRequirements,
+                CreateDisks: createDisks);
         }
 
         public static bool PlayerCanReadDataDisk(GameObject DataDisk)
@@ -1785,7 +1838,7 @@ namespace XRL.World.Parts
             int identifyLevel = GetIdentifyLevel(Vendor);
             if (identifyLevel <= 0 && Item.HasProperty("_stock"))
             {
-                identifyLevel += Vendor.GetIntProperty("IdentifiesStock", 0);
+                identifyLevel += Vendor.GetIntProperty(CAN_IDENTIFY_STOCK, 0);
             }
             if (identifyLevel < Item.GetComplexity())
             {
@@ -2550,6 +2603,7 @@ namespace XRL.World.Parts
         }
         public override bool HandleEvent(StockedEvent E)
         {
+            Debug.ResetIndent();
             if (E.Object is GameObject vendor 
                 && vendor == ParentObject
                 && IsVendorTinker())
@@ -2604,7 +2658,7 @@ namespace XRL.World.Parts
         {
             if (E.Trader == ParentObject && IsVendorTinker())
             {
-                List<TinkerData> knownRecipes = GetKnownRecipes(IncludeInstalled: false).ToList();
+                List<TinkerData> knownRecipes = new(GetKnownRecipes(IncludeInstalled: false));
                 KnownRecipes.Clear();
                 foreach (TinkerData knownRecipe in knownRecipes)
                 {
@@ -2700,7 +2754,7 @@ namespace XRL.World.Parts
 
                     if (vendorIdentifyLevel <= 0 && item.HasProperty("_stock"))
                     {
-                        vendorIdentifyLevel += vendor.GetIntProperty("IdentifiesStock", 0);
+                        vendorIdentifyLevel += vendor.GetIntProperty(CAN_IDENTIFY_STOCK, 0);
                     }
                     if (vendorIdentifyLevel > 0 && !itemUnderstood)
                     {
