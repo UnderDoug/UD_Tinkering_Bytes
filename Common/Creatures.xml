@@ -68,6 +68,7 @@
           DisassembleBonus="20"
           ReverseEngineerBonus="25"
           ReverseEngineerIgnoresSkillRequirement="true" />
+    <part Name="UD_VendorRecipeDrafter" />
   </object>
   
   <object Name="Jacobo" Load="Merge">
@@ -88,6 +89,16 @@
     <skill Name="Tinkering_ReverseEngineer" />
     <part Name="UD_VendorTinkering"
           LearnsOneStockedDataDiskOnRestock="false" />
+  </object>
+  
+  <object Name="Q Girl" Load="Merge">
+    <part Name="UD_VendorTinkering"
+          MatchMakersMarkToDetailColor="true" />
+    <part Name="UD_VendorRecipeDrafter" />
+  </object>
+  
+  <object Name="Barathrum" Load="Merge">
+    <part Name="UD_VendorRecipeDrafter" />
   </object>
   
   <object Name="Mechnamist rummager" Load="Merge">
@@ -130,6 +141,7 @@
           DisassembleBonus="100"
           ReverseEngineerBonus="25"
           ReverseEngineerIgnoresSkillRequirement="true" />
+    <part Name="UD_VendorRecipeDrafter" />
   </object>
   
   <object Name="Une" Load="Merge">
@@ -152,6 +164,7 @@
     <tag Name="ExcludeFromDynamicEncounters" />
     <tag Name="ExcludeFromVillagePopulations" />
     <tag Name="NoLibrarian" />
+    <part Name="UD_VendorRecipeDrafter" />
   </object>
   
 </objects>

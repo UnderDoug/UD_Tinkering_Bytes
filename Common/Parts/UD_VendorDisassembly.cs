@@ -394,12 +394,12 @@ namespace XRL.World.Parts
         public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
             if ((E.Command == COMMAND_DISASSEMBLE || E.Command == COMMAND_DISASSEMBLE_ALL)
-                && E.Vendor is GameObject Vendor
-                && E.Item is GameObject Item
+                && E.Vendor is GameObject vendor
+                && E.Item is GameObject item
                 && The.Player is GameObject player
-                && Item.TryGetPart(out TinkerItem tinkerItem))
+                && item.TryGetPart(out TinkerItem tinkerItem))
             {
-                int itemCount = Item.Count;
+                int itemCount = item.Count;
                 int amountToDisassemble = E.Command == COMMAND_DISASSEMBLE_ALL ? itemCount : 1;
                 bool multipleItems = amountToDisassemble > 1;
 
@@ -434,7 +434,7 @@ namespace XRL.World.Parts
                 int RealCostPerItem = multipleItems ? totalCost / amountToDisassemble : totalCost;
                 totalCost = multipleItems ? amountToDisassemble * RealCostPerItem : RealCostPerItem;
 
-                if (Vendor.IsPlayerLed())
+                if (vendor.IsPlayerLed())
                 {
                     costPerItem = 0;
                     RealCostPerItem = 0;
@@ -443,7 +443,7 @@ namespace XRL.World.Parts
 
                 if (E.Staggered && E.Second)
                 {
-                    if (VendorDoDisassembly(Vendor, Item, tinkerItem, RealCostPerItem))
+                    if (VendorDoDisassembly(vendor, item, tinkerItem, RealCostPerItem))
                     {
                         return true;
                     }
@@ -463,27 +463,27 @@ namespace XRL.World.Parts
                             "=object.name= disassemble " + "item".ThisTheseN(amountToDisassemble, multipleItems) + "\n\n" + ".")
                                 .StartReplace()
                                 .AddObject(player)
-                                .AddObject(Vendor)
+                                .AddObject(vendor)
                                 .ToString();
 
                         if (player.CanAfford(RealCostPerItem))
                         {
                             int maxAfford = (int)Math.Floor(player.GetFreeDrams() / (double)RealCostPerItem);
-                            int maxHave = Item.Count;
+                            int maxHave = item.Count;
                             int maxAsk = Math.Min(maxAfford, maxHave);
                             string realCostPerItemString = RealCostPerItem.Things("dram").Color("C");
                             string canAfford = "can afford";
                             string doesHave = "=subject.verb:have=";
                             bool haveCountSmaller = maxAsk == maxHave;
                             string whyMax = haveCountSmaller ? doesHave : canAfford;
-                            string itemRefName = Item.GetReferenceDisplayName(Short: true);
+                            string itemRefName = item.GetReferenceDisplayName(Short: true);
                             string disassembleSomeMsg =
                                 ("How many of the " + maxAsk.Things(itemRefName) + " that =subject.name= " + whyMax + " " +
                                 "would =subject.subjective= like =object.name= to disassemble?\n\n" +
                                 "It costs " + realCostPerItemString + " of fresh water each to disassemble this item.")
                                     .StartReplace()
                                     .AddObject(player)
-                                    .AddObject(Vendor)
+                                    .AddObject(vendor)
                                     .ToString();
 
                             string numberToDisassembleMessage = tooExpensiveMsg;
@@ -518,7 +518,7 @@ namespace XRL.World.Parts
                     if (!tooExpensive 
                         && amountToDisassemble > 0
                         && UD_VendorTinkering.ConfirmTinkerService(
-                            Vendor: Vendor,
+                            Vendor: vendor,
                             Shopper: player,
                             DramsCost: costToDisassemble,
                             DoWhat: "disassemble " + thisThese,
@@ -526,10 +526,10 @@ namespace XRL.World.Parts
                     {
                         List<Action<GameObject>> broadcastActions = null;
                         if (!CheckHostiles(E, multipleItems)
-                            || !CheckImportant(Item, itemCount, E, multipleItems)
-                            || !CheckTinkerItemConfirm(Item, E, multipleItems)
-                            || !CheckOwner(Item, E, multipleItems, ref broadcastActions)
-                            || !CheckContainerOwner(Item, E, multipleItems, ref broadcastActions))
+                            || !CheckImportant(item, itemCount, E, multipleItems)
+                            || !CheckTinkerItemConfirm(item, E, multipleItems)
+                            || !CheckOwner(item, E, multipleItems, ref broadcastActions)
+                            || !CheckContainerOwner(item, E, multipleItems, ref broadcastActions))
                         {
                             return false;
                         }

@@ -1,77 +1,197 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Linq;
+using System.Text;
 
 using Qud.API;
 
 using XRL;
-using XRL.Language;
-using XRL.Rules;
 using XRL.UI;
-using XRL.Wish;
+using XRL.Rules;
+using XRL.Liquids;
+using XRL.Language;
 using XRL.World;
 using XRL.World.Capabilities;
 using XRL.World.Effects;
 using XRL.World.Parts;
 using XRL.World.Parts.Skill;
 using XRL.World.Tinkering;
+using XRL.Wish;
 
 using UD_Modding_Toolbox;
-
 using static UD_Modding_Toolbox.Const;
+using TextCase = UD_Modding_Toolbox.Utils.TextCase;
+
 using static UD_Tinkering_Bytes.Utils;
-using XRL.Liquids;
 
 namespace UD_Tinkering_Bytes
 {
     [HasWishCommand]
-    public class TinkerInvoice
+    [Serializable]
+    public class TinkerInvoice : IComposite
     {
+        public const string SUNDRY = "Sundry";
         public const string IDENTIFY = "Identify";
         public const string RECHARGE = "Recharge";
         public const string REPAIR = "Repair";
         public const string BUILD = "Build";
         public const string MOD = "Mod";
+        public const string DRAFT = "Draft";
 
-        public GameObject Vendor = null;
-        public bool Besties => Vendor != null && Vendor.IsPlayerLed();
+        public const string EXPERTISE_VALUE_OVERRIDE = "VendorTinker_ExpertiseValueOverride";
 
-        public string Service = null;
+        [NonSerialized]
+        protected string VendorID;
+        [NonSerialized]
+        protected GameObject _Vendor;
+        public GameObject Vendor
+        {
+            get => _Vendor ??= GameObject.FindByID(VendorID);
+            set
+            {
+                VendorID = value?.ID;
+                _Vendor = value;
+            }
+        }
 
-        public TinkerData Recipe = null;
-        public bool VendorOwnsRecipe = false;
+        public bool Besties => (Vendor?.IsPlayerLed()).GetValueOrDefault();
 
-        public GameObject Item = null;
-        public bool IsItemSample = false;
+        public string Service;
 
-        private bool GotPerformance = false;
-        private double Performance = 1.0;
+        public TinkerData Recipe;
+        public bool VendorOwnsRecipe;
 
-        public string ItemName = "";
-        public int NumberMade = 1;
-        public double ItemValue = 0;
+        [NonSerialized]
+        protected bool GotPerformance;
+        [NonSerialized]
+        protected double Performance;
 
-        public double ExpertiseValue = 0;
+        [NonSerialized]
+        protected string ItemID;
+        [NonSerialized]
+        protected GameObject _Item;
+        public GameObject Item
+        {
+            get => _Item ??= GameObject.FindByID(ItemID);
+            set
+            {
+                ItemID = value?.ID;
+                _Item = value;
+            }
+        }
+        public bool IsItemSample;
+        public string ItemName;
+        
+        private int _NumberMade;
+        public int NumberMade
+        {
+            get
+            {
+                if (_NumberMade < 1)
+                {
+                    int number = 0;
+                    if (GameObjectFactory.Factory.GetBlueprintIfExists(Recipe?.Blueprint) is GameObjectBlueprint blueprint)
+                    {
+                        blueprint.TryGetPartParameter(nameof(TinkerItem), nameof(TinkerItem.NumberMade), out number);
+                    }
+                    else
+                    if (Item?.GetPart<TinkerItem>() is TinkerItem tinkerItem)
+                    {
+                        number = tinkerItem.NumberMade;
+                    }
+                    _NumberMade = number;
+                }
+                return _NumberMade;
+            }
+        }
 
-        public GameObject SelectedIngredient = null;
-        public double IngredientValue = 0;
-        public bool VendorSuppliesIngredients = true;
-        public bool IngredientUsed = false;
+        public double ItemValue;
 
-        public BitCost BitCost = null;
-        public double BitsValue = 0;
-        public bool VendorSuppliesBits = true;
+        public double LabourValue;
+        public double ExpertiseValue;
 
-        public double LabourValue = 0;
+        [NonSerialized]
+        protected string SelectedIngredientID;
+        [NonSerialized]
+        protected GameObject _SelectedIngredient;
+        public GameObject SelectedIngredient
+        {
+            get => _SelectedIngredient ??= GameObject.FindByID(SelectedIngredientID);
+            set
+            {
+                SelectedIngredientID = value?.ID;
+                _SelectedIngredient = value;
+            }
+        }
+        public double IngredientValue;
+        public bool? VendorSuppliesIngredients;
+        public bool? IngredientUsed;
 
-        public double TotalCost = 0;
-        public double DepositCost = 0;
+        public BitCost BitCost;
+        public double BitsValue;
+        public bool VendorSuppliesBits;
 
-        public bool HoldForPlayer = false;
+        public double TotalCost;
+        public double DepositCost;
+        public bool DepositAllowed;
+
+        public bool HoldForPlayer;
+
+        [NonSerialized]
+        protected bool IncludeItemValue;
+        [NonSerialized]
+        protected bool IncludeLabourValue;
+        [NonSerialized]
+        protected bool IncludeExpertiseValue;
+        [NonSerialized]
+        protected bool IncludeMarkUpValue;
+        [NonSerialized]
+        protected bool IncludeIngredientValue;
+        [NonSerialized]
+        protected bool IncludeBitsValue;
+        [NonSerialized]
+        protected bool IncludeMaterialsValue;
 
         public TinkerInvoice()
         {
+            Vendor = null;
+
+            Service = null;
+
+            Recipe = null;
+            VendorOwnsRecipe = false;
+
+            GotPerformance = false;
+            Performance = 1.0;
+
+            Item = null;
+            ItemName = null;
+            _NumberMade = 0;
+
+            LabourValue = 0;
+            ExpertiseValue = 0;
+
+            SelectedIngredient = null;
+            IngredientValue = 0;
+            VendorSuppliesIngredients = null;
+            IngredientUsed = null;
+
+            BitCost = null;
+            BitsValue = 0;
+            VendorSuppliesBits = true;
+
+            TotalCost = 0;
+            DepositCost = 0;
+            DepositAllowed = false;
+            HoldForPlayer = false;
+
+            IncludeItemValue = false;
+            IncludeLabourValue = false;
+            IncludeExpertiseValue = false;
+            IncludeMarkUpValue = false;
+            IncludeIngredientValue = false;
+            IncludeBitsValue = false;
+            IncludeMaterialsValue = false;
         }
 
         public TinkerInvoice(
@@ -79,15 +199,18 @@ namespace UD_Tinkering_Bytes
             string Service,
             GameObject SelectedIngredient = null,
             BitCost BitCost = null,
-            GameObject Item = null)
+            GameObject Item = null,
+            bool DepositAllowed = false)
             : this()
         {
             this.Vendor = Vendor;
-            this.Service ??= Service ?? "Sundry";
+            this.Service ??= Service ?? SUNDRY;
 
             this.SelectedIngredient = SelectedIngredient;
             this.BitCost = BitCost;
             this.Item = Item;
+
+            this.DepositAllowed = DepositAllowed;
         }
 
         public TinkerInvoice(
@@ -101,7 +224,8 @@ namespace UD_Tinkering_Bytes
                   Vendor: Vendor, 
                   Service: Recipe.Type, 
                   SelectedIngredient: SelectedIngredient,
-                  BitCost: BitCost)
+                  BitCost: BitCost,
+                  DepositAllowed: Recipe.Type == BUILD)
         {
             this.Recipe = Recipe;
             this.VendorOwnsRecipe = VendorOwnsRecipe;
@@ -111,10 +235,6 @@ namespace UD_Tinkering_Bytes
                 Item = GameObject.CreateSample(Recipe.Blueprint);
                 IsItemSample = true;
                 TinkeringHelpers.StripForTinkering(Item);
-                if (Item.TryGetPart(out TinkerItem tinkerItem) && tinkerItem.NumberMade != 1)
-                {
-                    NumberMade = tinkerItem.NumberMade;
-                }
             }
             else
             if (Service == MOD)
@@ -138,38 +258,98 @@ namespace UD_Tinkering_Bytes
         {
         }
 
-        public void Clear()
+        public virtual void Clear()
         {
             if (IsItemSample)
             {
-                ScrapTinkerSample(ref Item);
+                ScrapTinkerSample(Item);
             }
             Vendor = null;
+
             Service = null;
+
             Recipe = null;
             VendorOwnsRecipe = false;
+
             GotPerformance = false;
             Performance = 1.0;
+
             Item = null;
-            ItemName = "";
-            NumberMade = 1;
+            ItemName = null;
+            _NumberMade = 0;
+
+            LabourValue = 0;
             ExpertiseValue = 0;
+
             SelectedIngredient = null;
             IngredientValue = 0;
-            VendorSuppliesIngredients = true;
-            IngredientUsed = false;
+            VendorSuppliesIngredients = null;
+            IngredientUsed = null;
+
             BitCost = null;
             BitsValue = 0;
             VendorSuppliesBits = true;
-            LabourValue = 0;
+
             TotalCost = 0;
             DepositCost = 0;
+            DepositAllowed = false;
             HoldForPlayer = false;
+
+            IncludeItemValue = false;
+            IncludeLabourValue = false;
+            IncludeExpertiseValue = false;
+            IncludeMarkUpValue = false;
+            IncludeIngredientValue = false;
+            IncludeBitsValue = false;
+            IncludeMaterialsValue = false;
         }
+
+        public virtual TinkerInvoice SetIncludeItemValue(bool Value = true)
+        {
+            IncludeItemValue = Value;
+            return this;
+        }
+        public virtual TinkerInvoice SetIncludeLabourValue(bool Value = true)
+        {
+            IncludeLabourValue = Value;
+            return this;
+        }
+        public virtual TinkerInvoice SetIncludeExpertiseValue(bool Value = true)
+        {
+            IncludeExpertiseValue = Value;
+            return this;
+        }
+        public virtual TinkerInvoice SetIncludeMarkUpValue(bool Value = true)
+        {
+            IncludeMarkUpValue = Value;
+            return this;
+        }
+        public virtual TinkerInvoice SetIncludeIngredientValue(bool Value = true)
+        {
+            IncludeIngredientValue = Value;
+            return this;
+        }
+        public virtual TinkerInvoice SetIncludeBitsValue(bool Value = true)
+        {
+            IncludeBitsValue = Value;
+            return this;
+        }
+        public virtual TinkerInvoice SetIncludeMaterialsValue(bool Value = true)
+        {
+            IncludeMaterialsValue = Value;
+            return this;
+        }
+
+        public virtual bool IsItemValueIrrelevant() => !(bool)VendorSuppliesIngredients || !VendorSuppliesBits;
+        public virtual bool PreferItemValue() => GetItemValue() > GetMaterialsValue();
 
         public static GameObject CreateTinkerSample(string Blueprint)
         {
-            GameObject tinkerSample = GameObject.CreateSample(Blueprint);
+            if (GameObjectFactory.Factory.GetBlueprintIfExists(Blueprint) is not GameObjectBlueprint blueprint
+                || GameObject.CreateSample(blueprint.Name) is not GameObject tinkerSample)
+            {
+                return null;
+            }
             TinkeringHelpers.StripForTinkering(tinkerSample);
             TinkeringHelpers.ForceToBePowered(tinkerSample);
             return tinkerSample;
@@ -181,8 +361,15 @@ namespace UD_Tinkering_Bytes
                 TinkerSample.Obliterate();
             }
         }
+        public static void ScrapTinkerSample(GameObject TinkerSample)
+        {
+            if (GameObject.Validate(TinkerSample))
+            {
+                TinkerSample.Obliterate();
+            }
+        }
 
-        public string GetItemName()
+        public virtual string GetItemName()
         {
             if (ItemName.IsNullOrEmpty() && Item != null)
             {
@@ -196,20 +383,32 @@ namespace UD_Tinkering_Bytes
                 {
                     ItemName = Item.t(Single:true, Short:true);
                 }
+                else
                 if (Service == REPAIR)
                 {
-                    ItemName = Item.t(Short:true);
+                    ItemName = Item.t(Short: true);
                 }
+                else
                 if (Item.InInventory != Vendor && Service == RECHARGE)
                 {
                     ItemName = Item.t(Short: true);
+                }
+                else
+                if (Service == DRAFT)
+                {
+                    ItemName = Item.GetDisplayName(Context: UD_VendorRecipeDrafter.COMMAND_DRAFT_RECIPE_DISK, Short: true, BaseOnly: true);
                 }
                 ItemName = ItemName.Color("y");
             }
             return ItemName;
         }
 
-        public double GetPerformance()
+        protected string GetItemInvoiceName(TextCase Case = TextCase.Default)
+        {
+            return GetItemName().ConvertCase(Case).Color("y");
+        }
+
+        public virtual double GetPerformance()
         {
             if (!GotPerformance)
             {
@@ -219,14 +418,21 @@ namespace UD_Tinkering_Bytes
             return Performance;
         }
 
-        public double GetItemValue()
+        public virtual double GetItemValue()
         {
-            if (Recipe != null && Service == BUILD && ItemValue == 0)
+            if (ItemValue == 0)
             {
-                Item ??= GameObject.CreateSample(Recipe.Blueprint);
-                TinkeringHelpers.StripForTinkering(Item);
-                ItemValue = Math.Round(Item.ValueEach / GetPerformance(), 2);
-                return ItemValue;
+                if (Service == BUILD || Service == DRAFT)
+                {
+                    if (Recipe != null)
+                    {
+                        Item ??= CreateTinkerSample(Recipe?.Blueprint);
+                    }
+                    if (Item != null)
+                    {
+                        ItemValue = Math.Round(Item.ValueEach / GetPerformance(), 2);
+                    }
+                }
             }
             return ItemValue;
         }
@@ -278,34 +484,43 @@ namespace UD_Tinkering_Bytes
             }
             return value;
         }
-        public double GetExamineCost()
+        public virtual double GetExamineCost()
         {
             return GetExamineCost(Item, GetPerformance());
         }
 
-        public double GetExpertiseValue()
+        public virtual double GetExpertiseValue()
         {
             if (VendorOwnsRecipe && ExpertiseValue == 0)
             {
-                string priceOverrideString = Item.GetPropertyOrTag("VendorTinker_ExpertiseValueOverride", "-1");
+                string priceOverrideString = Item.GetPropertyOrTag(EXPERTISE_VALUE_OVERRIDE, "-1");
                 if (int.TryParse(priceOverrideString, out int priceOverride) && priceOverride > -1)
                 {
                     ExpertiseValue = priceOverride;
                 }
                 else
                 {
+                    static double CalculateExpertise(GameObject DiskObject, double Divisor = 3, double Min = 2)
+                    {
+                        return Math.Round(Math.Max(Min, TradeUI.GetValue(DiskObject, true) / Divisor), 2);
+                    }
                     if (TinkerData.createDataDisk(Recipe) is GameObject sampleDataDiskObject 
                         && sampleDataDiskObject.TryGetPart(out DataDisk dataDisk) && dataDisk.Data == Recipe)
                     {
-                        ExpertiseValue = Math.Round(Math.Max(2, TradeUI.GetValue(sampleDataDiskObject, true) / 3), 2);
+                        ExpertiseValue = CalculateExpertise(sampleDataDiskObject);
                         ScrapTinkerSample(ref sampleDataDiskObject);
+                    }
+                    else
+                    if (Item != null && Item.HasPart<DataDisk>())
+                    {
+                        ExpertiseValue = CalculateExpertise(DiskObject: Item, Divisor: 10, Min: 3);
                     }
                 }
             }
             return ExpertiseValue;
         }
 
-        public double GetLabourValue()
+        public virtual double GetLabourValue()
         {
             if (LabourValue == 0)
             {
@@ -325,12 +540,12 @@ namespace UD_Tinkering_Bytes
             return LabourValue;
         }
 
-        public double GetMarkUpValue()
+        public virtual double GetMarkUpValue()
         {
             return GetLabourValue() + GetExpertiseValue();
         }
 
-        public GameObject GetSelectedIngredient()
+        public virtual GameObject GetSelectedIngredient()
         {
             if (Recipe != null
                 && !Recipe.Ingredient.IsNullOrEmpty()
@@ -340,8 +555,9 @@ namespace UD_Tinkering_Bytes
                     ForObject: Item,
                     TinkerData: Recipe,
                     RecipeIngredientSupplier: out GameObject ingredientSupplier,
-                    SelectedIngredient: out SelectedIngredient))
+                    SelectedIngredient: out GameObject selectedIngredient))
             {
+                SelectedIngredient = selectedIngredient;
                 VendorSuppliesIngredients = ingredientSupplier == Vendor;
             }
             return SelectedIngredient;
@@ -374,7 +590,7 @@ namespace UD_Tinkering_Bytes
             }
             return true;
         }
-        public bool UseSelectedIngredient(GameObject RecipeIngredientSupplier)
+        public virtual bool UseSelectedIngredient(GameObject RecipeIngredientSupplier)
         {
             return UseSelectedIngredient(Vendor, this, RecipeIngredientSupplier);
         }
@@ -418,10 +634,10 @@ namespace UD_Tinkering_Bytes
             return valueInDrams;
         }
 
-        public double GetIngredientValue()
+        public virtual double GetIngredientValue()
         {
             if (IngredientValue == 0
-                && VendorSuppliesIngredients
+                && (VendorSuppliesIngredients != null && (bool)VendorSuppliesIngredients)
                 && GetSelectedIngredient() is GameObject selectedIngredient)
             {
                 IngredientValue = Math.Round(GetIngredientsValueInDrams(selectedIngredient, Vendor), 2);
@@ -439,7 +655,7 @@ namespace UD_Tinkering_Bytes
             bitCost.Import(TinkerItem.GetBitCostFor(TinkerData.Blueprint));
             return bitCost;
         }
-        public BitCost GetBuildBitCost()
+        public virtual BitCost GetBuildBitCost()
         {
             if (Service != BUILD)
             {
@@ -466,7 +682,7 @@ namespace UD_Tinkering_Bytes
             bitCost.Increment(BitType.TierBits[existingModsTier]);
             return bitCost;
         }
-        public BitCost GetModBitCostForObject()
+        public virtual BitCost GetModBitCostForObject()
         {
             if (Service != MOD)
             {
@@ -498,7 +714,7 @@ namespace UD_Tinkering_Bytes
             return GetBitsValueInDrams(BitCost.ToBits(), Vendor);
         }
 
-        public double GetBitsValue()
+        protected double GetBitsValue()
         {
             if (BitsValue == 0 && VendorSuppliesBits && Vendor != null)
             {
@@ -507,34 +723,48 @@ namespace UD_Tinkering_Bytes
             return BitsValue;
         }
 
-        public double GetMaterialsValue()
+        public virtual double GetMaterialsValue()
         {
             return Math.Round(GetIngredientValue() + GetBitsValue(), 2);
         }
 
-        public int GetTotalCost()
+        public virtual int GetTotalCost()
         {
             if (TotalCost == 0)
             {
-                bool isItemValueIrrelevant = !VendorSuppliesBits || !VendorSuppliesIngredients;
+                double labourValue = GetLabourValue();
+
+                double itemValue = GetItemValue();
+
+                double materialsValue = GetMaterialsValue();
+                double expertiseValue = GetExpertiseValue();
+
                 if (Service == MOD)
                 {
                     TotalCost = GetMarkUpValue() + GetMaterialsValue();
-                }
-                else
-                if (Service == BUILD)
-                {
-                    TotalCost = GetLabourValue() + (!isItemValueIrrelevant && GetItemValue() > GetMaterialsValue() ? GetItemValue() : (GetMaterialsValue() + GetExpertiseValue()));
                 }
                 else
                 if (Service == RECHARGE || Service == REPAIR)
                 {
                     TotalCost = GetLabourValue() + GetMaterialsValue();
                 }
+                else
+                if (Service == BUILD)
+                {
+                    double workValue = materialsValue + expertiseValue;
+                    double releventValue = !IsItemValueIrrelevant() && PreferItemValue() ? itemValue : workValue;
+                    TotalCost = labourValue + releventValue;
+                }
+                else
+                if (Service == DRAFT)
+                {
+                    double releventValue = !IsItemValueIrrelevant() && PreferItemValue() ? itemValue : materialsValue;
+                    TotalCost = labourValue + expertiseValue + releventValue;
+                }
 
                 if (TotalCost > 0)
                 {
-                    if (!VendorSuppliesIngredients)
+                    if (VendorSuppliesIngredients == null || !(bool)VendorSuppliesIngredients)
                     {
                         TotalCost -= GetIngredientValue();
                     }
@@ -548,9 +778,9 @@ namespace UD_Tinkering_Bytes
             return Besties ? 0 : (int)Math.Ceiling(TotalCost);
         }
 
-        public int GetDepositCost()
+        public virtual int GetDepositCost()
         {
-            if (Service == BUILD
+            if (DepositAllowed
                 && DepositCost == 0
                 && (SelectedIngredient == null || GetIngredientValue() > 0)
                 && GetBitsValue() > 0)
@@ -574,209 +804,278 @@ namespace UD_Tinkering_Bytes
             return DramsCostString((double)DramsCost);
         }
 
+        public virtual string GetServiceVerb()
+        {
+            return "tinker";
+        }
+        public virtual string GetItemNoun()
+        {
+            string itemNoun = Item.GetDescriptiveCategory();
+            if (NumberMade != 1)
+            {
+                itemNoun = Grammar.Pluralize(itemNoun);
+            }
+            return itemNoun;
+        }
+        public virtual string GetInvoiceDescription(bool HoldForPlayer = false)
+        {
+            string output = "Description: " + GetServiceVerb();
+            if (HoldForPlayer)
+            {
+                output += " and hold ";
+            }
+            return output += GetItemName();
+        }
+
+        public virtual bool UseInvoiceOverride()
+        {
+            return false;
+        }
         public override string ToString()
         {
-            GameObject player = The.Player;
-            var SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
-
-            bool isItemValueIrrelevant = !VendorSuppliesBits || !VendorSuppliesIngredients;
-
-            string itemName = GetItemName();
             string dividerLineK = DividerLine().Color("K");
-
-            // Description
-            if (Service == BUILD)
+            if (UseInvoiceOverride())
             {
-                SB.Append("Description: Tinker ");
-                if (HoldForPlayer)
+                string output = GetInvoiceDescription(HoldForPlayer) + "\n";
+
+                output += dividerLineK + "\n";
+
+                if (IncludeItemValue)
                 {
-                    SB.Append("and hold ");
+
                 }
-                SB.Append($"{NumberMade}x ").Append(itemName).AppendLine();
+                if (IncludeMarkUpValue)
+                {
+
+                }
+                return output;
             }
             else
-            if (Service == MOD)
             {
-                SB.Append("Description: Apply ").Append(Recipe.DisplayName.Color("y"));
-                SB.Append(" to ").Append(itemName).AppendLine();
-            }
-            else
-            if (Service == REPAIR)
-            {
-                SB.Append("Description: Repair ").Append(itemName).AppendLine();
-            }
-            else
-            if (Service == RECHARGE)
-            {
-                SB.Append("Description: Recharge ").Append(itemName).AppendLine();
-            }
-            SB.Append(dividerLineK).AppendLine();
+                GameObject player = The.Player;
+                var SB = Event.NewStringBuilder("Invoice".Color("W")).AppendLine();
 
-            // Item or Material Cost
-            double itemValue = GetItemValue();
-            double materialsValue = GetMaterialsValue();
-            bool isItemWorthMore = itemValue > materialsValue;
-            bool vendorSuppliesAll = VendorSuppliesIngredients && VendorSuppliesBits;
-            double labourValue = GetLabourValue();
-            double markUpValue = GetMarkUpValue();
-            if (!isItemValueIrrelevant && isItemWorthMore && Service == BUILD)
-            {
-                SB.Append("Item Value: ").Append(DramsCostString(itemValue)).AppendLine();
-                if (labourValue > -1)
-                {
-                    SB.Append("Labour: ").Append(DramsCostString(labourValue)).AppendLine();
-                }
-            }
-            else
-            if (VendorOwnsRecipe)
-            {
-                SB.Append("Labour && Expertise: ").Append(DramsCostString(markUpValue)).AppendLine();
-            }
-            else
-            if (markUpValue > -1)
-            {
-                SB.Append("Labour: ").Append(DramsCostString(markUpValue)).AppendLine();
-            }
+                string itemName = GetItemName();
 
-            // Item ID.
-            if (Service == BUILD && !Item.Understood())
-            {
-                SB.Append("Identification of item: ").Append(DramsCostString(labourValue));
-                SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
-            }
+                string itemNoun = Service == DRAFT ? "data disk" : Item.GetDescriptiveCategory();
+                if (NumberMade > 1)
+                {
+                    itemNoun = Grammar.Pluralize(itemNoun);
+                }
 
-            // Ingredient
-            double ingredientValue = GetIngredientValue();
-            if (GetSelectedIngredient() is GameObject selectedIngredient)
-            {
-                string ingredientDisplayName = selectedIngredient.GetDisplayName(Context: nameof(TinkerInvoice), Short: true);
-                SB.Append("Ingredient, ").Append(ingredientDisplayName).Append(": ");
-                if (VendorSuppliesIngredients)
-                {
-                    SB.Append(DramsCostString(ingredientValue));
-                    if (isItemWorthMore && vendorSuppliesAll)
-                    {
-                        SB.Append(" (").AppendColored("K", "included in item value").Append(")");
-                    }
-                }
-                else
-                {
-                    SB.Append(DramsCostString(0));
-                    SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
-                }
-                SB.AppendLine();
-            }
+                string includedInValue = "included in " + itemNoun + " value";
 
-            // Bits
-            double bitsValue = GetBitsValue();
-            if (!BitCost.IsNullOrEmpty())
-            {
-                SB.Append($"Bits <{BitCost}>: ");
-                if (VendorSuppliesBits)
-                {
-                    SB.Append(DramsCostString(bitsValue));
-                    if (isItemWorthMore && vendorSuppliesAll)
-                    {
-                        SB.Append(" (").AppendColored("K", "included in item value").Append(")");
-                    }
-                }
-                else
-                {
-                    SB.Append(DramsCostString(0));
-                    SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
-                }
-                SB.AppendLine();
-            }
-
-            // Total Cost
-            int totalCost = GetTotalCost();
-            if (VendorSuppliesIngredients || VendorSuppliesBits)
-            {
                 string performServiceOn = Service switch
                 {
                     RECHARGE => "recharge",
                     REPAIR => "repair",
                     BUILD => "tinker",
                     MOD => "tinker",
-                    _ => "tinker",
+                    _ => Service.ToLower(),
                 };
-                SB.Append($"Total cost to {performServiceOn} item: ").Append(DramsCostString(totalCost));
-                if (Besties)
+
+                // Description
+                if (Service == BUILD)
                 {
-                    if (Vendor.HasEffect<Lovesick>())
+                    SB.Append("Description: Tinker ");
+                    if (HoldForPlayer)
                     {
-                        SB.Append(" for ").AppendColored("love", "my love!");
+                        SB.Append("and hold ");
+                    }
+                    SB.Append($"{NumberMade}x ").Append(itemName).AppendLine();
+                }
+                else
+                if (Service == MOD)
+                {
+                    SB.Append("Description: Apply ").Append(Recipe.DisplayName.Color("y"));
+                    SB.Append(" to ").Append(itemName).AppendLine();
+                }
+                else
+                if (Service == REPAIR)
+                {
+                    SB.Append("Description: Repair ").Append(itemName).AppendLine();
+                }
+                else
+                if (Service == RECHARGE)
+                {
+                    SB.Append("Description: Recharge ").Append(itemName).AppendLine();
+                }
+                else
+                if (Service == DRAFT)
+                {
+                    SB.Append("Description: Draft ").Append(itemName).AppendLine();
+                }
+                SB.Append(dividerLineK).AppendLine();
+
+                // Item or Material Cost
+                double itemValue = GetItemValue();
+                double materialsValue = GetMaterialsValue();
+                bool isItemWorthMore = itemValue > materialsValue;
+                bool vendorSuppliesAll = (bool)VendorSuppliesIngredients && VendorSuppliesBits;
+                double labourValue = GetLabourValue();
+                double markUpValue = GetMarkUpValue();
+
+                if (isItemWorthMore
+                    && (Service == DRAFT
+                        || (!IsItemValueIrrelevant() && Service == BUILD)))
+                {
+                    SB.Append(Grammar.MakeTitleCase(itemNoun)).Append(" Value: ").Append(DramsCostString(itemValue)).AppendLine();
+                    if (labourValue > -1 && Service == BUILD)
+                    {
+                        SB.Append("Labour: ").Append(DramsCostString(labourValue)).AppendLine();
                     }
                     else
-                    if (Vendor.HasEffect<Proselytized>() || Vendor.HasEffect<Beguiled>())
+                    if (Service == DRAFT)
                     {
-                        SB.Append(" for my ").AppendColored("M", "bestie!");
-                    }
-                    else
-                    {
-                        string liquidName = LiquidWater.ID;
-                        try
-                        {
-                            if (Vendor?.GetWaterRitualLiquid(player) is string retreivedValue)
-                            {
-                                liquidName = retreivedValue;
-                            }
-                        }
-                        catch (Exception x)
-                        {
-                            MetricsManager.LogModError(ThisMod, 
-                                "Failed " + nameof(GameObject.GetWaterRitualLiquid) + " for " + 
-                                Vendor?.DebugName ?? ("null " + nameof(Vendor)) + ".\n" + x);
-                        }
-                        string waterRitualLiquid = LiquidVolume.GetLiquid(liquidName)?.GetName() ?? "";
-                        SB.Append(" for my ").Append(waterRitualLiquid).Append(" ").Append(player.siblingTerm).Append("!");
+                        SB.Append("Labour && Expertise: ").Append(DramsCostString(markUpValue)).AppendLine();
                     }
                 }
-            }
+                else
+                if (VendorOwnsRecipe)
+                {
+                    SB.Append("Labour && Expertise: ").Append(DramsCostString(markUpValue)).AppendLine();
+                }
+                else
+                if (markUpValue > -1)
+                {
+                    SB.Append("Labour: ").Append(DramsCostString(markUpValue)).AppendLine();
+                }
 
-            // Deposit
-            int depositCost = GetDepositCost();
-            if (!Besties
-                && depositCost > 0
-                && depositCost < totalCost
-                && player.GetFreeDrams() < totalCost)
-            {
-                SB.AppendLine();
-                SB.Append(dividerLineK).AppendLine();
-                SB.Append(Vendor.T()).Append(" will tinker and hold ").Append("item".ThisTheseN(NumberMade));
-                SB.Append(" for a desposit of ").Append(DramsCostString(depositCost)).Append(".");
-            }
+                // Item ID.
+                if (Service == BUILD && !Item.Understood())
+                {
+                    SB.Append("Identification of ").Append(itemNoun.Capitalize()).Append(": ").Append(DramsCostString(labourValue));
+                    SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
+                }
 
-            return Event.FinalizeString(SB);
+                // Ingredient
+                double ingredientValue = GetIngredientValue();
+                if (GetSelectedIngredient() is GameObject selectedIngredient)
+                {
+                    string ingredientDisplayName = selectedIngredient.GetDisplayName(
+                        Context: nameof(TinkerInvoice),
+                        Short: true,
+                        WithIndefiniteArticle: true);
+                    SB.Append("Ingredient, ").Append(ingredientDisplayName).Append(": ");
+                    if ((bool)VendorSuppliesIngredients)
+                    {
+                        SB.Append(DramsCostString(ingredientValue));
+                        if (isItemWorthMore && vendorSuppliesAll)
+                        {
+                            SB.Append(" (").AppendColored("K", includedInValue).Append(")");
+                        }
+                    }
+                    else
+                    {
+                        SB.Append(DramsCostString(0));
+                        SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
+                    }
+                    SB.AppendLine();
+                }
+
+                // Bits
+                double bitsValue = GetBitsValue();
+                if (!BitCost.IsNullOrEmpty())
+                {
+                    SB.Append($"Bits <{BitCost}>: ");
+                    if (VendorSuppliesBits)
+                    {
+                        SB.Append(DramsCostString(bitsValue));
+                        if (isItemWorthMore && vendorSuppliesAll)
+                        {
+                            SB.Append(" (").AppendColored("K", includedInValue).Append(")");
+                        }
+                    }
+                    else
+                    {
+                        SB.Append(DramsCostString(0));
+                        SB.Append(" (").AppendColored("K", $"provided by {player?.t(Short: true)}").Append(")");
+                    }
+                    SB.AppendLine();
+                }
+
+                // Total Cost
+                int totalCost = GetTotalCost();
+                if ((bool)VendorSuppliesIngredients || VendorSuppliesBits)
+                {
+                    SB.Append($"Total cost to {performServiceOn} {itemNoun}: ").Append(DramsCostString(totalCost));
+                    if (Besties)
+                    {
+                        if (Vendor.HasEffect<Lovesick>())
+                        {
+                            SB.Append(" for ").AppendColored("love", "my love!");
+                        }
+                        else
+                        if (Vendor.HasEffect<Proselytized>() || Vendor.HasEffect<Beguiled>())
+                        {
+                            SB.Append(" for my ").AppendColored("M", "bestie!");
+                        }
+                        else
+                        {
+                            string liquidName = LiquidWater.ID;
+                            try
+                            {
+                                if (Vendor?.GetWaterRitualLiquid(player) is string retreivedValue)
+                                {
+                                    liquidName = retreivedValue;
+                                }
+                            }
+                            catch (Exception x)
+                            {
+                                MetricsManager.LogModError(ThisMod,
+                                    "Failed " + nameof(GameObject.GetWaterRitualLiquid) + " for " +
+                                    Vendor?.DebugName ?? ("null " + nameof(Vendor)) + ".\n" + x);
+                            }
+                            string waterRitualLiquid = LiquidVolume.GetLiquid(liquidName)?.GetName() ?? "";
+                            SB.Append(" for my ").Append(waterRitualLiquid).Append(" ").Append(player.siblingTerm).Append("!");
+                        }
+                    }
+                }
+
+                // Deposit
+                int depositCost = GetDepositCost();
+                if (!Besties
+                    && depositCost > 0
+                    && depositCost < totalCost
+                    && player.GetFreeDrams() < totalCost)
+                {
+                    SB.AppendLine();
+                    SB.Append(dividerLineK).AppendLine();
+                    SB.Append(Vendor.T().Strip()).Append(" will ").Append(performServiceOn);
+                    SB.Append(" and hold ").Append(itemNoun.ThisTheseN(NumberMade));
+                    SB.Append(" for a desposit of ").Append(DramsCostString(depositCost)).Append(".");
+                }
+
+                return Event.FinalizeString(SB);
+            }
         }
 
-        public string GetDepositMessage()
+        public string GetDepositMessage(string DoService = "tinker", string ToWhat = "item", string Extra = null)
         {
-            string items =  "item";
             string itThem = Item.it;
             if (NumberMade != 1)
             {
-                items = Grammar.Pluralize(items);
+                ToWhat = Grammar.Pluralize(ToWhat);
                 itThem = "them";
             }
-            string thisTheseItems = Item.indicativeProximal + " " + items;
+            string thisTheseWhat = Item.indicativeProximal + " " + ToWhat;
 
             string totalCost = DramsCostString(GetTotalCost());
             string depositCost = DramsCostString(GetDepositCost()) + " of fresh water";
             string itemValue = DramsCostString(GetItemValue());
 
             string tooExpensiveMsg = 
-                ("=subject.T= =verb:don't:afterpronoun= have the required " + totalCost +
-                " to have =object.t= tinker " + thisTheseItems + ".")
+                ("=subject.Name= =subject.verb:don't= have the required " + totalCost +
+                " to have =object.name= " + DoService + " " + thisTheseWhat + Extra + ".")
                     .StartReplace()
                     .AddObject(The.Player)
                     .AddObject(Vendor)
                     .ToString();
 
             string willTinkerForDepositMsg = 
-                ("=object.Subjective= will tinker " + thisTheseItems + " for a deposit of " + depositCost +
+                ("=object.Subjective= will  " + DoService + " " + thisTheseWhat + Extra + " for a deposit of " + depositCost +
                 ", however =object.subjective= will hold onto " + itThem + " until =subject.subjective= " +
-                "=verb:have:afterpronoun= the remaining " + itemValue + ".")
+                "=subject.verb:have= the remaining " + itemValue + ".")
                     .StartReplace()
                     .AddObject(The.Player)
                     .AddObject(Vendor)
@@ -787,21 +1086,65 @@ namespace UD_Tinkering_Bytes
                 willTinkerForDepositMsg;
         }
 
-        public string GetDepositPleaseNote()
+        public string GetDepositPleaseNote(
+            int HoldTime = UD_HeldForPlayer.GUARANTEED_RESTOCKS,
+            string TimeUnit = "restock")
         {
             string items = "item";
             if (NumberMade != 1)
             {
                 items = Grammar.Pluralize(items);
             }
-            string restocks = "2 restocks".Color("g");
+            string timeUnitString = HoldTime.Things(TimeUnit).Color("g");
 
             string thisTheseItems = Item.indicativeProximal + " " + items;
-            return ("Please note: =object.T= will only hold onto " + thisTheseItems + " for " + restocks + ".")
+            return ("Please note: =object.name= will only hold onto " + thisTheseItems + " for " + timeUnitString + ".")
                 .StartReplace()
                 .AddObject(The.Player)
                 .AddObject(Vendor)
                 .ToString();
+        }
+
+        public virtual void Write(SerializationWriter Writer)
+        {
+            Writer.WriteOptimized(VendorID);
+
+            Writer.Write(Performance);
+            Writer.Write(GotPerformance);
+
+            Writer.WriteOptimized(ItemID);
+            Writer.WriteOptimized(_NumberMade);
+
+            Writer.WriteOptimized(SelectedIngredientID);
+
+            Writer.Write(IncludeItemValue);
+            Writer.Write(IncludeLabourValue);
+            Writer.Write(IncludeExpertiseValue);
+            Writer.Write(IncludeMarkUpValue);
+            Writer.Write(IncludeIngredientValue);
+            Writer.Write(IncludeBitsValue);
+            Writer.Write(IncludeMaterialsValue);
+        }
+
+        public virtual void Read(SerializationReader Reader)
+        {
+            VendorID = Reader.ReadOptimizedString();
+
+            Performance = Reader.ReadDouble();
+            GotPerformance = Reader.ReadBoolean();
+
+            ItemID = Reader.ReadOptimizedString();
+            _NumberMade = Reader.ReadOptimizedInt32();
+
+            SelectedIngredientID = Reader.ReadOptimizedString();
+
+            IncludeItemValue = Reader.ReadBoolean();
+            IncludeLabourValue = Reader.ReadBoolean();
+            IncludeExpertiseValue = Reader.ReadBoolean();
+            IncludeMarkUpValue = Reader.ReadBoolean();
+            IncludeIngredientValue = Reader.ReadBoolean();
+            IncludeBitsValue = Reader.ReadBoolean();
+            IncludeMaterialsValue = Reader.ReadBoolean();
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)
@@ -831,6 +1174,7 @@ namespace UD_Tinkering_Bytes
                 SB.Append(nameof(LabourValue)).Append(",");
                 SB.Append(nameof(TotalCost)).Append(",");
                 SB.Append(nameof(DepositCost));
+                SB.Append(nameof(DepositAllowed));
                 if (Service == REPAIR)
                 {
                     SB.Append(",").Append("BaseGameRepair");
@@ -888,6 +1232,7 @@ namespace UD_Tinkering_Bytes
             SB.Append(GetLabourValue()).Append(",");
             SB.Append(GetTotalCost()).Append(",");
             SB.Append(GetDepositCost());
+            SB.Append(DepositAllowed);
             if (Service == REPAIR)
             {
                 SB.Append((TradeUI.GetValue(Item, true) / 25) * Item.Count);

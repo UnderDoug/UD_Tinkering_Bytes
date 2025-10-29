@@ -9,7 +9,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
 	</ItemGroup>
-	<ItemGroup>
+  <ItemGroup>
 	  <Reference Include="UD_Modding_Toolbox.dll">
 	    <HintPath>..\..\..\ModAssemblies\UD_Modding_Toolbox.dll</HintPath>
 	  </Reference>

@@ -74,16 +74,28 @@ namespace UD_Tinkering_Bytes
             {
                 foreach (GameObjectBlueprint byteBlueprint in UD_TinkeringByte.GetByteGameObjectBlueprints())
                 {
-                    char bit = byteBlueprint.GetPartParameter<char>(nameof(UD_TinkeringByte), nameof(UD_TinkeringByte.Bit));
-                    if (TinkerItem.BitCostMap.ContainsKey(byteBlueprint.Name)
-                        && TinkerItem.BitCostMap[byteBlueprint.Name].Any(c => c != bit))
+                    string tinkerItemBits = byteBlueprint.GetPartParameter<string>(nameof(TinkerItem), nameof(TinkerItem.Bits));
+                    if (!tinkerItemBits.IsNullOrEmpty())
                     {
-                        string bitCost = "";
-                        for (int i = 0; i < UD_TinkeringByte.BitsPerByte; i++)
+                        char bit = tinkerItemBits[^1];
+                        if (int.TryParse(bit.ToString(), out int bitLevel))
                         {
-                            bitCost += bit;
+                            bit = BitType.LevelMap[bitLevel].FirstOrDefault().Color;
                         }
-                        TinkerItem.BitCostMap[byteBlueprint.Name] = bitCost;
+                        if (BitType.BitOrder.Contains(bit)
+                            && TinkerItem.BitCostMap.ContainsKey(byteBlueprint.Name)
+                            && TinkerItem.BitCostMap[byteBlueprint.Name].Any(c => c != bit))
+                        {
+                            string bitCost = "";
+                            for (int i = 0; i < UD_TinkeringByte.BitsPerByte; i++)
+                            {
+                                bitCost += bit;
+                            }
+                            if (!bitCost.IsNullOrEmpty())
+                            {
+                                TinkerItem.BitCostMap[byteBlueprint.Name] = bitCost;
+                            }
+                        }
                     }
                 }
             }

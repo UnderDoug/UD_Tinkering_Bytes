@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+
+using ConsoleLib.Console;
+
 using UD_Modding_Toolbox;
 using UD_Vendor_Actions;
 using XRL;
@@ -278,15 +281,23 @@ namespace UD_Tinkering_Bytes
                         && t.Blueprint == activeBlueprint 
                         && !knownRecipes.Any(r => r.IsSameDatumAs(t)));
 
-                    List<TinkerData> attachedMods =
+                    List<IModification> attachedMods = 
                         (from mod in Item.GetPartsDescendedFrom<IModification>()
+                         where ModificationFactory.ModsByPart.ContainsKey(mod.Name)
+                            && ModificationFactory.ModsByPart[mod.Name] is ModEntry modEntry
+                            && modEntry.TinkerAllowed
+                         select mod
+                         ).ToList();
+
+                    List<TinkerData> attachedModRecipes =
+                        (from mod in attachedMods
                          where !knownRecipes.Any(r => r.PartName == mod.Name)
                          select TinkerData.TinkerRecipes.FirstOrDefault(r => r.PartName == mod.Name)
                         ).ToList();
 
                     learnableModRecipes =
                         (from recipe in TinkerData.TinkerRecipes
-                         where attachedMods.Any(mod => mod.IsSameDatumAs(recipe))
+                         where attachedModRecipes.Any(mod => mod.IsSameDatumAs(recipe))
                          select recipe
                         ).ToList();
 
@@ -300,7 +311,7 @@ namespace UD_Tinkering_Bytes
                         Debug.CheckNah(4, $"{activeBlueprint} recipe \"Already Know\"", Indent: indent + 3, Toggle: doDebug);
                     }
 
-                    foreach (TinkerData attachedMod in attachedMods)
+                    foreach (TinkerData attachedMod in attachedModRecipes)
                     {
                         Debug.Divider(4, Const.HONLY, Count: 56, Indent: indent + 3, Toggle: doDebug);
                         Debug.LoopItem(4, $"{attachedMod.PartName ?? "[mod]" + attachedMod.Blueprint}", Indent: indent + 3, Toggle: doDebug);
@@ -596,7 +607,6 @@ namespace UD_Tinkering_Bytes
             }
         }
 
-
         public static void VendorDisassemblyEnd(GameObject Vendor, Disassembly Disassembly, UD_SyncedDisassembly SyncedDisassembly)
         {
             if (Disassembly == null)
@@ -714,14 +724,14 @@ namespace UD_Tinkering_Bytes
                     {
                         if (Disassembly.ReverseEngineeringMessage.IsNullOrEmpty())
                         {
-                            finishedMessage = $"=subject.Subjective= ";
+                            finishedMessage = $"=subject.Subjective= =subject.verb:give:afterpronoun=";
                         }
                         else
                         {
-                            finishedMessage = $"=subject.Name= ";
+                            finishedMessage = $"=subject.Name= =subject.verb:give=";
                         }
                         string bits = BitType.GetDisplayString(Disassembly.BitsDone);
-                        finishedMessage += $"=verb:give:afterpronoun= =object.name= tinkering bits <{bits}>.";
+                        finishedMessage += $" =object.name= tinkering bits <{bits}>.";
                     }
                 }
                 else
@@ -734,6 +744,7 @@ namespace UD_Tinkering_Bytes
                     SB.Compound(finishedMessage, ' ');
                 }
                 Popup.Show(GameText.StartReplace(SB).AddObject(Vendor).AddObject(The.Player).ToString());
+                Keyboard.PushKey(UnityEngine.KeyCode.None); // UnityEngine.KeyCode.Space works, testing with "no input".
             }
         }
 

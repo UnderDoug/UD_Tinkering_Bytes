@@ -311,26 +311,27 @@ namespace XRL.World.Parts
                         }
                         tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
                         int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
-                        string thisTinkerRecipe = "this tinker recipe";
+                        string theTinkerRecipe = "the tinker recipe";
                         return !IsTooExpensive(
                             Vendor: vendor,
                             Shopper: player,
                             DramsCost: dramsCost,
-                            ToDoWhat: "identify " + thisTinkerRecipe + ".")
+                            ToDoWhat: "identify " + theTinkerRecipe + ".")
                             && ConfirmTinkerService(
                                 Vendor: vendor,
                                 Shopper: player,
                                 DramsCost: dramsCost,
-                                DoWhat: "identify " + thisTinkerRecipe)
+                                DoWhat: "identify " + theTinkerRecipe)
                             && VendorDoIdentify(
                                 Vendor: vendor,
                                 UnknownItem: sampleItem,
                                 DramsCost: dramsCost,
-                                IdentifyWhat: thisTinkerRecipe);
+                                IdentifyWhat: theTinkerRecipe);
                     }
                     finally
                     {
                         TinkerInvoice.ScrapTinkerSample(ref sampleItem);
+                        tinkerInvoice?.Clear();
                     }
                 }
             }
