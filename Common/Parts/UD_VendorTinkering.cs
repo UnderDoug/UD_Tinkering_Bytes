@@ -2549,9 +2549,14 @@ namespace XRL.World.Parts
             return anyRecharged;
         }
 
+        public override bool AllowStaticRegistration()
+        {
+            return true;
+        }
         public override void Register(GameObject Object, IEventRegistrar Registrar)
         {
             Registrar.Register(AllowTradeWithNoInventoryEvent.ID, EventOrder.EARLY);
+            Registrar.Register(AnimateEvent.ID, EventOrder.VERY_LATE);
             base.Register(Object, Registrar);
         }
         public override bool WantEvent(int ID, int Cascade)
@@ -2562,7 +2567,6 @@ namespace XRL.World.Parts
             }
             return base.WantEvent(ID, Cascade)
                 || ID == AfterObjectCreatedEvent.ID
-                || ID == AnimateEvent.ID
                 || ID == TakeOnRoleEvent.ID
                 || ID == AfterGameLoadedEvent.ID
                 || ID == ImplantAddedEvent.ID
