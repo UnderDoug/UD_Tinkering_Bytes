@@ -174,7 +174,7 @@ namespace UD_Tinkering_Bytes
                 counter = ++CurrentDisassembly;
             }
             int counterPadding = (int)Disassembly?.TotalNumberWanted.ToString().Length;
-            string paddedCounter = (counter).ToString().PadLeft((int)Disassembly?.TotalNumberWanted.ToString().Length);
+            string paddedCounter = (counter).ToString().PadLeft(counterPadding);
             Debug.LoopItem(4,
                 $"{paddedCounter}/{Disassembly?.TotalNumberWanted}] " +
                 $"{nameof(SyncedDisassemblyContinue)}, " +
