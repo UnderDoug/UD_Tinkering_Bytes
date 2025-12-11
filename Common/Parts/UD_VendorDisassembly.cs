@@ -441,12 +441,10 @@ namespace XRL.World.Parts
                     totalCost = 0;
                 }
 
-                if (E.Staggered && E.Second)
+                if (E.Staggered && E.Second
+                    && VendorDoDisassembly(vendor, item, tinkerItem, RealCostPerItem))
                 {
-                    if (VendorDoDisassembly(vendor, item, tinkerItem, RealCostPerItem))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
                 if (!E.Second)
                 {

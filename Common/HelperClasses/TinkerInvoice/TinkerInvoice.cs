@@ -101,7 +101,7 @@ namespace UD_Tinkering_Bytes
                     }
                     _NumberMade = number;
                 }
-                return _NumberMade;
+                return Math.Max(1, _NumberMade);
             }
         }
 
@@ -340,7 +340,7 @@ namespace UD_Tinkering_Bytes
             return this;
         }
 
-        public virtual bool IsItemValueIrrelevant() => !(bool)VendorSuppliesIngredients || !VendorSuppliesBits;
+        public virtual bool IsItemValueIrrelevant() => !VendorSuppliesIngredients.GetValueOrDefault() || !VendorSuppliesBits;
         public virtual bool PreferItemValue() => GetItemValue() > GetMaterialsValue();
 
         public static GameObject CreateTinkerSample(string Blueprint)
@@ -857,7 +857,12 @@ namespace UD_Tinkering_Bytes
 
                 string itemName = GetItemName();
 
-                string itemNoun = Service == DRAFT ? "data disk" : Item.GetDescriptiveCategory();
+                string itemNoun = 
+                    Service == DRAFT
+                    ? "data disk"
+                    // : Item.GetDescriptiveCategory()
+                    : "item"
+                    ;
                 if (NumberMade > 1)
                 {
                     itemNoun = Grammar.Pluralize(itemNoun);
@@ -870,7 +875,7 @@ namespace UD_Tinkering_Bytes
                     RECHARGE => "recharge",
                     REPAIR => "repair",
                     BUILD => "tinker",
-                    MOD => "tinker",
+                    MOD => "modify",
                     _ => Service.ToLower(),
                 };
 
@@ -911,9 +916,11 @@ namespace UD_Tinkering_Bytes
                 double itemValue = GetItemValue();
                 double materialsValue = GetMaterialsValue();
                 bool isItemWorthMore = itemValue > materialsValue;
-                bool vendorSuppliesAll = (bool)VendorSuppliesIngredients && VendorSuppliesBits;
+                bool vendorSuppliesAll = VendorSuppliesIngredients.GetValueOrDefault() && VendorSuppliesBits;
                 double labourValue = GetLabourValue();
                 double markUpValue = GetMarkUpValue();
+                string labourString = "Labour";
+                string labourAndExpertiseString = labourString + " && expertise";
 
                 if (isItemWorthMore
                     && (Service == DRAFT
@@ -922,29 +929,29 @@ namespace UD_Tinkering_Bytes
                     SB.Append(Grammar.MakeTitleCase(itemNoun)).Append(" Value: ").Append(DramsCostString(itemValue)).AppendLine();
                     if (labourValue > -1 && Service == BUILD)
                     {
-                        SB.Append("Labour: ").Append(DramsCostString(labourValue)).AppendLine();
+                        SB.Append(labourString).Append(": ").Append(DramsCostString(labourValue)).AppendLine();
                     }
                     else
                     if (Service == DRAFT)
                     {
-                        SB.Append("Labour && Expertise: ").Append(DramsCostString(markUpValue)).AppendLine();
+                        SB.Append(labourAndExpertiseString).Append(": ").Append(DramsCostString(markUpValue)).AppendLine();
                     }
                 }
                 else
                 if (VendorOwnsRecipe)
                 {
-                    SB.Append("Labour && Expertise: ").Append(DramsCostString(markUpValue)).AppendLine();
+                    SB.Append(labourAndExpertiseString).Append(": ").Append(DramsCostString(markUpValue)).AppendLine();
                 }
                 else
                 if (markUpValue > -1)
                 {
-                    SB.Append("Labour: ").Append(DramsCostString(markUpValue)).AppendLine();
+                    SB.Append(labourString).Append(": ").Append(DramsCostString(markUpValue)).AppendLine();
                 }
 
                 // Item ID.
                 if (Service == BUILD && !Item.Understood())
                 {
-                    SB.Append("Identification of ").Append(itemNoun.Capitalize()).Append(": ").Append(DramsCostString(labourValue));
+                    SB.Append("Identification of ").Append(itemNoun).Append(": ").Append(DramsCostString(labourValue));
                     SB.Append(" (").AppendColored("K", "included").Append(")").AppendLine();
                 }
 
@@ -957,7 +964,7 @@ namespace UD_Tinkering_Bytes
                         Short: true,
                         WithIndefiniteArticle: true);
                     SB.Append("Ingredient, ").Append(ingredientDisplayName).Append(": ");
-                    if ((bool)VendorSuppliesIngredients)
+                    if (VendorSuppliesIngredients.GetValueOrDefault())
                     {
                         SB.Append(DramsCostString(ingredientValue));
                         if (isItemWorthMore && vendorSuppliesAll)
@@ -996,7 +1003,7 @@ namespace UD_Tinkering_Bytes
 
                 // Total Cost
                 int totalCost = GetTotalCost();
-                if ((bool)VendorSuppliesIngredients || VendorSuppliesBits)
+                if (VendorSuppliesIngredients.GetValueOrDefault() || VendorSuppliesBits)
                 {
                     SB.Append($"Total cost to {performServiceOn} {itemNoun}: ").Append(DramsCostString(totalCost));
                     if (Besties)

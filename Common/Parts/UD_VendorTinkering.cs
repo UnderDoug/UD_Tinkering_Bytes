@@ -187,15 +187,15 @@ namespace XRL.World.Parts
                         hasMakersMark.Mark = mark;
                         hasMakersMark.Color = markColor;
 
-                        string learnedMasterworkMsg = 
+                        // string learnedMasterworkMsg = 
                             ("=subject.Name= =subject.verb:have= learned how to tinker " + TinkerData.DisplayName + " items! " +
                             "=subject.Subjective= will henceforth mark =subject.possessive= tinkering with " +
                             "{{" + markColor + "|" + mark + "}} to indicate the quality of crafts=subject.ud_personTerm=ship.")
                                 .StartReplace()
                                 .AddObject(Vendor)
-                                .ToString();
+                                .EmitMessage(Source: Vendor, Color: 'Y', UsePopup: true);
 
-                        EmitMessage(Vendor, Msg: learnedMasterworkMsg, Color: 'Y');
+                        // EmitMessage(Vendor, Msg: learnedMasterworkMsg, Color: 'Y');
                         SoundManager.PlayUISound("Sounds/UI/ui_notification");
                     }
                 }
@@ -2524,6 +2524,7 @@ namespace XRL.World.Parts
                 {
                     anyParts = false;
                     anyRechargeable = false;
+                    break;
                 }
             }
             if (!anyRecharged)
