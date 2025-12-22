@@ -303,8 +303,8 @@ namespace XRL.World.Parts
                     try
                     {
                         if (!VendorHasSkillToIdentify(vendor, "tinkering recipes")
-                            && !ItemNotUnderstoodByShopper(player, sampleItem, "what this tinker recipe creates")
-                            && !IsShopperCapableOfUnderstanding(vendor, player)
+                            && !CheckItemNotUnderstoodByShopper(player, sampleItem, "what this tinker recipe creates")
+                            && !CheckShopperCapableOfUnderstanding(vendor, player)
                             && !VendorCanExplain(vendor, sampleItem, "This tinker recipe"))
                         {
                             return false;
@@ -312,7 +312,7 @@ namespace XRL.World.Parts
                         tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
                         int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
                         string theTinkerRecipe = "the tinker recipe";
-                        return !IsTooExpensive(
+                        return !CheckTooExpensive(
                             Vendor: vendor,
                             Shopper: player,
                             DramsCost: dramsCost,

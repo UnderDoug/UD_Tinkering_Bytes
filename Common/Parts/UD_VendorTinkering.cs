@@ -1942,7 +1942,7 @@ namespace XRL.World.Parts
             return VendorHasSkillToIdentify(ParentObject, What, Silent);
         }
 
-        public static bool ItemNotUnderstoodByShopper(GameObject Shopper, GameObject Item, string What, bool Silent = false)
+        public static bool CheckItemNotUnderstoodByShopper(GameObject Shopper, GameObject Item, string What, bool Silent = false)
         {
             if (Item.Understood() || (!Shopper.IsPlayer() && GetIdentifyLevel(Shopper) >= Item.GetComplexity()))
             {
@@ -1960,7 +1960,7 @@ namespace XRL.World.Parts
             return true;
         }
 
-        public static bool IsShopperCapableOfUnderstanding(GameObject Vendor, GameObject Shopper, bool Silent = false)
+        public static bool CheckShopperCapableOfUnderstanding(GameObject Vendor, GameObject Shopper, bool Silent = false)
         {
             if (Vendor == null || Shopper == null)
             {
@@ -1982,9 +1982,9 @@ namespace XRL.World.Parts
             }
             return true;
         }
-        public bool IsShopperCapableOfUnderstanding(GameObject Shopper, bool Silent = false)
+        public bool CheckShopperCapableOfUnderstanding(GameObject Shopper, bool Silent = false)
         {
-            return IsShopperCapableOfUnderstanding(ParentObject, Shopper, Silent);
+            return CheckShopperCapableOfUnderstanding(ParentObject, Shopper, Silent);
         }
 
         public static bool VendorCanExplain(GameObject Vendor, GameObject Item, string What, bool Silent = false)
@@ -2014,7 +2014,7 @@ namespace XRL.World.Parts
             return VendorCanExplain(ParentObject, Item, What, Silent);
         }
 
-        public static bool IsTooExpensive(
+        public static bool CheckTooExpensive(
             GameObject Vendor,
             GameObject Shopper,
             int DramsCost,
@@ -2050,7 +2050,7 @@ namespace XRL.World.Parts
             }
             return false;
         }
-        public bool IsTooExpensive(
+        public bool CheckTooExpensive(
             GameObject Shopper,
             int DramsCost,
             string ToDoWhat,
@@ -2059,7 +2059,7 @@ namespace XRL.World.Parts
             string Extra = null,
             bool Silent = false)
         {
-            return IsTooExpensive(
+            return CheckTooExpensive(
                 Vendor: ParentObject,
                 Shopper: Shopper,
                 DramsCost: DramsCost,
@@ -2480,7 +2480,7 @@ namespace XRL.World.Parts
                 };
                 int totalDramsCost = tinkerInvoice.GetTotalCost();
                 
-                if (!IsTooExpensive(
+                if (!CheckTooExpensive(
                     Vendor: Vendor,
                     Shopper: player,
                     DramsCost: totalDramsCost,
@@ -3121,7 +3121,7 @@ namespace XRL.World.Parts
                                 string dramsCostString = totalDramsCost.Things("dram").Color("C");
 
                                 if ((depositDramCost == 0 || !player.CanAfford(depositDramCost))
-                                    && IsTooExpensive(
+                                    && CheckTooExpensive(
                                         Shopper: player,
                                         DramsCost: totalDramsCost,
                                         ToDoWhat: "tinker " + "item".ThisTheseN(tinkerInvoice.NumberMade) + ".",
@@ -3132,7 +3132,7 @@ namespace XRL.World.Parts
                                 string holdTimeUnit = vendor.HasPart<GenericInventoryRestocker>() ? "restock" : "week";
                                 if (!player.CanAfford(totalDramsCost)
                                     && depositDramCost > 0
-                                    && (IsTooExpensive(
+                                    && (CheckTooExpensive(
                                         Shopper: player,
                                         DramsCost: depositDramCost,
                                         ToDoWhat: "tinker and hold " + "item".ThisTheseN(tinkerInvoice.NumberMade))
@@ -3312,7 +3312,7 @@ namespace XRL.World.Parts
                                     };
 
                                     int totalDramsCost = tinkerInvoice.GetTotalCost();
-                                    if (!IsTooExpensive(
+                                    if (!CheckTooExpensive(
                                         Shopper: player,
                                         DramsCost: totalDramsCost,
                                         ToDoWhat: "mod this item.",
@@ -3365,8 +3365,8 @@ namespace XRL.World.Parts
                             try
                             {
                                 if (!VendorHasSkillToIdentify("schematics on data disks")
-                                    && !ItemNotUnderstoodByShopper(player, sampleItem, "the item on this data disk")
-                                    && !IsShopperCapableOfUnderstanding(player)
+                                    && !CheckItemNotUnderstoodByShopper(player, sampleItem, "the item on this data disk")
+                                    && !CheckShopperCapableOfUnderstanding(player)
                                     && !VendorCanExplain(sampleItem, "The item on this data disk"))
                                 {
                                     return false;
@@ -3374,7 +3374,7 @@ namespace XRL.World.Parts
                                 tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
                                 int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
                                 string itemOnDataDisk = "the item on the data disk";
-                                return !IsTooExpensive(
+                                return !CheckTooExpensive(
                                     Shopper: player,
                                     DramsCost: dramsCost,
                                     ToDoWhat: "identify " + itemOnDataDisk + ".")
@@ -3400,8 +3400,8 @@ namespace XRL.World.Parts
                         && E.Item is GameObject unknownItem)
                     {
                         if (!VendorHasSkillToIdentify("items")
-                            && !ItemNotUnderstoodByShopper(player, unknownItem, "this item")
-                            && !IsShopperCapableOfUnderstanding(player)
+                            && !CheckItemNotUnderstoodByShopper(player, unknownItem, "this item")
+                            && !CheckShopperCapableOfUnderstanding(player)
                             && !VendorCanExplain(unknownItem, "This =object.name="))
                         {
                             return false;
@@ -3409,7 +3409,7 @@ namespace XRL.World.Parts
                         tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: unknownItem);
                         int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
                         string theItemName = "the =item.name=";
-                        return !IsTooExpensive(
+                        return !CheckTooExpensive(
                             Shopper: player,
                             DramsCost: dramsCost,
                             ToDoWhat: "identify " + theItemName + ".",
@@ -3522,7 +3522,7 @@ namespace XRL.World.Parts
                         };
                         int totalDramsCost = tinkerInvoice.GetTotalCost();
                         string dramsCostString = totalDramsCost.Things("dram").Color("C");
-                        if (!IsTooExpensive(
+                        if (!CheckTooExpensive(
                             Shopper: player,
                             DramsCost: totalDramsCost,
                             ToDoWhat: "repair this item.")

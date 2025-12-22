@@ -230,7 +230,7 @@ namespace XRL.World.Parts
                     string dramsCostString = totalDramsCost.Things("dram").Color("C");
 
                     if ((depositDramCost == 0 || !player.CanAfford(depositDramCost))
-                        && IsTooExpensive(
+                        && CheckTooExpensive(
                             Vendor: vendor,
                             Shopper: player,
                             DramsCost: totalDramsCost,
@@ -242,7 +242,7 @@ namespace XRL.World.Parts
                     string holdTimeUnit = vendor.HasPart<GenericInventoryRestocker>() ? "restock" : "week";
                     if (!player.CanAfford(totalDramsCost)
                         && depositDramCost > 0
-                        && (IsTooExpensive(
+                        && (CheckTooExpensive(
                             Vendor: vendor,
                             Shopper: player,
                             DramsCost: depositDramCost,
