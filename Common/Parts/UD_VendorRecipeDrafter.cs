@@ -110,7 +110,7 @@ namespace XRL.World.Parts
             string singleShortKnownDisplayName = recipeDiskObject.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
             string whatWasTinkeredUp = "=object.a= " + singleShortKnownDisplayName;
 
-            string itemTinkeredMsg = ("=subject.Name= =subject.verb:draft= up " + whatWasTinkeredUp + "!")
+            string itemTinkeredMsg = ("=subject.Refname= =subject.verb:draft= up " + whatWasTinkeredUp + "!")
                 .StartReplace()
                 .AddObject(Vendor)
                 .AddObject(recipeDiskObject)
@@ -119,7 +119,7 @@ namespace XRL.World.Parts
             string comeBackToPickItUp = "";
             if (TinkerInvoice.HoldForPlayer)
             {
-                comeBackToPickItUp += "\n\nOnce =subject.name= =subject.verb:have= the drams for it, come back to pick it up!"
+                comeBackToPickItUp += "\n\nOnce =subject.refname= =subject.verb:have= the drams for it, come back to pick it up!"
                     .StartReplace()
                     .AddObject(player)
                     .ToString();

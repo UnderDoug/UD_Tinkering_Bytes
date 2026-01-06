@@ -1048,7 +1048,7 @@ namespace UD_Tinkering_Bytes
                 {
                     SB.AppendLine();
                     SB.Append(dividerLineK).AppendLine();
-                    SB.Append(Vendor.T().Strip()).Append(" will ").Append(performServiceOn);
+                    SB.Append(Vendor.GetReferenceDisplayName(Short: true).Strip()).Append(" will ").Append(performServiceOn);
                     SB.Append(" and hold ").Append(itemNoun.ThisTheseN(NumberMade));
                     SB.Append(" for a desposit of ").Append(DramsCostString(depositCost)).Append(".");
                 }
@@ -1072,7 +1072,7 @@ namespace UD_Tinkering_Bytes
             string itemValue = DramsCostString(GetItemValue());
 
             string tooExpensiveMsg = 
-                ("=subject.Name= =subject.verb:don't= have the required " + totalCost +
+                ("=subject.Refname= =subject.verb:don't= have the required " + totalCost +
                 " to have =object.name= " + DoService + " " + thisTheseWhat + Extra + ".")
                     .StartReplace()
                     .AddObject(The.Player)
@@ -1105,7 +1105,7 @@ namespace UD_Tinkering_Bytes
             string timeUnitString = HoldTime.Things(TimeUnit).Color("g");
 
             string thisTheseItems = Item.indicativeProximal + " " + items;
-            return ("Please note: =object.name= will only hold onto " + thisTheseItems + " for " + timeUnitString + ".")
+            return ("Please note: =object.Refname= will only hold onto " + thisTheseItems + " for " + timeUnitString + ".")
                 .StartReplace()
                 .AddObject(The.Player)
                 .AddObject(Vendor)
