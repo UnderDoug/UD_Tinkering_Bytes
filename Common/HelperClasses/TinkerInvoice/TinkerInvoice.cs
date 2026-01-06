@@ -1073,7 +1073,7 @@ namespace UD_Tinkering_Bytes
 
             string tooExpensiveMsg = 
                 ("=subject.Refname= =subject.verb:don't= have the required " + totalCost +
-                " to have =object.name= " + DoService + " " + thisTheseWhat + Extra + ".")
+                " to have =object.refname= " + DoService + " " + thisTheseWhat + Extra + ".")
                     .StartReplace()
                     .AddObject(The.Player)
                     .AddObject(Vendor)

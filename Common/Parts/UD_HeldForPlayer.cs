@@ -259,8 +259,8 @@ namespace XRL.World.Parts
                 string timeMeasurement = WeeksInstead ? "week" : "restock";
                 double depositPaid = Math.Round(DepositPaid, 2);
                 string depositPaidString = TinkerInvoice.DramsCostString(depositPaid) + " of fresh water";
-                string heldForDescription = 
-                    "Deposit Paid: =subject.Name= =subject.verb:are= holding this " + 
+                string heldForDescription =
+                    "Deposit Paid: =subject.Refname= =subject.verb:are= holding this " + 
                     ParentObject.GetDescriptiveCategory() + " for " + HeldForName + ", " +
                     "who had it " + ServiceVerbed + " " + TurnHoldStarted.TimeAgo() + 
                     " for a deposit of " + depositPaidString + ".";

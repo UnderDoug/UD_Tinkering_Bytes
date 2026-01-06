@@ -188,7 +188,7 @@ namespace XRL.World.Parts
                         hasMakersMark.Color = markColor;
 
                         // string learnedMasterworkMsg = 
-                            ("=subject.Name= =subject.verb:have= learned how to tinker " + TinkerData.DisplayName + " items! " +
+                            ("=subject.Refname= =subject.verb:have= learned how to tinker " + TinkerData.DisplayName + " items! " +
                             "=subject.Subjective= will henceforth mark =subject.possessive= tinkering with " +
                             "{{" + markColor + "|" + mark + "}} to indicate the quality of crafts=subject.ud_personTerm=ship.")
                                 .StartReplace()
@@ -1230,7 +1230,7 @@ namespace XRL.World.Parts
                 if (!Silent)
                 {
                     string requiredSkillName = DataDisk.GetRequiredSkillHumanReadable(Recipe.Tier);
-                    string skillFailMsg = ("=subject.Name= =verb:don't= have the required skill: " + requiredSkillName + "!")
+                    string skillFailMsg = ("=subject.Refname= =verb:don't= have the required skill: " + requiredSkillName + "!")
                         .StartReplace()
                         .AddObject(Vendor)
                         .ToString();
@@ -1325,7 +1325,7 @@ namespace XRL.World.Parts
             List<string> supplyOptions = new()
             {
                 "Use my own if I have " + playerBitCostString + ".",
-                (askPay + " =subject.name= to supply " + vendorBitCostString + ".")
+                (askPay + " =subject.refname= to supply " + vendorBitCostString + ".")
                     .StartReplace()
                     .AddObject(Vendor)
                     .ToString(),
@@ -1480,7 +1480,7 @@ namespace XRL.World.Parts
                             }
                             ingredientName += TinkeringHelpers.TinkeredItemShortDisplayName(recipeIngredient);
                         }
-                        string noIngredientMsg = ("=subject.Name= =subject.verb:don't= have the required ingredient: " + ingredientName)
+                        string noIngredientMsg = ("=subject.Refname= =subject.verb:don't= have the required ingredient: " + ingredientName)
                             .StartReplace()
                             .AddObject(RecipeIngredientSupplier)
                             .ToString();
@@ -1667,7 +1667,7 @@ namespace XRL.World.Parts
             if (!BitSupplierBitLocker.HasBits(BitCost))
             {
                 string missingRequiredBitsMsg =
-                    ("=subject.Name= =subject.verb:don't= have the required <" + BitCost + "> bits!\n\n" +
+                    ("=subject.Refname= =subject.verb:don't= have the required <" + BitCost + "> bits!\n\n" +
                     "=subject.Subjective= =subject.verb:have:afterpronoun=:\n" + BitSupplierBitLocker.GetBitsString())
                         .StartReplace()
                         .AddObject(BitSupplier)
@@ -1700,7 +1700,7 @@ namespace XRL.World.Parts
             if (ApplicableItems.IsNullOrEmpty())
             {
                 string noApplicableItemsMsg =
-                    ("=subject.Name= =subject.verb:don't= have any items " +
+                    ("=subject.Refname= =subject.verb:don't= have any items " +
                     "that can be modified with " + modName + ".")
                         .StartReplace()
                         .AddObject(Actor)
@@ -1777,7 +1777,7 @@ namespace XRL.World.Parts
                 && vendorHeldDataDiskObjects.IsNullOrEmpty()
                 && playerHeldDataDiskObjects.IsNullOrEmpty())
             {
-                string noModsKnownMsg = "=subject.Name= =subject.verb:don't= know any item modification recipes."
+                string noModsKnownMsg = "=subject.Refname= =subject.verb:don't= know any item modification recipes."
                     .StartReplace()
                     .AddObject(Vendor)
                     .ToString();
@@ -1804,7 +1804,7 @@ namespace XRL.World.Parts
                             ExistingRecipes: applicableRecipes,
                             InstalledRecipes: InstalledRecipes))
                     {
-                        string shopperOwnedTag = "=subject.name's= inventory"
+                        string shopperOwnedTag = "=subject.refname's= inventory"
                             .StartReplace()
                             .AddObject(player)
                             .ToString();
@@ -1856,7 +1856,7 @@ namespace XRL.World.Parts
             }
             if (applicableRecipes.IsNullOrEmpty())
             {
-                string noModsKnownForItemMsg = "=subject.Name= =subject.verb:don't= know any item modifications for =object.t=."
+                string noModsKnownForItemMsg = "=subject.Refname= =subject.verb:don't= know any item modifications for =object.t=."
                     .StartReplace()
                     .AddObject(Vendor)
                     .AddObject(ApplicableItem)
@@ -1926,7 +1926,7 @@ namespace XRL.World.Parts
             {
                 if (!Silent)
                 {
-                    string tinkerUnableIdentifyMsg = "=subject.Name= =subject.verb:don't= have the skill to identify " + What + "."
+                    string tinkerUnableIdentifyMsg = "=subject.Refname= =subject.verb:don't= have the skill to identify " + What + "."
                         .StartReplace()
                         .AddObject(Vendor)
                         .ToString();
@@ -1948,7 +1948,7 @@ namespace XRL.World.Parts
             {
                 if (!Silent)
                 {
-                    string alreadyKnowItemMsg = "=subject.Name= already =subject.verb:understand= " + What + "."
+                    string alreadyKnowItemMsg = "=subject.Refname= already =subject.verb:understand= " + What + "."
                     .StartReplace()
                     .AddObject(Shopper)
                     .ToString();
@@ -1968,7 +1968,7 @@ namespace XRL.World.Parts
             }
             if (Shopper.HasPart<Dystechnia>())
             {
-                string dystechniaFailMsg = "=subject.Name= can't understand =object.name's= explanation."
+                string dystechniaFailMsg = "=subject.Refname= can't understand =object.refname's= explanation."
                     .StartReplace()
                     .AddObject(Shopper)
                     .AddObject(Vendor)
@@ -1998,7 +1998,7 @@ namespace XRL.World.Parts
             {
                 if (!Silent)
                 {
-                    string tooComplexForTinkerFailMsg = What + " is too complex for =subject.name= to explain."
+                    string tooComplexForTinkerFailMsg = What + " is too complex for =subject.refname= to explain."
                         .StartReplace()
                         .AddObject(Vendor)
                         .ToString();
@@ -2030,8 +2030,8 @@ namespace XRL.World.Parts
                 {
                     string dramsCostString = DramsCost.Things("dram").Color("C");
                     string baseFailMsg =
-                        ("=shopper.Name= =shopper.verb:don't= have the required " + dramsCostString +
-                        " to have =vendor.name= " + ToDoWhat);
+                        ("=shopper.Refname= =shopper.verb:don't= have the required " + dramsCostString +
+                        " to have =vendor.refname= " + ToDoWhat);
 
                     string tinkerInvoiceMsg = TinkerInvoice != null ? ("\n\n" + TinkerInvoice) : "";
 
@@ -2086,7 +2086,7 @@ namespace XRL.World.Parts
             List<string> messageList = new()
             {
                 !ExtraBefore.IsNullOrEmpty() ? ExtraBefore : "",
-                !DoWhat.IsNullOrEmpty() ? ("=vendor.Name= will " + DoWhat + " for " + dramsCostString + " of fresh water.") : "",
+                !DoWhat.IsNullOrEmpty() ? ("=vendor.Refname= will " + DoWhat + " for " + dramsCostString + " of fresh water.") : "",
                 TinkerInvoice ?? "",
                 !ExtraAfter.IsNullOrEmpty() ? ExtraAfter : ""
             };
@@ -2161,7 +2161,7 @@ namespace XRL.World.Parts
                     GameObject ingredientObject = TinkerInvoice.SelectedIngredient;
                     if (!RecipeIngredientSupplier.RemoveFromInventory(ingredientObject))
                     {
-                        string invalidIngredientMsg = "=subject.Name= can't use =object.t= as an ingredient!="
+                        string invalidIngredientMsg = "=subject.Refname= can't use =object.t= as an ingredient!="
                             .StartReplace()
                             .AddObject(Vendor)
                             .AddObject(ingredientObject)
@@ -2209,7 +2209,7 @@ namespace XRL.World.Parts
                     : "=object.a= " + singleShortKnownDisplayName;
 
 
-                string itemTinkeredMsg = ("=subject.Name= =subject.verb:tinker= up " + whatWasTinkeredUp + "!")
+                string itemTinkeredMsg = ("=subject.Refname= =subject.verb:tinker= up " + whatWasTinkeredUp + "!")
                     .StartReplace()
                     .AddObject(Vendor)
                     .AddObject(tinkerSampleItem)
@@ -2220,7 +2220,7 @@ namespace XRL.World.Parts
                 {
                     string themIt = tinkerSampleItem.themIt();
                     comeBackToPickItUp += 
-                        ("\n\n" + "Once =subject.name= =subject.verb:have= the drams for "
+                        ("\n\n" + "Once =subject.refname= =subject.verb:have= the drams for "
                         + themIt + ", come back to pick " + themIt + " up!")
                             .StartReplace()
                             .AddObject(player)
@@ -2240,7 +2240,7 @@ namespace XRL.World.Parts
         {
             if (Vendor == null || Item == null || TinkerInvoice.Recipe == null)
             {
-                Popup.ShowFail($"That trader, item, or recipe doesn't exist (this is an error).");
+                Popup.ShowFail("That trader, item, or recipe doesn't exist (this is an error).");
                 return false;
             }
             TinkerData tinkerData = TinkerInvoice.Recipe;
@@ -2264,7 +2264,7 @@ namespace XRL.World.Parts
 
                     if (!player.FireEvent(@event))
                     {
-                        string noUnequipMsg = "=subject.Name= can't unequip =object.t=."
+                        string noUnequipMsg = "=subject.Refname= can't unequip =object.t=."
                             .StartReplace()
                             .AddObject(player)
                             .AddObject(Item)
@@ -2300,7 +2300,7 @@ namespace XRL.World.Parts
                     SoundManager.PlayUISound("Sounds/Abilities/sfx_ability_tinkerModItem");
 
                     string didModMsg = 
-                        ("=subject.Name= =subject.verb:mod= " + itemNameBeforeMod + " to be " +
+                        ("=subject.Refname= =subject.verb:mod= " + itemNameBeforeMod + " to be " +
                         (ModPart.GetModificationDisplayName() ?? tinkerData.DisplayName).Color("C"))
                             .StartReplace()
                             .AddObject(Vendor)
@@ -2343,7 +2343,7 @@ namespace XRL.World.Parts
             // this is necessary until lang hits main, =object.a= respects examiner obfuscation
             string anIdentifiedItem = Grammar.A(UnknownItem.GetReferenceDisplayName(WithoutTitles: true, Short: true));
 
-            string identifiedMsg = ("=subject.Name= =subject.verb:identify= " + IdentifyWhat + " as " + anIdentifiedItem + ".")
+            string identifiedMsg = ("=subject.Refname= =subject.verb:identify= " + IdentifyWhat + " as " + anIdentifiedItem + ".")
                 .StartReplace()
                 .AddObject(Vendor)
                 .AddObject(UnknownItem, "item")
@@ -2419,7 +2419,7 @@ namespace XRL.World.Parts
                 if (bitCount == 0)
                 {
                     string noBitsMsg =
-                        ("=subject.Name= =subject.verb:don't= have any " + bitTypeBitString.Pluralize() + ", " +
+                        ("=subject.Refname= =subject.verb:don't= have any " + bitTypeBitString.Pluralize() + ", " +
                         "which are required for recharging =object.t=.\n\n" +
                         "=subject.Subjective= =subject.verb:have:afterpronoun=:\n" +
                         bitSupplierBitLocker.GetBitsString())
@@ -2439,7 +2439,7 @@ namespace XRL.World.Parts
 
                 string bitsToRechargeFullyString = bitsToRechargeFully.Things(bitTypeBitString).Color("C");
 
-                string takesToRechargeString = ("It would take " + bitsToRechargeFullyString + " for =vendor.Name= to fully recharge =subject.t=.")
+                string takesToRechargeString = ("It would take " + bitsToRechargeFullyString + " for =vendor.Refname= to fully recharge =subject.t=.")
                     .StartReplace()
                     .AddObject(Item)
                     .AddObject(player)
@@ -2451,7 +2451,7 @@ namespace XRL.World.Parts
                     .AddObject(rechargeBitSupplier)
                     .ToString();
 
-                string howManyBitsString = "How many =subject.verb:do= =subject.name= want to use?"
+                string howManyBitsString = "How many =subject.verb:do= =subject.refname= want to use?"
                     .StartReplace()
                     .AddObject(player)
                     .ToString();
@@ -2509,7 +2509,7 @@ namespace XRL.World.Parts
 
                     string partiallyOrFully = !fullyRecharged ? "partially " : "";
                     string endMark = !fullyRecharged ? "." : "!";
-                    string rechargedMsg = ("=subject.Name= " + partiallyOrFully + "=subject.verb:recharge= =object.t=" + endMark)
+                    string rechargedMsg = ("=subject.Refname= " + partiallyOrFully + "=subject.verb:recharge= =object.t=" + endMark)
                         .StartReplace()
                         .AddObject(Vendor)
                         .AddObject(Item)
@@ -3051,7 +3051,7 @@ namespace XRL.World.Parts
                     {
                         if (vendor.AreHostilesNearby() && vendor.FireEvent("CombatPreventsTinkering"))
                         {
-                            string hostileFailMsg = "=subject.Name= can't tinker with hostiles nearby!"
+                            string hostileFailMsg = "=subject.Refname= can't tinker with hostiles nearby!"
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .ToString();
@@ -3402,13 +3402,13 @@ namespace XRL.World.Parts
                         if (!VendorHasSkillToIdentify("items")
                             && !CheckItemNotUnderstoodByShopper(player, unknownItem, "this item")
                             && !CheckShopperCapableOfUnderstanding(player)
-                            && !VendorCanExplain(unknownItem, "This =object.name="))
+                            && !VendorCanExplain(unknownItem, "This =object.refname="))
                         {
                             return false;
                         }
                         tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: unknownItem);
                         int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
-                        string theItemName = "the =item.name=";
+                        string theItemName = "the =item.refname=";
                         return !CheckTooExpensive(
                             Shopper: player,
                             DramsCost: dramsCost,
@@ -3432,7 +3432,7 @@ namespace XRL.World.Parts
                     {
                         if (!IsVendorTinker() || !vendor.TryGetPart(out Tinkering_Repair vendorRepairSkill))
                         {
-                            string notTinkerFailMsg = "=subject.Name= =subject.verb:don't= have the skill to repair =object.t=!"
+                            string notTinkerFailMsg = "=subject.Refname= =subject.verb:don't= have the skill to repair =object.t=!"
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(repairableItem)
@@ -3457,7 +3457,7 @@ namespace XRL.World.Parts
                         }
                         if (vendor.GetTotalConfusion() > 0)
                         {
-                            string tooConfusedFailMsg = "=subject.Name= =subject.verb:are= too confused to repair =object.t=."
+                            string tooConfusedFailMsg = "=subject.Refname= =subject.verb:are= too confused to repair =object.t=."
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(repairableItem)
@@ -3468,7 +3468,7 @@ namespace XRL.World.Parts
                         }
                         if (vendor.AreHostilesNearby() && vendor.FireEvent("CombatPreventsRepair"))
                         {
-                            string hostilesNearFailMsg = "=subject.Name= can't repair =object.t= with hostiles nearby."
+                            string hostilesNearFailMsg = "=subject.Refname= can't repair =object.t= with hostiles nearby."
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(repairableItem)
@@ -3482,7 +3482,7 @@ namespace XRL.World.Parts
 
                         if (!Tinkering_Repair.IsRepairableBy(repairableItem, vendor, bitCost, vendorRepairSkill, null))
                         {
-                            string tooComplexFailMsg = "=subject.T= =subject.verb:are= too complex for =object.name= to repair."
+                            string tooComplexFailMsg = "=subject.T= =subject.verb:are= too complex for =object.refname= to repair."
                                 .StartReplace()
                                 .AddObject(repairableItem)
                                 .AddObject(vendor)
@@ -3540,7 +3540,7 @@ namespace XRL.World.Parts
 
                             vendor.PlayWorldOrUISound("Sounds/Misc/sfx_interact_artifact_repair");
 
-                            string repairedMsg = "=subject.Name= =subject.verb:repair= =object.t=."
+                            string repairedMsg = "=subject.Refname= =subject.verb:repair= =object.t=."
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(repairableItem)
@@ -3563,7 +3563,7 @@ namespace XRL.World.Parts
                     {
                         if (!IsVendorTinker() || !vendor.HasSkill(nameof(Tinkering_Tinker1)))
                         {
-                            string notTinkerFailMsg = "=subject.Name= =subject.verb:don't= have the skill to recharge =object.t=!"
+                            string notTinkerFailMsg = "=subject.Refname= =subject.verb:don't= have the skill to recharge =object.t=!"
                                 .StartReplace()
                                 .AddObject(vendor)
                                 .AddObject(rechargeableItem)

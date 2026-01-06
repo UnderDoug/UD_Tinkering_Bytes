@@ -118,7 +118,7 @@ namespace XRL.World.Parts
                 }
                 else
                 {
-                    E.AddAdjective("=subject.Name's=".StartReplace().AddObject(vendor).ToString());
+                    E.AddAdjective("=subject.Refname's=".StartReplace().AddObject(vendor).ToString());
                 }
             }
             return base.HandleEvent(E);
@@ -129,7 +129,7 @@ namespace XRL.World.Parts
                 && vendor.TryGetPart(out BitLocker bitLocker))
             {
                 E.Postfix.AppendLine()
-                    .Append(GameText.VariableReplace("=subject.Name's= bit locker contains:", vendor))
+                    .Append(GameText.VariableReplace("=subject.Refname's= bit locker contains:", vendor))
                     .AppendLine().AppendLine()
                     .Append(bitLocker.GetBitsString());
             }

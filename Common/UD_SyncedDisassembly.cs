@@ -366,7 +366,7 @@ namespace UD_Tinkering_Bytes
 
                     if (multipleObjects || Disassembly.TotalNumberWanted > 1)
                     {
-                        RB = GameText.StartReplace($"=subject.Name= =verb:start:afterpronoun= disassembling =object.t=.");
+                        RB = GameText.StartReplace($"=subject.Refname= =verb:start:afterpronoun= disassembling =object.t=.");
                         RB.AddObject(Disassembler);
                         RB.AddObject(Item);
 
@@ -578,7 +578,7 @@ namespace UD_Tinkering_Bytes
         public override void Interrupt()
         {
             base.Interrupt();
-            Disassembly.InterruptBecause ??= GameText.VariableReplace("=object.name= interrupted =pronouns.objective=", Disassembler, The.Player);
+            Disassembly.InterruptBecause ??= GameText.VariableReplace("=object.refname= interrupted =pronouns.objective=", Disassembler, The.Player);
             Disassembly.Interrupt();
             MessageQueue.AddPlayerMessage(Event.NewStringBuilder()
                 .Append(Disassembler.T())
@@ -674,7 +674,7 @@ namespace UD_Tinkering_Bytes
             {
                 VendorDisassemblyProcessDisassemblingWhat(Disassembly);
                 var SB = Event.NewStringBuilder();
-                SB.Append("=subject.Name= disassembled ");
+                SB.Append("=subject.Refname= disassembled ");
                 if (Disassembly.DisassembledWhats.IsNullOrEmpty())
                 {
                     SB.Append(Disassembly.DisassembledWhat ?? "something");
@@ -736,10 +736,10 @@ namespace UD_Tinkering_Bytes
                         }
                         else
                         {
-                            finishedMessage = $"=subject.Name= =subject.verb:give=";
+                            finishedMessage = $"=subject.Refname= =subject.verb:give=";
                         }
                         string bits = BitType.GetDisplayString(Disassembly.BitsDone);
-                        finishedMessage += $" =object.name= tinkering bits <{bits}>.";
+                        finishedMessage += $" =object.refname= tinkering bits <{bits}>.";
                     }
                 }
                 else
@@ -752,7 +752,7 @@ namespace UD_Tinkering_Bytes
                     SB.Compound(finishedMessage, ' ');
                 }
                 Popup.Show(GameText.StartReplace(SB).AddObject(Vendor).AddObject(The.Player).ToString());
-                Keyboard.PushKey(UnityEngine.KeyCode.None); // UnityEngine.KeyCode.Space works, testing with "no input".
+                Keyboard.PushKey(UnityEngine.KeyCode.None); // This gets eaten by the "single input eating bug" that seems to exist with AutoAct.
             }
         }
 
