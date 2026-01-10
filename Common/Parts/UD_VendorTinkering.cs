@@ -885,7 +885,7 @@ namespace XRL.World.Parts
             }
             TimeSpan elapsed = sw.Elapsed;
             sw.Stop();
-            Debug.Entry(4, $"Time to Learn Skills", elapsed.TotalSeconds.Things("second"), Indent: 1, Toggle: doDebug);
+            Debug.Entry(4, $"Time to Learn Skills", elapsed.TotalMilliseconds.Things("milliseconds"), Indent: 1, Toggle: doDebug);
 
             Debug.ResetIndent();
             return learned;
