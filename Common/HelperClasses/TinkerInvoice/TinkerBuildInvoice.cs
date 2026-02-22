@@ -30,8 +30,7 @@ namespace UD_Tinkering_Bytes
     {
         public TinkerBuildInvoice()
             : base()
-        {
-        }
+        { }
 
         public TinkerBuildInvoice(
             GameObject Vendor,
@@ -39,7 +38,8 @@ namespace UD_Tinkering_Bytes
             GameObject SelectedIngredient,
             BitCost BitCost,
             bool VendorSuppliesBits,
-            bool VendorOwnsRecipe = true)
+            bool VendorOwnsRecipe = true
+            )
             : base(Vendor, Recipe, SelectedIngredient, BitCost, VendorOwnsRecipe)
         {
             Service ??= BUILD;
@@ -62,22 +62,17 @@ namespace UD_Tinkering_Bytes
         }
 
         public static implicit operator string(TinkerBuildInvoice TinkerBuildInvoice)
-        {
-            return TinkerBuildInvoice.ToString();
-        }
+            => TinkerBuildInvoice.ToString();
 
         public override bool UseInvoiceOverride()
-        {
-            return true;
-        }
+            => true;
 
         public override string GetItemName()
         {
             string itemName = Item.GetDisplayName(AsIfKnown: true, Single: true, Short: true);
             if (NumberMade != 1)
-            {
                 itemName = Grammar.Pluralize(itemName);
-            }
+
             return itemName;
         }
     }

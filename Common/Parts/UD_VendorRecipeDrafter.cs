@@ -41,6 +41,7 @@ namespace XRL.World.Parts
         public int ReverseEngineeredScribeChance; // Added v0.1.0
 
         public UD_VendorRecipeDrafter()
+            : base()
         {
             DisassembleBonus = 0;
             ReverseEngineerBonus = 0;
@@ -48,6 +49,19 @@ namespace XRL.World.Parts
             ScribesReverseEngineeredRecipes = false;
             ReverseEngineeredScribeChance = 0;
         }
+
+        #region Serialization
+
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
+            if (modVersion < new Version("0.1.0"))
+                MigrateFrom = modVersion;
+
+            base.Read(Basis, Reader);
+        }
+
+        #endregion
 
         public static bool IsDiskDraftable(TinkerData TinkerData)
         {
@@ -292,16 +306,6 @@ namespace XRL.World.Parts
                 }
             }
             return base.HandleEvent(E);
-        }
-
-        public override void Read(GameObject Basis, SerializationReader Reader)
-        {
-            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
-            if (modVersion < new Version("0.1.0"))
-            {
-                MigrateFrom = modVersion;
-            }
-            base.Read(Basis, Reader);
         }
     }
 }

@@ -30,23 +30,20 @@ namespace XRL.World.Parts
         public int BuildBitsChance = 100;
 
         public UD_DropBits()
-        {
-        }
+            : base()
+        { }
 
         private void ProcessBitsDrop(BeforeDeathRemovalEvent E)
         {
-            if (ParentObject != null && ParentObject.TryGetPart(out BitLocker bitLocker) && BitsChance.in100())
+            if (ParentObject != null && ParentObject.TryGetPart(out BitLocker bitLocker)
+                && BitsChance.in100())
             {
-                IInventory dropInventory = ParentObject.GetDropInventory();
-                if (dropInventory == null)
-                {
+                if (ParentObject.GetDropInventory() is not IInventory dropInventory)
                     return;
-                }
+
                 Zone inventoryZone = dropInventory.GetInventoryZone();
                 if (inventoryZone != null && !inventoryZone.Built && !BuildBitsChance.in100())
-                {
                     return;
-                }
 
                 int indent = Debug.LastIndent;
                 bool doDebug = true;
@@ -63,10 +60,11 @@ namespace XRL.World.Parts
                 Debug.LoopItem(4, $"{nameof(wasBurnt)}: {wasBurnt}", Good: wasBurnt, Indent: indent + 2, Toggle: doDebug);
                 Debug.LoopItem(4, $"{nameof(wasVaporised)}: {wasVaporised}", Good: wasBurnt, Indent: indent + 2, Toggle: doDebug);
 
-                if ((wasBurnt && BurntChanceModifier < 1) || (wasVaporised && VaporizedChanceModifier < 1))
-                {
+                if ((wasBurnt
+                        && BurntChanceModifier < 1)
+                    || (wasVaporised
+                        && VaporizedChanceModifier < 1))
                     return;
-                }
 
                 Dictionary<char, int> droppableBits = new();
 
@@ -82,16 +80,12 @@ namespace XRL.World.Parts
                         int amountToDrop = 0;
 
                         for (int i = 0; i < count; i++)
-                        {
                             if (chanceToDrop.in10000())
-                            {
                                 amountToDrop++;
-                            }
-                        }
+
                         if (amountToDrop > 0)
-                        {
                             droppableBits.Add(bit, amountToDrop);
-                        }
+
                         Debug.LoopItem(4, 
                             $"{nameof(bit)}: {bit}, " +
                             $"{nameof(count)}: {count}, " +
@@ -123,9 +117,7 @@ namespace XRL.World.Parts
                         {
                             char byteBit = byteBits[0];
                             if (int.TryParse(byteBits[0].ToString(), out _))
-                            {
                                 byteBit = BitType.ReverseCharTranslateBit(byteBits[0]);
-                            }
 
                             Debug.LoopItem(4,
                                 $"{nameof(blueprintName)}: {blueprintName}, " +
@@ -134,9 +126,7 @@ namespace XRL.World.Parts
                                 Indent: indent + 3, Toggle: doDebug);
 
                             if (byteBit != '?' && !byteBlueprints.ContainsKey(byteBit))
-                            {
                                 byteBlueprints.Add(byteBit, blueprintName);
-                            }
                         }
                     }
                     catch (Exception x)
@@ -164,9 +154,7 @@ namespace XRL.World.Parts
                                 Indent: indent + 3, Toggle: doDebug);
 
                             if (bytePunnetBit != '?' && !bytePunnetBlueprints.ContainsKey(bytePunnetBit))
-                            {
                                 bytePunnetBlueprints.Add(bytePunnetBit, blueprintName);
-                            }
                         }
                     }
                     catch (Exception x)
@@ -257,9 +245,7 @@ namespace XRL.World.Parts
                         if (bitItemToDrop != null)
                         {
                             if (count > 1)
-                            {
                                 bitItemToDrop.Stacker.StackCount = count;
-                            }
 
                             Temporary.CarryOver(ParentObject, bitItemToDrop);
                             Phase.carryOver(ParentObject, bitItemToDrop);
@@ -282,24 +268,23 @@ namespace XRL.World.Parts
         }
 
         public override bool AllowStaticRegistration()
-        {
-            return true;
-        }
+            => true;
+
         public override void Register(GameObject Object, IEventRegistrar Registrar)
         {
             Registrar.Register(BeforeDeathRemovalEvent.ID, EventOrder.VERY_EARLY);
             base.Register(Object, Registrar);
         }
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade);
-        }
+            => base.WantEvent(ID, Cascade)
+            ;
+
         public override bool HandleEvent(BeforeDeathRemovalEvent E)
         {
-            if (ParentObject.GetIntProperty("SuppressCorpseDrops") < 1 || ParentObject.GetIntProperty("SuppressBitsDrops") < 1)
-            {
+            if (ParentObject.GetIntProperty("SuppressCorpseDrops") < 1
+                || ParentObject.GetIntProperty("SuppressBitsDrops") < 1)
                 ProcessBitsDrop(E);
-            }
+
             return base.HandleEvent(E);
         }
     }

@@ -18,18 +18,17 @@ namespace XRL.World.Parts
         private static bool doDebug => false; 
 
         public UD_Byte_DataDisk()
-        {
-        }
+            : base()
+        { }
 
         public override bool AllowStaticRegistration()
-        {
-            return true;
-        }
+            => true;
+
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade)
-                || ID == AfterObjectCreatedEvent.ID;
-        }
+            => base.WantEvent(ID, Cascade)
+            || ID == AfterObjectCreatedEvent.ID
+            ;
+
         public override bool HandleEvent(AfterObjectCreatedEvent E)
         {
             if (E.Object != null 
@@ -39,9 +38,8 @@ namespace XRL.World.Parts
             {
                 List<string> byteBlueprints = new();
                 foreach (GameObjectBlueprint byteBlueprint in UD_TinkeringByte.GetByteGameObjectBlueprints())
-                {
                     byteBlueprints.Add(byteBlueprint.Name);
-                }
+
                 if (!byteBlueprints.IsNullOrEmpty() && byteBlueprints.Contains(dataDisk.Data.Blueprint))
                 {
                     E.ReplacementObject = GameObjectFactory.Factory.CreateObject(ParentObject.Blueprint);
@@ -53,11 +51,12 @@ namespace XRL.World.Parts
                         Indent: indent + 1, Toggle: doDebug);
                     Debug.Entry(4, $"{nameof(E.ReplacementObject)}: {E.ReplacementObject.DebugName ?? NULL}",
                         Indent: indent + 2, Toggle: doDebug);
-                    if (E.ReplacementObject != null && E.ReplacementObject.TryGetPart(out DataDisk replacementDataDisk))
-                    {
+
+                    if (E.ReplacementObject != null
+                        && E.ReplacementObject.TryGetPart(out DataDisk replacementDataDisk))
                         Debug.Entry(4, $"{nameof(replacementDataDisk)}: {replacementDataDisk?.Data?.Blueprint ?? NULL}",
                             Indent: indent + 2, Toggle: doDebug);
-                    }
+
                     Debug.LastIndent = indent;
                 }
             }

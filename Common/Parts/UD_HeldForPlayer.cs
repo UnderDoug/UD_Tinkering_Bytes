@@ -69,6 +69,7 @@ namespace XRL.World.Parts
         public string ServiceVerbed;
 
         public UD_HeldForPlayer()
+            : base()
         {
             HeldFor = null;
             VendorID = null;
@@ -111,10 +112,26 @@ namespace XRL.World.Parts
             this.WeeksInstead = WeeksInstead;
         }
 
-        public override bool AllowStaticRegistration()
+        #region Serialization
+
+        public override void Write(GameObject Basis, SerializationWriter Writer)
         {
-            return true;
+            base.Write(Basis, Writer);
+            Writer.WriteOptimized(HeldForID);
+            Writer.WriteOptimized(TurnHoldStarted);
         }
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            base.Read(Basis, Reader);
+            HeldForID = Reader.ReadOptimizedString();
+            TurnHoldStarted = Reader.ReadOptimizedInt64();
+        }
+
+        #endregion
+
+        public override bool AllowStaticRegistration()
+            => true;
+
         public override void Attach()
         {
             base.Attach();
@@ -132,37 +149,32 @@ namespace XRL.World.Parts
             base.Remove();
         }
         public override bool SameAs(IPart p)
-        {
-            if (p is UD_HeldForPlayer hfp)
-            {
-                return hfp.ExtraHoldChance == ExtraHoldChance
-                    && hfp.RestocksLeft == RestocksLeft
-                    && hfp.HeldFor == HeldFor
-                    && base.SameAs(p);
-            }
-            return base.SameAs(p);
-        }
+            => p is UD_HeldForPlayer hfp
+            ? hfp.ExtraHoldChance == ExtraHoldChance
+                && hfp.RestocksLeft == RestocksLeft
+                && hfp.HeldFor == HeldFor
+                && base.SameAs(p)
+            : base.SameAs(p);
 
         public bool IsHoldFulfilled()
-        {
-            return ParentObject?.InInventory == HeldFor;
-        }
+            => ParentObject?.InInventory == HeldFor;
 
         public bool CheckStillHeld(bool RemoveOnFalse = false)
         {
             int indent = Debug.LastIndent;
             string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(CheckStillHeld);
 
-            if ((HeldFor == null && RemoveOnFalse)
+            if ((HeldFor == null
+                    && RemoveOnFalse)
                 || ParentObject?.InInventory is not GameObject holder
                 || holder.ID != VendorID
                 || IsHoldFulfilled()
                 || RestocksLeft < 1)
             {
-                if (RemoveOnFalse || IsHoldFulfilled())
-                {
+                if (RemoveOnFalse
+                    || IsHoldFulfilled())
                     ParentObject?.RemovePart(this);
-                }
+
                 Debug.CheckNah(4, methodDebug, Indent: indent + 1, Toggle: doDebug);
                 Debug.LastIndent = indent;
                 return false;
@@ -174,7 +186,8 @@ namespace XRL.World.Parts
 
         public int Restocked()
         {
-            if (RestocksLeft > 1 || Stat.RollCached("1d3") > 1)
+            if (RestocksLeft > 1
+                || Stat.RollCached("1d3") > 1)
             {
                 Debug.GetIndent(out int indent);
                 string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(Restocked);
@@ -196,42 +209,37 @@ namespace XRL.World.Parts
             {
                 int wholeWeeks = (int)Math.Floor(TurnHoldStarted.GameDaysSince() / 7);
                 for (int i = 0; i < wholeWeeks; i++)
-                {
                     if (Restocked() < 1)
-                    {
                         break;
-                    }
-                }
             }
             return restocksLeftBefore > RestocksLeft;
         }
 
         public override bool WantTurnTick()
-        {
-            return base.WantTurnTick()
-                || WeeksInstead;
-        }
+            => base.WantTurnTick()
+            || WeeksInstead
+            ;
+
         public override void TurnTick(long TimeTick, int Amount)
         {
             CheckWeeks();
             base.TurnTick(TimeTick, Amount);
         }
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade)
-                || ID == AfterGameLoadedEvent.ID
-                || ID == GetDisplayNameEvent.ID
-                || ID == GetShortDescriptionEvent.ID
-                || ID == StockedEvent.ID
-                || ID == EnteredCellEvent.ID
-                || ID == StartTradeEvent.ID;
-        }
+            => base.WantEvent(ID, Cascade)
+            || ID == AfterGameLoadedEvent.ID
+            || ID == GetDisplayNameEvent.ID
+            || ID == GetShortDescriptionEvent.ID
+            || ID == StockedEvent.ID
+            || ID == EnteredCellEvent.ID
+            || ID == StartTradeEvent.ID
+            ;
+
         public override bool HandleEvent(AfterGameLoadedEvent E)
         {
             if (ServiceVerbed.IsNullOrEmpty())
-            {
                 ServiceVerbed = "commissioned";
-            }
+
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(GetDisplayNameEvent E)
@@ -288,12 +296,10 @@ namespace XRL.World.Parts
         public override bool HandleEvent(StockedEvent E)
         {
             if (!WeeksInstead)
-            {
-                if (RestocksLeft > 1 || Stat.RollCached("1d3") > 1)
-                {
+                if (RestocksLeft > 1
+                    || Stat.RollCached("1d3") > 1)
                     Restocked();
-                }
-            }
+
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(StartTradeEvent E)
@@ -302,9 +308,7 @@ namespace XRL.World.Parts
             string methodDebug = nameof(UD_HeldForPlayer) + "." + nameof(HandleEvent) + "(" + nameof(StartTradeEvent) + ")";
 
             static string shortDebugName(GameObject GO)
-            {
-                return "[" + GO?.ID + "]" + (GO?.Render?.DisplayName ?? NULL);
-            }
+                => "[" + GO?.ID + "]" + (GO?.Render?.DisplayName ?? NULL);
 
             Debug.Entry(4, 
                 methodDebug + " " +
@@ -336,23 +340,9 @@ namespace XRL.World.Parts
         public override bool HandleEvent(EnteredCellEvent E)
         {
             if (IsHoldFulfilled())
-            {
                 ParentObject.RemovePart(this);
-            }
-            return base.HandleEvent(E);
-        }
 
-        public override void Write(GameObject Basis, SerializationWriter Writer)
-        {
-            base.Write(Basis, Writer);
-            Writer.WriteOptimized(HeldForID);
-            Writer.WriteOptimized(TurnHoldStarted);
-        }
-        public override void Read(GameObject Basis, SerializationReader Reader)
-        {
-            base.Read(Basis, Reader);
-            HeldForID = Reader.ReadOptimizedString();
-            TurnHoldStarted = Reader.ReadOptimizedInt64();
+            return base.HandleEvent(E);
         }
     }
 }

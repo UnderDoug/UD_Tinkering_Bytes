@@ -27,43 +27,35 @@ namespace XRL.World.Parts
                     && ParentObject is GameObject byteObject
                     && byteObject.TryGetPart(out TinkerItem tinkerItem)
                     && tinkerItem.Bits.Length > 0)
-                {
                     _Bit = tinkerItem.Bits[^1];
-                }
+
                 return _Bit;
             }
         }
 
         public UD_TinkeringByte()
+            : base()
         {
             _Bit = default;
         }
 
         public static IEnumerable<GameObjectBlueprint> GetByteGameObjectBlueprints()
-        {
-            return GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("BaseByte").AsEnumerable();
-        }
+            => GameObjectFactory.Factory.SafelyGetBlueprintsInheritingFrom("BaseByte").AsEnumerable();
+
         public static IEnumerable<string> GetByteBlueprints()
         {
             foreach (GameObjectBlueprint byteBlueprint in GetByteGameObjectBlueprints())
-            {
                 yield return byteBlueprint.Name;
-            }
-            yield break;
         }
         public static bool IsByteBlueprint(string Blueprint)
-        {
-            return GetByteBlueprints().Contains(Blueprint);
-        }
+            => GetByteBlueprints().Contains(Blueprint);
+
         public static bool IsByteBlueprint(GameObjectBlueprint GameObjectBlueprint)
-        {
-            return IsByteBlueprint(GameObjectBlueprint.Name);
-        }
+            => IsByteBlueprint(GameObjectBlueprint.Name);
 
         public override bool AllowStaticRegistration()
-        {
-            return true;
-        }
+            => true;
+
         public override void Register(GameObject Object, IEventRegistrar Registrar)
         {
             Registrar.Register(GetVendorTinkeringBonusEvent.ID, EventOrder.EXTREMELY_EARLY);
@@ -71,41 +63,43 @@ namespace XRL.World.Parts
             base.Register(Object, Registrar);
         }
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade)
-                || ID == AfterObjectCreatedEvent.ID;
-        }
+            => base.WantEvent(ID, Cascade)
+            || ID == AfterObjectCreatedEvent.ID
+            ;
+
         public virtual bool HandleEvent(GetVendorTinkeringBonusEvent E)
         {
-            if (WantTinkerBonusMax)
+            if (WantTinkerBonusMax
+                && E.Item != null
+                && E.Item == ParentObject
+                && (E.Type == "Disassemble"
+                    || E.Type == "ReverseEngineer"))
             {
-                if (E.Item != null && E.Item == ParentObject && (E.Type == "Disassemble" || E.Type == "ReverseEngineer"))
-                {
-                    int indent = Debug.LastIndent;
-                    E.Bonus = 9999;
-                    E.SecondaryBonus = 9999;
-                    Debug.CheckYeh(4, $"{E.Item.ShortDisplayNameSingle}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
-                        Indent: indent + 1, Toggle: true);
-                    Debug.LastIndent = indent;
-                    return true;
-                }
+                int indent = Debug.LastIndent;
+                E.Bonus = 9999;
+                E.SecondaryBonus = 9999;
+                Debug.CheckYeh(4, $"{E.Item.ShortDisplayNameSingle}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
+                    Indent: indent + 1, Toggle: true);
+                Debug.LastIndent = indent;
+                return true;
             }
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(GetTinkeringBonusEvent E)
         {
-            if (WantTinkerBonusMax)
+            if (WantTinkerBonusMax
+                && E.Item != null
+                && E.Item == ParentObject
+                && (E.Type == "Disassemble"
+                    || E.Type == "ReverseEngineer"))
             {
-                if (E.Item != null && E.Item == ParentObject && (E.Type == "Disassemble" || E.Type == "ReverseEngineer"))
-                {
-                    int indent = Debug.LastIndent;
-                    E.Bonus = 9999;
-                    E.SecondaryBonus = 9999;
-                    Debug.CheckYeh(4, $"{E.Item.ShortDisplayNameSingle}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
-                        Indent: indent + 1, Toggle: true);
-                    Debug.LastIndent = indent;
-                    return true;
-                }
+                int indent = Debug.LastIndent;
+                E.Bonus = 9999;
+                E.SecondaryBonus = 9999;
+                Debug.CheckYeh(4, $"{E.Item.ShortDisplayNameSingle}{E.Item.GetVerb("have")} a tinkering bonus of {9999.Signed()}!",
+                    Indent: indent + 1, Toggle: true);
+                Debug.LastIndent = indent;
+                return true;
             }
             return base.HandleEvent(E);
         }

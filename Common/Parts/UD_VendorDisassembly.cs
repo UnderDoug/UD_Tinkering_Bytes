@@ -43,6 +43,7 @@ namespace XRL.World.Parts
         public int ReverseEngineeredScribeChance; // Added v0.1.0
 
         public UD_VendorDisassembly()
+            : base()
         {
             ResetDisassembly();
             DisassembleBonus = 0;
@@ -51,6 +52,19 @@ namespace XRL.World.Parts
             ScribesReverseEngineeredRecipes = false;
             ReverseEngineeredScribeChance = 0;
         }
+
+        #region Serialization
+
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
+            if (modVersion < new Version("0.1.0"))
+                MigrateFrom = modVersion;
+
+            base.Read(Basis, Reader);
+        }
+
+        #endregion
 
         public virtual void ResetDisassembly()
         {
@@ -61,11 +75,13 @@ namespace XRL.World.Parts
             GameObject Vendor,
             UD_VendorActionEvent E,
             bool MultipleItems,
-            bool Silent = false)
+            bool Silent = false
+            )
         {
             if (MultipleItems
                 && (AutoAct.ShouldHostilesInterrupt("o")
-                    || (Vendor.AreHostilesNearby() && Vendor.FireEvent("CombatPreventsTinkering"))))
+                    || (Vendor.AreHostilesNearby()
+                        && Vendor.FireEvent("CombatPreventsTinkering"))))
             {
                 string hostilesMessage = "=subject.Refname= can't disassemble so many items at once with hostiles nearby."
                     .StartReplace()
@@ -73,24 +89,22 @@ namespace XRL.World.Parts
                     .ToString();
 
                 if (!Silent)
-                {
                     Popup.ShowFail(hostilesMessage);
-                }
+
                 E.RequestCancelSecond();
                 return false;
             }
             return true;
         }
         public bool CheckHostiles(UD_VendorActionEvent E, bool MultipleItems)
-        {
-            return CheckHostiles(ParentObject, E, MultipleItems);
-        }
+            => CheckHostiles(ParentObject, E, MultipleItems);
 
         public static bool CheckImportant(
             GameObject Item,
             int ItemCount,
             UD_VendorActionEvent E,
-            bool MultipleItems)
+            bool MultipleItems
+            )
         {
             if (Item.IsImportant() 
                 && !Item.ConfirmUseImportant(
@@ -108,7 +122,8 @@ namespace XRL.World.Parts
             GameObject Vendor,
             GameObject Item,
             UD_VendorActionEvent E,
-            bool MultipleItems)
+            bool MultipleItems
+            )
         {
             if (TinkerItem.ConfirmBeforeDisassembling(Item))
             {
@@ -138,21 +153,21 @@ namespace XRL.World.Parts
         public bool CheckTinkerItemConfirm(
             GameObject Item,
             UD_VendorActionEvent E,
-            bool MultipleItems)
-        {
-            return CheckTinkerItemConfirm(
+            bool MultipleItems
+            )
+            => CheckTinkerItemConfirm(
                 Vendor: ParentObject,
                 Item: Item,
                 E: E,
                 MultipleItems: MultipleItems);
-        }
 
         public static bool CheckOwner(
             GameObject Vendor,
             GameObject Item,
             UD_VendorActionEvent E,
             bool MultipleItems,
-            ref List<Action<GameObject>> BroadcastActions)
+            ref List<Action<GameObject>> BroadcastActions
+            )
         {
             if (!Item.Owner.IsNullOrEmpty() && !Item.HasPropertyOrTag("DontWarnOnDisassemble"))
             {
@@ -189,22 +204,22 @@ namespace XRL.World.Parts
             GameObject Item,
             UD_VendorActionEvent E,
             bool MultipleItems,
-            ref List<Action<GameObject>> BroadcastActions)
-        {
-            return CheckOwner(
+            ref List<Action<GameObject>> BroadcastActions
+            )
+            => CheckOwner(
                 Vendor: ParentObject,
                 Item: Item,
                 E: E,
                 MultipleItems: MultipleItems,
                 BroadcastActions: ref BroadcastActions);
-        }
 
         public static bool CheckContainerOwner(
             GameObject Vendor,
             GameObject Item,
             UD_VendorActionEvent E,
             bool MultipleItems,
-            ref List<Action<GameObject>> BroadcastActions)
+            ref List<Action<GameObject>> BroadcastActions
+            )
         {
             if (Item.InInventory is GameObject container
                 && container != The.Player
@@ -251,7 +266,8 @@ namespace XRL.World.Parts
             GameObject Item,
             UD_VendorActionEvent E,
             bool MultipleItems,
-            ref List<Action<GameObject>> BroadcastActions)
+            ref List<Action<GameObject>> BroadcastActions
+            )
         {
             return CheckContainerOwner(
                 Vendor: ParentObject,
@@ -261,30 +277,35 @@ namespace XRL.World.Parts
                 BroadcastActions: ref BroadcastActions);
         }
 
-        public static bool VendorDoDisassembly(GameObject Vendor, GameObject Item, TinkerItem TinkerItem, int CostPerItem)
+        public static bool VendorDoDisassembly(
+            GameObject Vendor,
+            GameObject Item,
+            TinkerItem TinkerItem,
+            int CostPerItem
+            )
         {
-            if (Vendor == null || Item == null || TinkerItem == null || !Vendor.HasPart<UD_VendorDisassembly>())
+            if (Vendor == null
+                || Item == null
+                || TinkerItem == null
+                || !Vendor.HasPart<UD_VendorDisassembly>())
             {
                 Popup.ShowFail(
                     "That trader or item doesn't exist, the item can't be disassembled, " +
                     "or the trader is unable to disassemble (this is an error)." +
                     "\n" + UD_Tinkering_Bytes.Utils.TellModAuthor);
+
                 if (Vendor == null)
-                {
                     MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, "Passed null " + nameof(Vendor));
-                }
+
                 if (Item == null)
-                {
                     MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, "Passed null " + nameof(Item));
-                }
+
                 if (TinkerItem == null)
-                {
                     MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, "Passed null " + nameof(TinkerItem));
-                }
+
                 if (!Vendor.HasPart<UD_VendorDisassembly>())
-                {
                     MetricsManager.LogModError(UD_Tinkering_Bytes.Utils.ThisMod, nameof(Vendor) + " lacks " + nameof(UD_VendorDisassembly));
-                }
+
                 return false;
             }
 
@@ -304,19 +325,19 @@ namespace XRL.World.Parts
             base.Register(Object, Registrar);
         }
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade)
-                || ID == AfterGameLoadedEvent.ID
-                || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
-                || (WantVendorActions && ID == UD_VendorActionEvent.ID)
-                || (WantVendorActions && ID == GetVendorTinkeringBonusEvent.ID);
-        }
+            => base.WantEvent(ID, Cascade)
+            || ID == AfterGameLoadedEvent.ID
+            || (WantVendorActions && ID == UD_GetVendorActionsEvent.ID)
+            || (WantVendorActions && ID == UD_VendorActionEvent.ID)
+            || (WantVendorActions && ID == GetVendorTinkeringBonusEvent.ID)
+            ;
         public override bool HandleEvent(AllowTradeWithNoInventoryEvent E)
         {
-            if (E.Trader != null && ParentObject == E.Trader && WantVendorActions)
-            {
+            if (E.Trader != null
+                && ParentObject == E.Trader
+                && WantVendorActions)
                 return true;
-            }
+
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(AfterGameLoadedEvent E)
@@ -360,40 +381,40 @@ namespace XRL.World.Parts
         }
         public virtual bool HandleEvent(UD_GetVendorActionsEvent E)
         {
-            if (E.Vendor != null && ParentObject == E.Vendor && WantVendorActions)
+            if (E.Vendor != null
+                && ParentObject == E.Vendor
+                && WantVendorActions
+                && E.Item.InInventory != ParentObject
+                && E.Item.TryGetPart(out TinkerItem tinkerItem)
+                && tinkerItem.CanBeDisassembled(E.Vendor))
             {
-                if (E.Item.InInventory != ParentObject
-                    && E.Item.TryGetPart(out TinkerItem tinkerItem)
-                    && tinkerItem.CanBeDisassembled(E.Vendor))
-                {
+                E.AddAction(
+                    Name: "Disassemble",
+                    Display: "disassemble", 
+                    Command: COMMAND_DISASSEMBLE,
+                    Key: 'd',
+                    Priority: -4,
+                    ProcessSecondAfterAwait: true,
+                    Staggered: true,
+                    CloseTradeBeforeProcessingSecond: true);
+
+                if (E.Item.Count > 1)
                     E.AddAction(
-                        Name: "Disassemble",
-                        Display: "disassemble", 
-                        Command: COMMAND_DISASSEMBLE,
-                        Key: 'd',
-                        Priority: -4,
+                        Name: "Disassemble all", 
+                        Display: "disassemble all", 
+                        Command: COMMAND_DISASSEMBLE_ALL, 
+                        Key: 'D',
+                        Priority: -5,
                         ProcessSecondAfterAwait: true,
                         Staggered: true,
                         CloseTradeBeforeProcessingSecond: true);
-                    if (E.Item.Count > 1)
-                    {
-                        E.AddAction(
-                            Name: "Disassemble all", 
-                            Display: "disassemble all", 
-                            Command: COMMAND_DISASSEMBLE_ALL, 
-                            Key: 'D',
-                            Priority: -5,
-                            ProcessSecondAfterAwait: true,
-                            Staggered: true,
-                            CloseTradeBeforeProcessingSecond: true);
-                    }
-                }
             }
             return base.HandleEvent(E);
         }
         public virtual bool HandleEvent(UD_VendorActionEvent E)
         {
-            if ((E.Command == COMMAND_DISASSEMBLE || E.Command == COMMAND_DISASSEMBLE_ALL)
+            if ((E.Command == COMMAND_DISASSEMBLE
+                    || E.Command == COMMAND_DISASSEMBLE_ALL)
                 && E.Vendor is GameObject vendor
                 && E.Item is GameObject item
                 && The.Player is GameObject player
@@ -414,22 +435,17 @@ namespace XRL.World.Parts
 
                 if (E.Item.GetPropertyOrTag("VendorTinker_DisassemblyBitCountOverride", null) is string bitCountOverrideString
                     && int.TryParse(bitCountOverrideString, out int bitCountOverride))
-                {
                     numberOfBits = bitCountOverride;
-                }
+
                 if (numberOfBits == 1 && BitType.GetBitTier(BitType.ReverseCharTranslateBit(bits[0])) == 0)
-                {
                     costPerItem = 1.0;
-                }
                 else
-                {
                     costPerItem = Math.Max(1.0, numberBitCost + bestBitCost);
-                }
+
                 if (E.Item.GetPropertyOrTag("VendorTinker_DisassemblyValueOverride", null) is string valueOverrideString
                     && int.TryParse(valueOverrideString, out int valueOverride))
-                {
                     costPerItem = valueOverride;
-                }
+
                 totalCost = (int)Math.Max(minCost, multipleItems ? amountToDisassemble * costPerItem : costPerItem);
                 int RealCostPerItem = multipleItems ? totalCost / amountToDisassemble : totalCost;
                 totalCost = multipleItems ? amountToDisassemble * RealCostPerItem : RealCostPerItem;
@@ -443,9 +459,8 @@ namespace XRL.World.Parts
 
                 if (E.Staggered && E.Second
                     && VendorDoDisassembly(vendor, item, tinkerItem, RealCostPerItem))
-                {
                     return true;
-                }
+
                 if (!E.Second)
                 {
                     int costToDisassemble = totalCost;
@@ -454,7 +469,9 @@ namespace XRL.World.Parts
                     string dramsCost = costToDisassemble.Things("dram").Color("C");
 
                     bool tooExpensive = !player.CanAfford(costToDisassemble);
-                    if (tooExpensive || (!multipleItems && itemCount > 1))
+                    if (tooExpensive
+                        || (!multipleItems
+                            && itemCount > 1))
                     {
                         string tooExpensiveMsg =
                             ("=subject.Refname= =subject.verb:don't= have the required " + dramsCost + " to have " +
@@ -486,13 +503,10 @@ namespace XRL.World.Parts
 
                             string numberToDisassembleMessage = tooExpensiveMsg;
                             if (!tooExpensive)
-                            {
                                 numberToDisassembleMessage = disassembleSomeMsg;
-                            }
                             else
-                            {
                                 numberToDisassembleMessage += disassembleSomeMsg;
-                            }
+
                             amountToDisassemble = Popup.AskNumber(
                                 Message: numberToDisassembleMessage,
                                 Start: maxAsk,
@@ -500,9 +514,7 @@ namespace XRL.World.Parts
                                 .GetValueOrDefault();
                         }
                         else
-                        {
                             Popup.ShowFail(tooExpensiveMsg);
-                        }
                     }
 
                     if (amountToDisassemble > 0)
@@ -528,16 +540,12 @@ namespace XRL.World.Parts
                             || !CheckTinkerItemConfirm(item, E, multipleItems)
                             || !CheckOwner(item, E, multipleItems, ref broadcastActions)
                             || !CheckContainerOwner(item, E, multipleItems, ref broadcastActions))
-                        {
                             return false;
-                        }
+
                         if (!broadcastActions.IsNullOrEmpty())
-                        {
                             foreach (Action<GameObject> broadcastAction in broadcastActions)
-                            {
                                 broadcastAction(player);
-                            }
-                        }
+
                         Disassembly = new(E.Item, amountToDisassemble, EnergyCostPer: 0);
                         return true;
                     }
@@ -552,20 +560,9 @@ namespace XRL.World.Parts
             if (E.Vendor != null
                 && E.Vendor == ParentObject
                 && E.Type == "ReverseEngineer")
-            {
                 E.Bonus += ReverseEngineerBonus;
-            }
-            return base.HandleEvent(E);
-        }
 
-        public override void Read(GameObject Basis, SerializationReader Reader)
-        {
-            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
-            if (modVersion < new Version("0.1.0"))
-            {
-                MigrateFrom = modVersion;
-            }
-            base.Read(Basis, Reader);
+            return base.HandleEvent(E);
         }
     }
 }

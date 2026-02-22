@@ -35,41 +35,33 @@ namespace XRL.World.Parts
         public int DisplayNameStyle;
 
         public UD_BitLocker_Display()
+            : base()
         {
             DisplayNameStyle = SelectedDisplayNameStyle;
         }
 
         public override bool CanGenerateStacked()
-        {
-            return false;
-        }
+            => false;
 
         public override bool AllowStaticRegistration()
-        {
-            return true;
-        }
+            => true;
 
         public static IEnumerable<GameObject> GetBitLockerDisplayObjects(Inventory Inventory)
         {
             if (Inventory == null)
-            {
                 yield break;
-            }
+
             foreach (GameObject item in Inventory.Objects)
-            {
                 if (item.HasPart<UD_BitLocker_Display>())
-                {
                     yield return item;
-                }
-            }
         }
 
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade)
-                || ID == GetDisplayNameEvent.ID
-                || ID == GetShortDescriptionEvent.ID;
-        }
+            => base.WantEvent(ID, Cascade)
+            || ID == GetDisplayNameEvent.ID
+            || ID == GetShortDescriptionEvent.ID
+            ;
+
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
             if (ParentObject.InInventory is GameObject vendor
@@ -117,9 +109,7 @@ namespace XRL.World.Parts
                     }
                 }
                 else
-                {
                     E.AddAdjective("=subject.Refname's=".StartReplace().AddObject(vendor).ToString());
-                }
             }
             return base.HandleEvent(E);
         }
@@ -127,12 +117,11 @@ namespace XRL.World.Parts
         {
             if (ParentObject.InInventory is GameObject vendor
                 && vendor.TryGetPart(out BitLocker bitLocker))
-            {
                 E.Postfix.AppendLine()
                     .Append(GameText.VariableReplace("=subject.Refname's= bit locker contains:", vendor))
                     .AppendLine().AppendLine()
                     .Append(bitLocker.GetBitsString());
-            }
+
             return base.HandleEvent(E);
         }
     }

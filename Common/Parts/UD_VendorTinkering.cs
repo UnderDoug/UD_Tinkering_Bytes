@@ -96,6 +96,7 @@ namespace XRL.World.Parts
         private bool TinkerInitialized; // added v0.1.0
 
         public UD_VendorTinkering()
+            : base()
         {
             ScribesKnownRecipesOnRestock = true;
             RestockScribeChance = 10;
@@ -108,10 +109,42 @@ namespace XRL.World.Parts
             CanRestockBits = true;
         }
 
+        #region Serialization
+
+        public override void Write(GameObject Basis, SerializationWriter Writer)
+        {
+            base.Write(Basis, Writer);
+
+            Writer.Write(KnownRecipes);
+            Writer.Write(TinkerInitialized);
+        }
+        public override void Read(GameObject Basis, SerializationReader Reader)
+        {
+            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
+            if (modVersion < new Version("0.1.0"))
+                MigrateFrom = modVersion;
+
+            base.Read(Basis, Reader);
+
+            KnownRecipes = Reader.ReadList<TinkerData>();
+
+            if (modVersion >= new Version("0.1.0"))
+                TinkerInitialized = Reader.ReadBoolean();
+        }
+        public override void FinalizeRead(SerializationReader Reader)
+        {
+            base.FinalizeRead(Reader);
+            if (!ParentObject.IsPlayer())
+                KnowImplantedRecipes();
+        }
+
+        #endregion
+
         public override void AddedAfterCreation()
         {
             base.AddedAfterCreation();
-            if (!SaveStartedWithVendorActions || !SaveStartedWithTinkeringBytes)
+            if (!SaveStartedWithVendorActions
+                || !SaveStartedWithTinkeringBytes)
             {
                 int indent = Debug.LastIndent;
                 Debug.Entry(4, $"{nameof(UD_VendorTinkering)}.{nameof(AddedAfterCreation)}()", Indent: indent + 1, Toggle: doDebug);
@@ -122,7 +155,9 @@ namespace XRL.World.Parts
             }
         }
 
-        public static bool IsStockDataDisk(GameObject GO) => GO.HasPart<DataDisk>() && GO.HasProperty("_stock");
+        public static bool IsStockDataDisk(GameObject GO)
+            => GO.HasPart<DataDisk>() && GO.HasProperty("_stock");
+
         public bool LearnFromOneDataDisk()
         {
             List<GameObject> dataDiskObjects = ParentObject?.Inventory?.GetObjectsViaEventList(IsStockDataDisk);
@@ -130,22 +165,17 @@ namespace XRL.World.Parts
             {
                 bool ignoreSkillRequirement = false;
                 if (ParentObject != null && ParentObject.TryGetPart(out UD_VendorDisassembly vendorDisassembly))
-                {
                     ignoreSkillRequirement = vendorDisassembly.ReverseEngineerIgnoresSkillRequirement;
-                }
+
                 dataDiskObjects.ShuffleInPlace();
                 foreach (GameObject dataDiskObject in dataDiskObjects)
-                {
                     if (LearnFromDataDisk(
                         Vendor: ParentObject,
                         DataDiskObject: dataDiskObject,
                         KnownRecipes: KnownRecipes,
                         IgnoreSkillRequirement: ignoreSkillRequirement,
                         ConsumeDisk: true))
-                    {
                         return true;
-                    }
-                }
             }
             return false;
         }
@@ -171,18 +201,13 @@ namespace XRL.World.Parts
                         Random vendorMarkColorRnd = Vendor.GetSeededRandom(nameof(UD_VendorTinkering) + nameof(MakersMark));
                         if (Vendor.TryGetPart(out UD_VendorTinkering vendorTinkering)
                             && vendorTinkering.MatchMakersMarkToDetailColor)
-                        {
                             markColor = Vendor?.Render?.DetailColor;
-                        }
                         else
                         if (60.in100())
-                        {
                             markColor = Crayons.GetRandomColor(vendorMarkColorRnd);
-                        }
                         else
-                        {
                             markColor = Crayons.GetRandomDarkColor(vendorMarkColorRnd);
-                        }
+
                         hasMakersMark = Vendor.RequirePart<HasMakersMark>();
                         hasMakersMark.Mark = mark;
                         hasMakersMark.Color = markColor;
@@ -205,50 +230,49 @@ namespace XRL.World.Parts
         public bool LearnTinkerData(
             TinkerData TinkerData,
             bool IgnoreSkillRequirement = false,
-            bool CreateDisk = false)
-        {
-            return LearnTinkerData(
+            bool CreateDisk = false
+            )
+            => LearnTinkerData(
                 Vendor: ParentObject,
                 TinkerData: TinkerData,
                 KnownRecipes: KnownRecipes,
                 IgnoreSkillRequirement: IgnoreSkillRequirement,
                 CreateDisk: CreateDisk);
-        }
+
         public static bool LearnDataDisk(
             GameObject Vendor,
             DataDisk DataDisk,
             List<TinkerData> KnownRecipes,
-            bool IgnoreSkillRequirement = false)
-        {
-            return LearnTinkerData(
+            bool IgnoreSkillRequirement = false
+            )
+            => LearnTinkerData(
                 Vendor: Vendor,
                 TinkerData: DataDisk.Data,
                 KnownRecipes: KnownRecipes,
                 IgnoreSkillRequirement: IgnoreSkillRequirement,
                 CreateDisk: false);
-        }
+
         public bool LearnDataDisk(DataDisk DataDisk, bool IgnoreSkillRequirement = false)
-        {
-            return LearnDataDisk(
+            => LearnDataDisk(
                 Vendor: ParentObject,
                 DataDisk: DataDisk,
                 IgnoreSkillRequirement: IgnoreSkillRequirement,
                 KnownRecipes: KnownRecipes);
-        }
+
         public static bool LearnFromDataDisk(
             GameObject Vendor,
             GameObject DataDiskObject,
             List<TinkerData> KnownRecipes,
             bool IgnoreSkillRequirement = false,
-            bool ConsumeDisk = false)
+            bool ConsumeDisk = false
+            )
         {
             if (DataDiskObject.TryGetPart(out DataDisk dataDisk)
                 && LearnDataDisk(Vendor, dataDisk, KnownRecipes, IgnoreSkillRequirement))
             {
                 if (ConsumeDisk)
-                {
                     DataDiskObject.Destroy();
-                }
+
                 return true;
             }
             return false;
@@ -256,15 +280,14 @@ namespace XRL.World.Parts
         public bool LearnFromDataDisk(
             GameObject DataDiskObject,
             bool IgnoreSkillRequirement = false,
-            bool ConsumeDisk = false)
-        {
-            return LearnFromDataDisk(
+            bool ConsumeDisk = false
+            )
+            => LearnFromDataDisk(
                 Vendor: ParentObject,
                 DataDiskObject: DataDiskObject,
                 KnownRecipes: KnownRecipes,
                 IgnoreSkillRequirement: IgnoreSkillRequirement,
                 ConsumeDisk: ConsumeDisk);
-        }
 
         public static IEnumerable<TinkerData> FindTinkerableDataDiskData(
             GameObject Vendor,
@@ -276,19 +299,14 @@ namespace XRL.World.Parts
                 List<TinkerData> recipeList = new();
                 List<GameObject> dataDiskObjects = Vendor?.Inventory?.GetObjectsViaEventList(GO => GO.HasPart<DataDisk>());
                 if (!dataDiskObjects.IsNullOrEmpty())
-                {
                     foreach (GameObject dataDiskObject in dataDiskObjects)
-                    {
                         if (dataDiskObject.TryGetPart(out DataDisk dataDisk)
-                            && (IgnoreSkillRequirement || Vendor.HasSkill(dataDisk.GetRequiredSkill()))
-                            && (Filter == null || Filter(dataDisk.Data)))
-                        {
+                            && (IgnoreSkillRequirement
+                                || Vendor.HasSkill(dataDisk.GetRequiredSkill()))
+                            && (Filter == null
+                                || Filter(dataDisk.Data)))
                             yield return dataDisk.Data;
-                        }
-                    }
-                }
             }
-            yield break;
         }
 
         public IEnumerable<TinkerData> GetKnownRecipes(Predicate<TinkerData> Filter = null, bool IncludeInstalled = true)
@@ -309,11 +327,10 @@ namespace XRL.World.Parts
                 Debug.CheckYeh(3, $"{tinkerData.Blueprint ?? tinkerData.PartName}",
                     Good: includeRecipe, Indent: indent + 3, Toggle: doDebug);
                 if (includeRecipe)
-                {
                     yield return tinkerData;
-                }
             }
-            if (IncludeInstalled && !InstalledRecipes.IsNullOrEmpty())
+            if (IncludeInstalled
+                && !InstalledRecipes.IsNullOrEmpty())
             {
                 Debug.CheckYeh(3, $"InstalledRecipes", Indent: indent + 2, Toggle: doDebug);
                 foreach (TinkerData installedRecipe in InstalledRecipes)
@@ -322,9 +339,7 @@ namespace XRL.World.Parts
                     Debug.CheckYeh(3, $"{installedRecipe.Blueprint ?? installedRecipe.PartName}", 
                         Good: includeRecipe, Indent: indent + 3, Toggle: doDebug);
                     if (includeRecipe)
-                    {
                         yield return installedRecipe;
-                    }
                 }
             }
 
@@ -335,14 +350,13 @@ namespace XRL.World.Parts
         public static bool DraftDataDisk(GameObject Vendor, TinkerData TinkerData, out GameObject DataDisk, bool IsStock = true)
         {
             DataDisk = null;
-            if (Vendor == null || TinkerData == null)
-            {
+            if (Vendor == null
+                || TinkerData == null)
                 return false;
-            }
+
             if (TinkerData.createDataDisk(TinkerData) is not GameObject newDataDisk)
-            {
                 return false;
-            }
+
             DataDisk = newDataDisk;
             TinkeringHelpers.CheckMakersMark(newDataDisk, Vendor, null, "Drafting");
             if (IsStock)
@@ -353,13 +367,10 @@ namespace XRL.World.Parts
             return true;
         }
         public bool DraftDataDisk(TinkerData TinkerData, out GameObject DataDisk)
-        {
-            return DraftDataDisk(ParentObject, TinkerData, out DataDisk);
-        }
+            => DraftDataDisk(ParentObject, TinkerData, out DataDisk);
+
         public bool DraftDataDisk(TinkerData TinkerData)
-        {
-            return DraftDataDisk(ParentObject, TinkerData, out _);
-        }
+            => DraftDataDisk(ParentObject, TinkerData, out _);
 
         public static int GetTinkerTierFromSkillName(string Name) => Name switch
         {
@@ -368,47 +379,60 @@ namespace XRL.World.Parts
             nameof(Tinkering_Tinker3) => 3,
             _ => 0,
         };
-        public static int GetTinkerTierFromBit(char Bit) => GetTinkerTierFromSkillName(GetTinkerSkillFromBit(Bit));
-        public static int GetTinkerTierFromRecipe(TinkerData TinkerData) => GetTinkerTierFromSkillName(DataDisk.GetRequiredSkill(TinkerData.Tier));
-        public static string GetTinkerSkillFromBit(char Bit) => DataDisk.GetRequiredSkill(BitType.GetBitTier(Bit));
-        public static string GetTinkerSkillFromBitHumanReadable(char Bit) => DataDisk.GetRequiredSkillHumanReadable(BitType.GetBitTier(Bit));
+
+        public static int GetTinkerTierFromBit(char Bit)
+            => GetTinkerTierFromSkillName(GetTinkerSkillFromBit(Bit));
+
+        public static int GetTinkerTierFromRecipe(TinkerData TinkerData)
+            => GetTinkerTierFromSkillName(DataDisk.GetRequiredSkill(TinkerData.Tier));
+
+        public static string GetTinkerSkillFromBit(char Bit)
+            => DataDisk.GetRequiredSkill(BitType.GetBitTier(Bit));
+
+        public static string GetTinkerSkillFromBitHumanReadable(char Bit)
+            => DataDisk.GetRequiredSkillHumanReadable(BitType.GetBitTier(Bit));
 
         public static Raffle<char> GetBitRaffle(int Weight, int? Tier = null, int? TierCap = null)
         {
             Raffle<char> bitRaffle = new();
             foreach (char bit in BitType.BitOrder)
-            {
                 if ((Tier == null || GetTinkerTierFromBit(bit) == Tier.GetValueOrDefault())
                     && (TierCap == null || GetTinkerTierFromBit(bit) <= TierCap.GetValueOrDefault()))
-                {
                     bitRaffle.Add(BitType.BitMap[bit].Color, Weight);
-                }
-            }
+
             return bitRaffle;
         }
-        public static bool FillBitRaffle(ref Raffle<char> BitRaffle, int Weight, int? Tier = null, int? TierCap = null)
+        public static bool FillBitRaffle(
+            ref Raffle<char> BitRaffle,
+            int Weight,
+            int? Tier = null,
+            int? TierCap = null
+            )
         {
             bool anyAdded = false;
             foreach (char bit in BitType.BitOrder)
-            {
                 if ((Tier == null || GetTinkerTierFromBit(bit) == Tier.GetValueOrDefault())
                     && (TierCap == null || GetTinkerTierFromBit(bit) <= TierCap.GetValueOrDefault()))
                 {
                     BitRaffle.Add(BitType.BitMap[bit].Color, Weight);
                     anyAdded = true;
                 }
-            }
+
             return anyAdded;
         }
-        public static BitLocker GiveRandomBits(GameObject Tinker, bool ClearFirst = true, MinEvent FromEvent = null, bool suppressDebug = false)
+        public static BitLocker GiveRandomBits(
+            GameObject Tinker,
+            bool ClearFirst = true,
+            MinEvent FromEvent = null,
+            bool suppressDebug = false
+            )
         {
             int indent = Debug.LastIndent;
             bool doDebug = UD_VendorTinkering.doDebug && !suppressDebug;
             string fromEvent = null;
             if (FromEvent != null)
-            {
                 fromEvent = ", " + nameof(FromEvent) + ": " + FromEvent.GetType().Name;
-            }
+
             Debug.Entry(4, 
                 nameof(UD_VendorTinkering) + "." +
                 nameof(GiveRandomBits) + "(" +
@@ -424,9 +448,7 @@ namespace XRL.World.Parts
                 bitLocker.UseBits(bitStorage);
             }
             else
-            {
                 bitLocker.SortBits();
-            }
 
             Debug.Entry(4, $"Finding scrap to disassemble...", Indent: indent + 2, Toggle: doDebug);
             if (!BitType.BitOrder.IsNullOrEmpty())
@@ -438,17 +460,13 @@ namespace XRL.World.Parts
                 int tinkeringSkill = 0;
 
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker1)))
-                {
                     tinkeringSkill = 1;
-                }
+
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker2)))
-                {
                     tinkeringSkill = 2;
-                }
+
                 if (Tinker.HasSkill(nameof(Tinkering_Tinker3)))
-                {
                     tinkeringSkill = 3;
-                }
 
                 char bestBit = BitType.BitOrder[^1];
                 char rechargeBit = BitType.BitOrder[0];
@@ -467,9 +485,7 @@ namespace XRL.World.Parts
                         .FillBitRaffle(Weight: 4, TierCap: 3);
 
                     if (disassembleBitBag.ActiveContains(bestBit))
-                    {
                         disassembleBitBag[bestBit] -= 2;
-                    }
                 }
                 if (hasScavenger)
                 {
@@ -485,9 +501,7 @@ namespace XRL.World.Parts
                         .FillBitRaffle(Weight: 16, TierCap: 2)
                         .FillBitRaffle(Weight: 8, TierCap: 3);
                     if (reverseEngineerBitBag.ActiveContains(bestBit))
-                    {
                         reverseEngineerBitBag[bestBit] -= 4;
-                    }
                 }
                 if (hasRepair)
                 {
@@ -497,9 +511,7 @@ namespace XRL.World.Parts
                         .FillBitRaffle(Weight: 16, TierCap: 2)
                         .FillBitRaffle(Weight: 8, TierCap: 3);
                     if (repairBitBag.ActiveContains(bestBit))
-                    {
                         repairBitBag[bestBit] -= 4;
-                    }
                 }
                 int tinkeringSkillWeight = 4;
                 int tinkerSKillLow = 8;
@@ -515,13 +527,10 @@ namespace XRL.World.Parts
                     }
                 }
                 if (tinkeringSkillBitBag.ActiveContains(bestBit))
-                {
                     tinkeringSkillBitBag[bestBit] -= 2;
-                }
+
                 if (tinkeringSkillBitBag.ActiveContains(rechargeBit))
-                {
                     tinkeringSkillBitBag[rechargeBit] *= 2;
-                }
 
                 string vomitSource = nameof(UD_VendorTinkering) + "." + nameof(GiveRandomBits);
 
@@ -623,9 +632,8 @@ namespace XRL.World.Parts
                         {
                             int count = 0;
                             if (bitLocker.BitStorage.ContainsKey(bit))
-                            {
                                 count = bitLocker.BitStorage[bit];
-                            }
+
                             Debug.LoopItem(4, BitType.TranslateBit(bit) + "] ", count.ToString(),
                                 Indent: indent + 3, Toggle: doDebug);
                         }
@@ -639,10 +647,11 @@ namespace XRL.World.Parts
 
         public static bool LearnByteRecipes(GameObject Vendor, List<TinkerData> KnownRecipes)
         {
-            if (Vendor == null || Vendor.GetIntProperty(nameof(LearnByteRecipes)) > 0 || !Vendor.HasSkill(nameof(UD_Basics)))
-            {
+            if (Vendor == null
+                || Vendor.GetIntProperty(nameof(LearnByteRecipes)) > 0
+                || !Vendor.HasSkill(nameof(UD_Basics)))
                 return false;
-            }
+
             KnownRecipes ??= new();
             List<string> byteBlueprints = new(UD_TinkeringByte.GetByteBlueprints());
             Debug.Entry(3, "Spinning up byte data disks for " + Vendor?.DebugName ?? NULL + "...", Indent: 0, Toggle: doDebug);
@@ -651,68 +660,64 @@ namespace XRL.World.Parts
             if (!byteBlueprints.IsNullOrEmpty())
             {
                 foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
-                {
                     if (byteBlueprints.Contains(tinkerDatum.Blueprint) && LearnTinkerData(Vendor, tinkerDatum, KnownRecipes))
                     {
                         Debug.LoopItem(3, tinkerDatum.DisplayName.Strip(), Indent: 1, Toggle: false);
                         learned = true;
                         learnedCount++;
                     }
-                }
+
                 Debug.LoopItem(3, 
                     "Learned " + learnedCount + "/" + byteBlueprints.Count + " " + nameof(byteBlueprints),
                     Indent: 1, Toggle: doDebug);
             }
             if (learned)
-            {
                 Vendor.ModIntProperty(nameof(LearnByteRecipes), 1);
-            }
+
             return learned;
         }
         public static bool LearnGiganticRecipe(GameObject Vendor, List<TinkerData> KnownRecipes)
         {
-            if (Vendor == null || !EnableGiantsAllKnowModGiganticIfTinkerableAtAll)
-            {
+            if (Vendor == null
+                || !EnableGiantsAllKnowModGiganticIfTinkerableAtAll)
                 return false;
-            }    
+                
             KnownRecipes ??= new();
             bool learned = false;
             bool hasGigantismMutationEntry = false;
             if (MutationFactory.GetMutationEntryByName(nameof(Gigantism)) is MutationEntry gigantismMutationEntry)
-            {
                 hasGigantismMutationEntry = Vendor.HasPart(gigantismMutationEntry.Class);
-            }
+
             if (Vendor.IsGiganticCreature || Vendor.HasPart("GigantismPlus") || hasGigantismMutationEntry)
             {
                 Debug.Entry(3, $"Spinning up {nameof(ModGigantic)} data disks for {Vendor?.DebugName ?? NULL}...", Indent: 0, Toggle: doDebug);
                 foreach (TinkerData tinkerDatum in TinkerData.TinkerRecipes)
-                {
                     if (tinkerDatum.PartName == nameof(ModGigantic))
                     {
                         Debug.CheckYeh(3, $"{nameof(ModGigantic)}: Found", Indent: 1, Toggle: doDebug);
                         LearnTinkerData(Vendor, tinkerDatum, KnownRecipes);
                         break;
                     }
-                }
             }
             return learned;
         }
         public static string GetVendorRecipeSeed(GameObject Vendor)
-        {
-            return The.Game?.GetWorldSeed() + "-" + Vendor.ID;
-        }
+            => The.Game?.GetWorldSeed() + "-" + Vendor.ID;
+
         public static bool LearnRandomRecipes(
             GameObject Vendor,
             Raffle<TinkerData> RecipeDeck,
             int Amount,
             List<TinkerData> KnownRecipes,
             bool IgnoreSkillRequirements = false,
-            bool CreateDisk = false)
+            bool CreateDisk = false
+            )
         {
-            if (Vendor == null || RecipeDeck.IsNullOrEmpty() || Amount < 1)
-            {
+            if (Vendor == null
+                || RecipeDeck.IsNullOrEmpty()
+                || Amount < 1)
                 return false;
-            }
+
             int indent = Debug.LastIndent;
 
             KnownRecipes ??= new();
@@ -737,37 +742,34 @@ namespace XRL.World.Parts
             List<TinkerData> KnownRecipes,
             string RecipeSeed = null,
             bool IgnoreSkillRequirements = false,
-            bool CreateDisk = false)
+            bool CreateDisk = false
+            )
         {
             if (Vendor == null 
                 || !Tinkering_TinkerX.StartsWith(nameof(Skill.Tinkering) + "_") 
                 || !Vendor.HasSkill(Tinkering_TinkerX)
                 || !int.TryParse(Tinkering_TinkerX[^1].ToString(), out _))
-            {
                 return false;
-            }
+
             KnownRecipes ??= new();
 
             bool includeBasic = Tinkering_TinkerX == nameof(Tinkering_Tinker1);
 
             static bool canLearn(TinkerData TinkerData, string TinkeringSkill, bool IncludeBasic, List<TinkerData> KnownRecipes)
             {
-                if (KnownRecipes == null || KnownRecipes.Any(r => r.IsSameDatumAs(TinkerData)))
-                {
+                if (KnownRecipes == null
+                    || KnownRecipes.Any(r => r.IsSameDatumAs(TinkerData)))
                     return false;
-                }
+
                 if (DataDisk.GetRequiredSkill(TinkerData.Tier) is not string requiredSkill)
-                {
                     return false;
-                }
+
                 if (requiredSkill == TinkeringSkill)
-                { 
                     return true;
-                }
+
                 if (IncludeBasic && requiredSkill == nameof(UD_Basics))
-                {
                     return true;
-                }
+
                 return false;
             }
 
@@ -787,12 +789,11 @@ namespace XRL.World.Parts
             int Low,
             int High,
             bool IgnoreSkillRequirements = false,
-            bool CreateDisk = false)
+            bool CreateDisk = false
+            )
         {
             if (Vendor == null)
-            {
                 return false;
-            }
 
             bool doDebug = true;
             Debug.GetIndent(out int indent);
@@ -845,21 +846,25 @@ namespace XRL.World.Parts
             Debug.SetIndent(indent);
             return learned;
         }
-        public static bool IsRecipeLearnable(GameObject Vendor, TinkerData TinkerDatum, IEnumerable<TinkerData> KnownRecipes)
-        {
-            return Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerDatum.Tier))
-                && !KnownRecipes.Contains(TinkerDatum);
-        }
+        public static bool IsRecipeLearnable(
+            GameObject Vendor,
+            TinkerData TinkerDatum,
+            IEnumerable<TinkerData> KnownRecipes
+            )
+            => Vendor.HasSkill(DataDisk.GetRequiredSkill(TinkerDatum.Tier))
+            && !KnownRecipes.Contains(TinkerDatum);
+
         public static bool LearnSkillsRecipes(
             GameObject Vendor,
             List<TinkerData> KnownRecipes, 
             bool IgnoreSkillRequirements = false,
-            bool CreateDisk = false)
+            bool CreateDisk = false
+            )
         {
-            if (Vendor == null || !IsVendorTinker(Vendor))
-            {
+            if (Vendor == null
+                || !IsVendorTinker(Vendor))
                 return false;
-            }
+
             KnownRecipes ??= new();
 
             bool learned = false;
@@ -880,9 +885,8 @@ namespace XRL.World.Parts
             Stopwatch sw = new();
             sw.Start();
             foreach ((string tinkerSkill, (int low, int high)) in skillRanges)
-            {
                 LearnSkillRecipes(Vendor, KnownRecipes, tinkerSkill, low, high, IgnoreSkillRequirements, CreateDisk);
-            }
+
             TimeSpan elapsed = sw.Elapsed;
             sw.Stop();
             Debug.Entry(4, $"Time to Learn Skills", elapsed.TotalMilliseconds.Things("milliseconds"), Indent: 1, Toggle: doDebug);
@@ -893,9 +897,8 @@ namespace XRL.World.Parts
         public static bool KnowImplantedRecipes(GameObject Vendor, List<TinkerData> InstalledRecipes)
         {
             if (Vendor == null)
-            {
                 return false;
-            }
+
             InstalledRecipes.Clear();
             bool learned = false;
             List<GameObject> installedCybernetics = Event.NewGameObjectList(Vendor?.GetInstalledCybernetics() ?? new());
@@ -3595,38 +3598,6 @@ namespace XRL.World.Parts
             return base.HandleEvent(E);
         }
 
-        public override void Write(GameObject Basis, SerializationWriter Writer)
-        {
-            base.Write(Basis, Writer);
-
-            Writer.Write(KnownRecipes);
-            Writer.Write(TinkerInitialized);
-        }
-        public override void Read(GameObject Basis, SerializationReader Reader)
-        {
-            var modVersion = Reader.ModVersions[Utils.ThisMod.ID];
-            if (modVersion < new Version("0.1.0"))
-            {
-                MigrateFrom = modVersion;
-            }
-            base.Read(Basis, Reader);
-
-            KnownRecipes = Reader.ReadList<TinkerData>();
-            
-            if (modVersion >= new Version("0.1.0"))
-            {
-                TinkerInitialized = Reader.ReadBoolean();
-            }
-        }
-        public override void FinalizeRead(SerializationReader Reader)
-        {
-            base.FinalizeRead(Reader);
-            if (!ParentObject.IsPlayer())
-            {
-                KnowImplantedRecipes();
-            }
-        }
-
         public override IPart DeepCopy(GameObject Parent, Func<GameObject, GameObject> MapInv)
         {
             UD_VendorTinkering vendorTinkering = base.DeepCopy(Parent, MapInv) as UD_VendorTinkering;
@@ -3649,6 +3620,8 @@ namespace XRL.World.Parts
                 InitializeVendorTinker();
             }
         }
+
+        #region Wishes
 
         [WishCommand(Command = "UD_TB log recipe skills")]
         public static void LogRecipeSkillsWish()
@@ -4087,5 +4060,7 @@ namespace XRL.World.Parts
                 Popup.Suppress = supressPopups;
             }
         }
+
+        #endregion
     }
 }

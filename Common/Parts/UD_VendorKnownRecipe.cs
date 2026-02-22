@@ -43,15 +43,14 @@ namespace XRL.World.Parts
         private static BitCost BitCost = new();
 
         public UD_VendorKnownRecipe()
+            : base()
         {
             Data = null;
             FromImplant = false;
         }
 
         public override bool CanGenerateStacked()
-        {
-            return false;
-        }
+            => false;
 
         public TinkerData SetData(TinkerData KnownRecipe)
         {
@@ -108,13 +107,9 @@ namespace XRL.World.Parts
                     if (ObjectName == null)
                     {
                         if (Data.Blueprint == null)
-                        {
                             ObjectName = "invalid blueprint: " + Data.Blueprint;
-                        }
                         else
-                        {
                             ObjectName = TinkeringHelpers.TinkeredItemShortDisplayName(Data.Blueprint);
-                        }
                     }
                 }
                 catch (Exception)
@@ -129,9 +124,8 @@ namespace XRL.World.Parts
                     ObjectName = sampleObject.GetDisplayName(Short: true, Single: true, AsIfKnown: isUnderstood);
 
                     if (GameObject.Validate(ref sampleObject))
-                    {
                         sampleObject.Obliterate();
-                    }
+
                 }
                 SB.Append(": ").AppendColored("C", ObjectName); 
                 if (isUnderstood || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
@@ -153,9 +147,7 @@ namespace XRL.World.Parts
                 SB.Append(": ").Append(ObjectName);
             }
             if (SB.Length > 0)
-            {
                 E.AddBase(SB.ToString(), 5);
-            }
 
             return base.HandleEvent(E);
         }
@@ -189,28 +181,24 @@ namespace XRL.World.Parts
                             E.Postfix.Append(Grammar.Pluralize(ObjectName ?? sampleObject.DisplayNameOnly));
                         }
                         else
-                        {
                             E.Postfix.Append(ObjectName ?? sampleObject.DisplayNameOnly);
-                        }
+
                         E.Postfix.AppendLine();
                         if (description != null)
-                        {
                             E.Postfix.AppendLine().Append(description._Short);
-                        }
+
                         sampleObject.Obliterate();
                     }
                 }
                 if (Data.Type == "Mod" || isUnderstood || isPlayerTinker)
                 {
                     E.Postfix.AppendLine().AppendRules("Requires: ").Append(DataDisk.GetRequiredSkillHumanReadable(Data.Tier));
+
                     if (FromImplant)
-                    {
                         E.Postfix.Append(" [").AppendColored("c", "implanted recipe").Append("]");
-                    }
+
                     if (TinkerData.RecipeKnown(Data))
-                    {
                         E.Postfix.AppendLine().AppendRules("You also know this recipe.");
-                    }
                 }
                 if (Data.Type == "Build" && isPlayerTinker && !isUnderstood)
                 {
@@ -231,9 +219,8 @@ namespace XRL.World.Parts
                 && GameObject.CreateSample(Data?.Blueprint) is GameObject sampleObject
                 && sampleObject.TryGetPart(out Examiner sampleExaminer)
                 && !sampleObject.Understood(sampleExaminer) && !E.AsIfKnown)
-            {
                 E.Category = "Artifacts";
-            }
+
             return base.HandleEvent(E);
         }
         public virtual bool HandleEvent(UD_GetVendorActionsEvent E)
@@ -241,7 +228,6 @@ namespace XRL.World.Parts
             if (E.Item != null && E.Item == ParentObject)
             {
                 if (Data?.Type == "Mod")
-                {
                     E.AddAction(
                         Name: "Mod Recipe",
                         Display: "mod an item with tinkering",
@@ -251,13 +237,11 @@ namespace XRL.World.Parts
                         Priority: -4,
                         DramsCost: 100,
                         ClearAndSetUpTradeUI: true);
-                }
                 else
                 if (Data?.Type == "Build" 
                     && TinkerInvoice.CreateTinkerSample(Data.Blueprint) is GameObject sampleObject)
                 {
                     if (sampleObject.Understood() || (The.Player != null && The.Player.HasSkill(nameof(Skill.Tinkering))))
-                    {
                         E.AddAction(
                             Name: "Build Recipe",
                             Display: "tinker item",
@@ -267,9 +251,8 @@ namespace XRL.World.Parts
                             Priority: -4,
                             DramsCost: 100,
                             ClearAndSetUpTradeUI: true);
-                    }
+
                     if (!sampleObject.Understood() && GetIdentifyLevel(E.Vendor) > 0)
-                    {
                         E.AddAction(
                             Name: "Identify Recipe",
                             Display: "identify recipe",
@@ -278,7 +261,7 @@ namespace XRL.World.Parts
                             Priority: 8,
                             ClearAndSetUpTradeUI: true,
                             FireOnItem: true);
-                    }
+
                     TinkerInvoice.ScrapTinkerSample(ref sampleObject);
                 }
             }
@@ -295,20 +278,17 @@ namespace XRL.World.Parts
             {
                 TinkerInvoice tinkerInvoice = null;
                 if (TinkerInvoice.CreateTinkerSample(recipeDatum.Blueprint) is not GameObject sampleItem)
-                {
                     return false;
-                }
                 else
                 {
                     try
                     {
                         if (!VendorHasSkillToIdentify(vendor, "tinkering recipes")
-                            && !CheckItemNotUnderstoodByShopper(player, sampleItem, "what this tinker recipe creates")
-                            && !CheckShopperCapableOfUnderstanding(vendor, player)
-                            && !VendorCanExplain(vendor, sampleItem, "This tinker recipe"))
-                        {
+                            || !CheckItemNotUnderstoodByShopper(player, sampleItem, "what this tinker recipe creates")
+                            || !CheckShopperCapableOfUnderstanding(vendor, player)
+                            || !VendorCanExplain(vendor, sampleItem, "This tinker recipe"))
                             return false;
-                        }
+
                         tinkerInvoice = new(Vendor: vendor, Service: TinkerInvoice.IDENTIFY, Item: sampleItem);
                         int dramsCost = vendor.IsPlayerLed() ? 0 : (int)tinkerInvoice.GetExamineCost();
                         string theTinkerRecipe = "the tinker recipe";

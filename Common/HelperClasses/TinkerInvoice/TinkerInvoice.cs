@@ -200,7 +200,8 @@ namespace UD_Tinkering_Bytes
             GameObject SelectedIngredient = null,
             BitCost BitCost = null,
             GameObject Item = null,
-            bool DepositAllowed = false)
+            bool DepositAllowed = false
+            )
             : this()
         {
             this.Vendor = Vendor;
@@ -219,7 +220,8 @@ namespace UD_Tinkering_Bytes
             GameObject SelectedIngredient,
             BitCost BitCost,
             bool VendorOwnsRecipe = true,
-            GameObject ApplyModTo = null)
+            GameObject ApplyModTo = null
+            )
             : this(
                   Vendor: Vendor, 
                   Service: Recipe.Type, 
@@ -238,16 +240,15 @@ namespace UD_Tinkering_Bytes
             }
             else
             if (Service == MOD)
-            {
                 Item = ApplyModTo;
-            }
         }
         public TinkerInvoice(
             GameObject Vendor,
             TinkerData Recipe,
             BitCost BitCost,
             bool VendorOwnsRecipe = true,
-            GameObject ApplyModTo = null)
+            GameObject ApplyModTo = null
+            )
             : this(
                   Vendor: Vendor,
                   Recipe: Recipe,
@@ -255,8 +256,52 @@ namespace UD_Tinkering_Bytes
                   BitCost: BitCost,
                   VendorOwnsRecipe: VendorOwnsRecipe,
                   ApplyModTo: ApplyModTo)
+        { }
+
+        #region Serialization
+
+        public virtual void Write(SerializationWriter Writer)
         {
+            Writer.WriteOptimized(VendorID);
+
+            Writer.Write(Performance);
+            Writer.Write(GotPerformance);
+
+            Writer.WriteOptimized(ItemID);
+            Writer.WriteOptimized(_NumberMade);
+
+            Writer.WriteOptimized(SelectedIngredientID);
+
+            Writer.Write(IncludeItemValue);
+            Writer.Write(IncludeLabourValue);
+            Writer.Write(IncludeExpertiseValue);
+            Writer.Write(IncludeMarkUpValue);
+            Writer.Write(IncludeIngredientValue);
+            Writer.Write(IncludeBitsValue);
+            Writer.Write(IncludeMaterialsValue);
         }
+        public virtual void Read(SerializationReader Reader)
+        {
+            VendorID = Reader.ReadOptimizedString();
+
+            Performance = Reader.ReadDouble();
+            GotPerformance = Reader.ReadBoolean();
+
+            ItemID = Reader.ReadOptimizedString();
+            _NumberMade = Reader.ReadOptimizedInt32();
+
+            SelectedIngredientID = Reader.ReadOptimizedString();
+
+            IncludeItemValue = Reader.ReadBoolean();
+            IncludeLabourValue = Reader.ReadBoolean();
+            IncludeExpertiseValue = Reader.ReadBoolean();
+            IncludeMarkUpValue = Reader.ReadBoolean();
+            IncludeIngredientValue = Reader.ReadBoolean();
+            IncludeBitsValue = Reader.ReadBoolean();
+            IncludeMaterialsValue = Reader.ReadBoolean();
+        }
+
+        #endregion
 
         public virtual void Clear()
         {
@@ -1110,48 +1155,6 @@ namespace UD_Tinkering_Bytes
                 .AddObject(The.Player)
                 .AddObject(Vendor)
                 .ToString();
-        }
-
-        public virtual void Write(SerializationWriter Writer)
-        {
-            Writer.WriteOptimized(VendorID);
-
-            Writer.Write(Performance);
-            Writer.Write(GotPerformance);
-
-            Writer.WriteOptimized(ItemID);
-            Writer.WriteOptimized(_NumberMade);
-
-            Writer.WriteOptimized(SelectedIngredientID);
-
-            Writer.Write(IncludeItemValue);
-            Writer.Write(IncludeLabourValue);
-            Writer.Write(IncludeExpertiseValue);
-            Writer.Write(IncludeMarkUpValue);
-            Writer.Write(IncludeIngredientValue);
-            Writer.Write(IncludeBitsValue);
-            Writer.Write(IncludeMaterialsValue);
-        }
-
-        public virtual void Read(SerializationReader Reader)
-        {
-            VendorID = Reader.ReadOptimizedString();
-
-            Performance = Reader.ReadDouble();
-            GotPerformance = Reader.ReadBoolean();
-
-            ItemID = Reader.ReadOptimizedString();
-            _NumberMade = Reader.ReadOptimizedInt32();
-
-            SelectedIngredientID = Reader.ReadOptimizedString();
-
-            IncludeItemValue = Reader.ReadBoolean();
-            IncludeLabourValue = Reader.ReadBoolean();
-            IncludeExpertiseValue = Reader.ReadBoolean();
-            IncludeMarkUpValue = Reader.ReadBoolean();
-            IncludeIngredientValue = Reader.ReadBoolean();
-            IncludeBitsValue = Reader.ReadBoolean();
-            IncludeMaterialsValue = Reader.ReadBoolean();
         }
 
         public static string DebugString(TinkerInvoice TinkerInvoice = null, string Service = null)

@@ -42,74 +42,60 @@ namespace XRL.World.Parts
         public string Bytes;
 
         public UD_BytePunnet()
+            : base()
         {
             Bytes = null;
         }
 
         public static bool IsWildCardBytes(string Bytes)
-        {
-            return !Bytes.IsNullOrEmpty()
-                && (Bytes == "*"
-                    || Bytes == "0"
-                    || Bytes.Contains("-")
-                    || Bytes.Contains("<")
-                    || Bytes.Contains(">"));
-        }
+            => !Bytes.IsNullOrEmpty()
+            && (Bytes == "*"
+                || Bytes == "0"
+                || Bytes.Contains("-")
+                || Bytes.Contains("<")
+                || Bytes.Contains(">"))
+            ;
+
         public bool HasWildCardBytes()
-        {
-            return IsWildCardBytes(Bytes);
-        }
+            => IsWildCardBytes(Bytes);
 
         public static IEnumerable<char> GetByteChars()
         {
             if (BitType.BitSortOrder.IsNullOrEmpty())
-            {
                 yield break;
-            }
+
             foreach (BitType bitType in BitType.BitTypes)
-            {
                 yield return BitType.CharTranslateBit(bitType.Color);
-            }
         }
 
         public static int GetByteIndex(string Byte)
-        {
-            if (Byte.IsNullOrEmpty())
-            {
-                return -1;
-            }
-            return BitType.GetBitSortOrder(BitType.ReverseCharTranslateBit(Byte[0]));
-        }
+            => !Byte.IsNullOrEmpty()
+            ? BitType.GetBitSortOrder(BitType.ReverseCharTranslateBit(Byte[0]))
+            : -1;
+
         public static bool TryGetByteIndex(string Byte, out int Index)
-        {
-            return (Index = GetByteIndex(Byte)) > -1;
-        }
+            => (Index = GetByteIndex(Byte)) > -1;
+
         public static int GetByteIndex(char Byte)
-        {
-            return GetByteIndex(Byte.ToString());
-        }
+            => GetByteIndex(Byte.ToString());
+
         public static bool TryGetByteIndex(char Byte, out int Index)
-        {
-            return (Index = GetByteIndex(Byte)) > -1;
-        }
+            => (Index = GetByteIndex(Byte)) > -1;
 
         public static string GetByteRange(string Bytes)
         {
-            if (!Bytes.IsNullOrEmpty() && (Bytes[0] == '>' || Bytes[0] == '<'))
-            {
+            if (!Bytes.IsNullOrEmpty()
+                && (Bytes[0] == '>'
+                    || Bytes[0] == '<'))
                 if (TryGetByteIndex(Bytes[1..], out int output))
                 {
                     output = Math.Max(0, Math.Min(output, MaxByte));
                     if (Bytes[0] == '>')
-                    {
                         return $"{output + 1}-{MaxByte}";
-                    }
+
                     if (Bytes[0] == '<')
-                    {
                         return $"0-{output - 1}";
-                    }
                 }
-            }
             return null;
         }
 
@@ -123,38 +109,25 @@ namespace XRL.World.Parts
                 {
                     string bytesRange;
                     if (BytesMap.ContainsKey(Bytes))
-                    {
                         bytesRange = BytesMap[Bytes];
-                    }
                     else
-                    {
                         bytesRange = GetByteRange(Bytes);
-                    }
+
                     // AddPlayerMessage(nameof(bytesRange)+": "+bytesRange);
                     string[] bytesHighLow = bytesRange.Split('-');
                     if (!int.TryParse(bytesHighLow[0], out int low))
-                    {
                         low = 0;
-                    }
+
                     if (!int.TryParse(bytesHighLow[1], out int high))
-                    {
                         high = MaxByte;
-                    }
+
                     for (int i = low; i < high + 1; i++)
-                    {
                         bytesBlueprintList.Add($"{BytesOrder[i]}{BYTE_BLUEPRINT_END}");
-                    }
                 }
                 else
-                {
                     foreach (char c in Bytes)
-                    {
                         if (TryGetByteIndex(c, out int byteIndex))
-                        {
                             bytesBlueprintList.Add($"{BytesOrder[byteIndex]}{BYTE_BLUEPRINT_END}");
-                        }
-                    }
-                }
             }
             return bytesBlueprintList;
         }
@@ -175,47 +148,38 @@ namespace XRL.World.Parts
                         {
                             GameObject byteObject = GameObjectFactory.Factory.CreateObject(blueprint);
                             if (byteObject != null)
-                            {
                                 BytesBucket.Add(blueprint, byteObject);
-                            }
                         }
                         else
-                        {
                             BytesBucket[blueprint].Count++;
-                        }
                     }
                 }
+
                 if (BytePunnet.ParentObject.Count > 1)
-                {
                     BytePunnet.ParentObject.Count--;
-                }
                 else
-                {
                     BytePunnet.ParentObject.Destroy();
-                }
+
                 return true;
             }
             return false;
         }
 
         public override bool AllowStaticRegistration()
-        {
-            return true;
-        }
+            => true;
+
         public override bool WantEvent(int ID, int Cascade)
-        {
-            return base.WantEvent(ID, Cascade)
-                || ID == AfterObjectCreatedEvent.ID
-                || ID == GetInventoryActionsEvent.ID
-                || ID == InventoryActionEvent.ID
-                || ID == GetDisplayNameEvent.ID;
-        }
+            => base.WantEvent(ID, Cascade)
+            || ID == AfterObjectCreatedEvent.ID
+            || ID == GetInventoryActionsEvent.ID
+            || ID == InventoryActionEvent.ID
+            || ID == GetDisplayNameEvent.ID
+            ;
         public override bool HandleEvent(GetDisplayNameEvent E)
         {
             if (E.Context == nameof(EquipmentAPI.ShowInventoryActionMenu))
-            {
                 E.AddAdjective(nameof(EquipmentAPI.ShowInventoryActionMenu));
-            }
+
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(AfterObjectCreatedEvent E)
@@ -228,17 +192,14 @@ namespace XRL.World.Parts
                 bool haveBits = false;
                 if (render != null)
                 {
-                    if (Bytes.Length > 1 || HasWildCardBytes())
-                    {
+                    if (Bytes.Length > 1
+                        || HasWildCardBytes())
                         bytes = render.DisplayName.Replace("punnet of ", "");
-                    }
                     else
                     {
                         GameObjectBlueprint byteBlueprint = GameObjectFactory.Factory.GetBlueprint(Bytes[0] + BYTE_BLUEPRINT_END);
                         if (byteBlueprint != null)
-                        {
                             bytes = byteBlueprint.DisplayName();
-                        }
                     }
                     render.DisplayName = render.DisplayName.Replace("*bytes*", bytes.Pluralize());
                 }
@@ -261,10 +222,10 @@ namespace XRL.World.Parts
         public override bool HandleEvent(GetInventoryActionsEvent E)
         {
             E.AddAction("Unpack", "unpack", COMMAND_UNPACK, Key: 'u', Default: 5, WorksTelekinetically: true);
+
             if (E.Object.Count > 1)
-            {
                 E.AddAction("Unpack All", "unpack all", COMMAND_UNPACK_ALL, Key: 'U', Default: 4, WorksTelekinetically: true);
-            }
+
             return base.HandleEvent(E);
         }
         public override bool HandleEvent(InventoryActionEvent E)
@@ -272,15 +233,15 @@ namespace XRL.World.Parts
             if (E.Command == COMMAND_UNPACK || E.Command == COMMAND_UNPACK_ALL)
             {
                 if (!E.Actor.CheckFrozen(Telepathic: false, Telekinetic: true))
-                {
                     return false;
-                }
-                if (E.Item.IsBroken() || E.Item.IsRusted() || E.Item.IsEMPed())
-                {
-                    E.Actor.Fail(ParentObject.Does("do") + " nothing.");
-                    return false;
-                }
-                if (E.Actor.AreHostilesNearby() && E.Actor.FireEvent("CombatPreventsTinkering"))
+
+                if (E.Item.IsBroken()
+                    || E.Item.IsRusted()
+                    || E.Item.IsEMPed())
+                    return E.Actor.Fail(ParentObject.Does("do") + " nothing.");
+
+                if (E.Actor.AreHostilesNearby()
+                    && E.Actor.FireEvent("CombatPreventsTinkering"))
                 {
                     Popup.ShowFail("You can't unpack with hostiles nearby.");
                     return false;
@@ -288,19 +249,13 @@ namespace XRL.World.Parts
                 Dictionary<string, GameObject> bytesBucket = new();
                 int amountToUnpack = ParentObject.Count;
                 if (E.Command == COMMAND_UNPACK)
-                {
                     UnpackPunnet(this, bytesBucket);
-                }
                 else
                 {
                     int attempts = 0;
                     while (ParentObject.Count > 0 && attempts < 25)
-                    {
                         if (!UnpackPunnet(this, bytesBucket))
-                        {
                             attempts++;
-                        }
-                    }
                 }
 
                 if (!bytesBucket.IsNullOrEmpty())
@@ -316,9 +271,8 @@ namespace XRL.World.Parts
                     }
                     byteBlueprints.Sort((s, o) => GetByteIndex(s.Strip()[0]).CompareTo(GetByteIndex(o.Strip()[0])));
                     foreach (string byteBlueprint in byteBlueprints)
-                    {
                         receivedBytesList.Add(receivedBytesSortable[byteBlueprint]);
-                    }
+
                     string thisPunnet = E.Command == COMMAND_UNPACK ? ParentObject.DisplayName : amountToUnpack.Things(ParentObject.DisplayName);
                     string receivedString = Grammar.MakeAndList(receivedBytesList);
                     E.Actor.ShowSuccess($"{E.Actor.T()}{E.Actor.GetVerb("unpack")} {E.Actor.poss(thisPunnet)} into {receivedString}");
