@@ -1,15 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<PackageId>UD_Tinkering_Bytes</PackageId>
+  <PropertyGroup>
     <AssemblyName>UD_Tinkering_Bytes</AssemblyName>
-		<Authors>UnderDoug</Authors>
-		<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
-    <BaseIntermediateOutputPath>.dotnet\obj\</BaseIntermediateOutputPath>
-    <BaseOutputPath>.dotnet\bin\</BaseOutputPath>
+    <PackageId>UD_Tinkering_Bytes</PackageId>
+    <Authors>UnderDoug</Authors>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="obj\**" />
+    <EmbeddedResource Remove="obj\**" />
+    <None Remove="obj\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="bin\**" />
+    <EmbeddedResource Remove="bin\**" />
+    <None Remove="bin\**" />
+  </ItemGroup>
   <Import Project="..\Mods.csproj" />
-	<ItemGroup>
-	  <ProjectReference Include="..\UD_Modding_Toolbox\UD_Modding_Toolbox.csproj" />
-	  <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+    <Reference Include="..\ModAssemblies\UD_Modding_Toolbox.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UD_Vendor_Actions\UD_Vendor_Actions.csproj" />
+  </ItemGroup>
 </Project>
