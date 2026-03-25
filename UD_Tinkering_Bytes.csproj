@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<PackageId>UD_Tinkering_Bytes</PackageId>
+    <AssemblyName>UD_Tinkering_Bytes</AssemblyName>
 		<Authors>UnderDoug</Authors>
 		<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
     <BaseIntermediateOutputPath>.dotnet\obj\</BaseIntermediateOutputPath>
